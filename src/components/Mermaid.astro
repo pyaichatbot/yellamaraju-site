@@ -14,7 +14,34 @@ const { chart } = Astro.props;
   (function() {
     if (typeof window === 'undefined') return;
     
-    if (!window.mermaidLoaded) {
+    function getThemeColors() {
+      const html = document.documentElement;
+      const theme = html.getAttribute('data-theme') || 'auto';
+      const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      
+      if (isDark) {
+        return {
+          primaryColor: '#3b82f6',
+          primaryTextColor: '#e5e5e5',
+          primaryBorderColor: '#3b82f6',
+          lineColor: '#a3a3a3',
+          secondaryColor: '#262626',
+          tertiaryColor: '#1a1a1a'
+        };
+      } else {
+        return {
+          primaryColor: '#2563eb',
+          primaryTextColor: '#1a1a1a',
+          primaryBorderColor: '#2563eb',
+          lineColor: '#4a4a4a',
+          secondaryColor: '#f5f5f5',
+          tertiaryColor: '#fdfcfb'
+        };
+      }
+    }
+    
+    function initializeMermaid() {
+      const colors = getThemeColors();
       const script = document.createElement('script');
       script.type = 'module';
       script.textContent = `
@@ -22,19 +49,16 @@ const { chart } = Astro.props;
         mermaid.initialize({ 
           startOnLoad: true,
           theme: 'neutral',
-          themeVariables: {
-            primaryColor: '#2563eb',
-            primaryTextColor: '#1a1a1a',
-            primaryBorderColor: '#2563eb',
-            lineColor: '#4a4a4a',
-            secondaryColor: '#f5f5f5',
-            tertiaryColor: '#fdfcfb'
-          }
+          themeVariables: ${JSON.stringify(colors)}
         });
         mermaid.run();
         window.mermaidLoaded = true;
       `;
       document.head.appendChild(script);
+    }
+    
+    if (!window.mermaidLoaded) {
+      initializeMermaid();
     } else {
       setTimeout(function() {
         var mermaid = window.mermaid;
@@ -43,6 +67,21 @@ const { chart } = Astro.props;
         }
       }, 100);
     }
+    
+    // Reinitialize on theme change
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', () => {
+      const html = document.documentElement;
+      const theme = html.getAttribute('data-theme');
+      if (theme === 'auto' && window.mermaidLoaded) {
+        // Reload page to reinitialize mermaid with new theme
+        // This is a simple approach; could be improved with dynamic re-rendering
+        const mermaidElements = document.querySelectorAll('.mermaid');
+        if (mermaidElements.length > 0) {
+          location.reload();
+        }
+      }
+    });
   })();
 </script>
 

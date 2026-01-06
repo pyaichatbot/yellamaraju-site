@@ -1,0 +1,297 @@
+---
+---
+
+<div class="theme-toggle-wrapper">
+  <button 
+    class="theme-toggle" 
+    id="theme-toggle"
+    aria-label="Toggle theme"
+    aria-haspopup="true"
+    aria-expanded="false"
+  >
+    <svg class="theme-icon sun-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 3V1M10 19V17M17 10H19M1 10H3M15.657 15.657L16.97 16.97M3.03 3.03L4.343 4.343M15.657 4.343L16.97 3.03M3.03 16.97L4.343 15.657M14 10C14 12.2091 12.2091 14 10 14C7.79086 14 6 12.2091 6 10C6 7.79086 7.79086 6 10 6C12.2091 6 14 7.79086 14 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <svg class="theme-icon moon-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.293 13.293C16.3785 14.2075 15.2175 14.8622 13.955 15.1943C12.6925 15.5264 11.3736 15.5254 10.1116 15.1913C8.84963 14.8572 7.68978 14.2004 6.77688 13.2841C5.86398 12.3678 5.22928 11.2225 4.93684 9.97091C4.6444 8.71934 4.70401 7.40208 5.10969 6.17868C5.51537 4.95529 6.25349 3.87081 7.2538 3.04106C8.25411 2.21131 9.47799 1.67024 10.7559 1.48318C12.0338 1.29613 13.3194 1.46914 14.5 1.98499C13.125 3.64507 12.5 5.73375 12.5 7.875C12.5 10.0162 13.125 12.1049 14.5 13.765C15.875 13.25 17.125 12.3913 18.125 11.265C17.9004 12.0105 17.5552 12.7192 17.103 13.365C17.0427 13.4482 16.975 13.5252 16.9006 13.595C16.7525 13.7526 16.5905 13.8957 16.4164 14.0226L17.293 13.293Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <svg class="theme-icon auto-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="2" width="16" height="16" rx="4" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M10 2V6M10 14V18M18 10H14M6 10H2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
+    </svg>
+  </button>
+  
+  <div class="theme-menu" id="theme-menu" role="menu">
+    <button 
+      class="theme-option" 
+      data-theme="light"
+      role="menuitem"
+      aria-label="Light theme"
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 3V1M10 19V17M17 10H19M1 10H3M15.657 15.657L16.97 16.97M3.03 3.03L4.343 4.343M15.657 4.343L16.97 3.03M3.03 16.97L4.343 15.657M14 10C14 12.2091 12.2091 14 10 14C7.79086 14 6 12.2091 6 10C6 7.79086 7.79086 6 10 6C12.2091 6 14 7.79086 14 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Light</span>
+    </button>
+    <button 
+      class="theme-option" 
+      data-theme="dark"
+      role="menuitem"
+      aria-label="Dark theme"
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.293 13.293C16.3785 14.2075 15.2175 14.8622 13.955 15.1943C12.6925 15.5264 11.3736 15.5254 10.1116 15.1913C8.84963 14.8572 7.68978 14.2004 6.77688 13.2841C5.86398 12.3678 5.22928 11.2225 4.93684 9.97091C4.6444 8.71934 4.70401 7.40208 5.10969 6.17868C5.51537 4.95529 6.25349 3.87081 7.2538 3.04106C8.25411 2.21131 9.47799 1.67024 10.7559 1.48318C12.0338 1.29613 13.3194 1.46914 14.5 1.98499C13.125 3.64507 12.5 5.73375 12.5 7.875C12.5 10.0162 13.125 12.1049 14.5 13.765C15.875 13.25 17.125 12.3913 18.125 11.265C17.9004 12.0105 17.5552 12.7192 17.103 13.365C17.0427 13.4482 16.975 13.5252 16.9006 13.595C16.7525 13.7526 16.5905 13.8957 16.4164 14.0226L17.293 13.293Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Dark</span>
+    </button>
+    <button 
+      class="theme-option" 
+      data-theme="auto"
+      role="menuitem"
+      aria-label="Auto theme (system preference)"
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="16" height="16" rx="4" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 2V6M10 14V18M18 10H14M6 10H2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      <span>Auto</span>
+    </button>
+  </div>
+</div>
+
+<style>
+  .theme-toggle-wrapper {
+    position: relative;
+  }
+  
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.5rem;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: all var(--transition-base);
+    position: relative;
+  }
+  
+  .theme-toggle:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+    background: var(--color-code-bg);
+    transform: scale(1.05);
+  }
+  
+  .theme-toggle:active {
+    transform: scale(0.95);
+  }
+  
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  
+  .theme-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: none;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+  }
+  
+  .theme-icon.active {
+    display: block;
+    opacity: 1;
+  }
+  
+  .theme-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 0.25rem;
+    min-width: 120px;
+    display: none;
+    z-index: 1000;
+    overflow: hidden;
+  }
+  
+  [data-theme="dark"] .theme-menu,
+  [data-theme="auto"] .theme-menu {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    [data-theme="auto"] .theme-menu {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  }
+  
+  .theme-menu.open {
+    display: block;
+  }
+  
+  .theme-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    text-align: left;
+    transition: all var(--transition-fast);
+  }
+  
+  .theme-option:hover {
+    background: var(--color-code-bg);
+    color: var(--color-text);
+  }
+  
+  .theme-option.active {
+    color: var(--color-accent);
+    background: var(--color-code-bg);
+  }
+  
+  .theme-option svg {
+    flex-shrink: 0;
+  }
+  
+  .theme-option span {
+    flex: 1;
+  }
+</style>
+
+<script>
+  // @ts-nocheck
+  (function() {
+    const THEME_STORAGE_KEY = 'theme-preference';
+    const THEMES = ['light', 'dark', 'auto'];
+    
+    function getStoredTheme() {
+      if (typeof window === 'undefined') return 'auto';
+      const stored = localStorage.getItem(THEME_STORAGE_KEY);
+      return stored && THEMES.includes(stored) ? stored : 'auto';
+    }
+    
+    function setStoredTheme(theme) {
+      if (typeof window === 'undefined') return;
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    }
+    
+    function applyTheme(theme) {
+      if (typeof document === 'undefined') return;
+      const html = document.documentElement;
+      html.setAttribute('data-theme', theme);
+      
+      // Update icon visibility
+      const sunIcon = document.querySelector('.sun-icon');
+      const moonIcon = document.querySelector('.moon-icon');
+      const autoIcon = document.querySelector('.auto-icon');
+      
+      if (sunIcon && moonIcon && autoIcon) {
+        sunIcon.classList.remove('active');
+        moonIcon.classList.remove('active');
+        autoIcon.classList.remove('active');
+        
+        if (theme === 'light') {
+          sunIcon.classList.add('active');
+        } else if (theme === 'dark') {
+          moonIcon.classList.add('active');
+        } else {
+          autoIcon.classList.add('active');
+        }
+      }
+      
+      // Update active state in menu
+      document.querySelectorAll('.theme-option').forEach(option => {
+        const optionTheme = option.getAttribute('data-theme');
+        if (optionTheme === theme) {
+          option.classList.add('active');
+        } else {
+          option.classList.remove('active');
+        }
+      });
+    }
+    
+    function initTheme() {
+      const theme = getStoredTheme();
+      applyTheme(theme);
+      
+      // Listen for system theme changes when in auto mode
+      if (typeof window !== 'undefined') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.addEventListener('change', () => {
+          const currentTheme = getStoredTheme();
+          if (currentTheme === 'auto') {
+            applyTheme('auto');
+          }
+        });
+      }
+    }
+    
+    // Initialize theme immediately to prevent flash
+    initTheme();
+    
+    // Set up toggle button
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggle = document.getElementById('theme-toggle');
+      const menu = document.getElementById('theme-menu');
+      const options = document.querySelectorAll('.theme-option');
+      
+      if (!toggle || !menu) return;
+      
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = menu.classList.contains('open');
+        menu.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', (!isOpen).toString());
+      });
+      
+      options.forEach(option => {
+        option.addEventListener('click', () => {
+          const theme = option.getAttribute('data-theme');
+          if (theme) {
+            setStoredTheme(theme);
+            applyTheme(theme);
+            menu.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      });
+      
+      // Close menu when clicking outside
+      document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target && target instanceof Node && !toggle.contains(target) && !menu.contains(target)) {
+          menu.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+      
+      // Close menu on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menu.classList.contains('open')) {
+          menu.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+  })();
+</script>
+

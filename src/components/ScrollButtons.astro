@@ -1,0 +1,216 @@
+---
+---
+
+<div class="scroll-buttons" id="scroll-buttons">
+  <button 
+    class="scroll-btn scroll-to-top" 
+    id="scroll-to-top"
+    aria-label="Scroll to top"
+    title="Scroll to top"
+  >
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  
+  <button 
+    class="scroll-btn scroll-to-bottom" 
+    id="scroll-to-bottom"
+    aria-label="Scroll to bottom"
+    title="Scroll to bottom"
+  >
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 5V15M10 15L5 10M10 15L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<style>
+  .scroll-buttons {
+    position: fixed;
+    right: var(--space-md);
+    bottom: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    z-index: 50;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-base), visibility var(--transition-base);
+  }
+  
+  .scroll-buttons.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .scroll-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-base);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+  }
+  
+  [data-theme="dark"] .scroll-btn,
+  [data-theme="auto"] .scroll-btn {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    [data-theme="auto"] .scroll-btn {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+  }
+  
+  .scroll-btn:hover {
+    background: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  
+  [data-theme="dark"] .scroll-btn:hover,
+  [data-theme="auto"] .scroll-btn:hover {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    [data-theme="auto"] .scroll-btn:hover {
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+  }
+  
+  .scroll-btn:active {
+    transform: translateY(0);
+  }
+  
+  .scroll-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  
+  .scroll-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .scroll-to-top.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .scroll-to-bottom.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  @media (max-width: 768px) {
+    .scroll-buttons {
+      right: var(--space-sm);
+      bottom: var(--space-sm);
+    }
+    
+    .scroll-btn {
+      width: 40px;
+      height: 40px;
+    }
+    
+    .scroll-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    // @ts-nocheck
+    function initScrollButtons() {
+      const scrollButtons = document.getElementById('scroll-buttons');
+      const scrollToTop = document.getElementById('scroll-to-top');
+      const scrollToBottom = document.getElementById('scroll-to-bottom');
+      
+      if (!scrollButtons || !scrollToTop || !scrollToBottom) return;
+      
+      const scrollThreshold = 300; // Show buttons after scrolling 300px
+      
+      function updateScrollButtons() {
+        if (!scrollButtons || !scrollToTop || !scrollToBottom) return;
+        
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        const isAtTop = scrollTop < scrollThreshold;
+        const isAtBottom = scrollTop + windowHeight >= documentHeight - scrollThreshold;
+        
+        // Show/hide scroll buttons container
+        if (scrollTop > scrollThreshold || scrollTop + windowHeight < documentHeight - scrollThreshold) {
+          scrollButtons.classList.add('visible');
+        } else {
+          scrollButtons.classList.remove('visible');
+        }
+        
+        // Show/hide individual buttons
+        if (isAtTop) {
+          scrollToTop.classList.add('hidden');
+        } else {
+          scrollToTop.classList.remove('hidden');
+        }
+        
+        if (isAtBottom) {
+          scrollToBottom.classList.add('hidden');
+        } else {
+          scrollToBottom.classList.remove('hidden');
+        }
+      }
+      
+      // Scroll to top
+      scrollToTop.addEventListener('click', () => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      });
+      
+      // Scroll to bottom
+      scrollToBottom.addEventListener('click', () => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth'
+        });
+      });
+      
+      // Update on scroll
+      let ticking = false;
+      window.addEventListener('scroll', () => {
+        if (!ticking) {
+          window.requestAnimationFrame(() => {
+            updateScrollButtons();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      });
+      
+      // Initial check
+      updateScrollButtons();
+    }
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initScrollButtons);
+    } else {
+      initScrollButtons();
+    }
+  })();
+</script>
+

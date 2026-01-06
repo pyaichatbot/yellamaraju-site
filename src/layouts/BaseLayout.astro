@@ -67,6 +67,31 @@ const pageTitle = title === SITE.title ? title : `${title} | ${SITE.title}`;
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Theme initialization - prevents flash of unstyled content -->
+    <script is:inline>
+      (function() {
+        const THEME_STORAGE_KEY = 'theme-preference';
+        const THEMES = ['light', 'dark', 'auto'];
+        
+        function getStoredTheme() {
+          try {
+            const stored = localStorage.getItem(THEME_STORAGE_KEY);
+            return stored && THEMES.includes(stored) ? stored : 'auto';
+          } catch (e) {
+            return 'auto';
+          }
+        }
+        
+        function applyTheme(theme) {
+          const html = document.documentElement;
+          html.setAttribute('data-theme', theme);
+        }
+        
+        const theme = getStoredTheme();
+        applyTheme(theme);
+      })();
+    </script>
   </head>
   <body>
     <Header />

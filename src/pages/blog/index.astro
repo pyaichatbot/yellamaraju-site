@@ -25,7 +25,7 @@ const allTags = getUniqueTags(allPosts);
           <div class="filter-section">
             <h3>Filter by Topic</h3>
             <div class="tags-filter">
-              <a href="/blog" class="tag-badge active">All Posts</a>
+              <a href="/blog" class="tag-badge active">All</a>
               {allTags.map(tag => (
                 <TagBadge tag={tag} />
               ))}

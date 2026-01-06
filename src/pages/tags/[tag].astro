@@ -40,6 +40,27 @@ const allTags = getUniqueTags(allPosts);
           </p>
         </header>
         
+        <div class="filters">
+          <div class="filter-section">
+            <h3>Filter by Topic</h3>
+            <div class="tags-filter">
+              <a href="/blog" class="tag-badge">All</a>
+              {allTags.map(t => {
+                const tagSlug = t.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-');
+                const isActive = t === tag;
+                return (
+                  <a 
+                    href={`/tags/${tagSlug}`} 
+                    class={`tag-badge ${isActive ? 'active' : ''}`}
+                  >
+                    {t}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        
         <div class="sidebar-layout">
           <div class="main-content">
             <div class="posts-list">
@@ -108,6 +129,56 @@ const allTags = getUniqueTags(allPosts);
   .page-description {
     font-size: 1.25rem;
     color: var(--color-text-secondary);
+  }
+  
+  .filters {
+    margin-bottom: var(--space-2xl);
+  }
+  
+  .filter-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+  }
+  
+  .tags-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+  
+  .tags-filter .tag-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-accent);
+    background: var(--color-code-bg);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--color-border);
+  }
+  
+  .tags-filter .tag-badge:hover {
+    background: var(--color-surface);
+    border-color: var(--color-accent);
+    transform: translateY(-1px);
+  }
+  
+  .tags-filter .tag-badge.active {
+    background: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+  }
+  
+  .tags-filter .tag-badge.active:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    transform: translateY(-1px);
   }
   
   .sidebar-layout {
