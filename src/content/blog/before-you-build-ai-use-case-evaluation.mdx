@@ -93,9 +93,9 @@ graph TD
 ```
 Problem: Fraudulent transactions slip through our rule-based system
 Current State: 2.8% fraud rate, costs €5M annually
-Target State: Reduce to <0.8% fraud rate (€3M savings)
+Target State: Reduce to &lt;0.8% fraud rate (€3M savings)
 Baseline: Manual rules catch 1.8% fraud
-Success Metric: Fraud catch rate >99%, false positives <0.5%
+Success Metric: Fraud catch rate >99%, false positives &lt;0.5%
 ```
 
 **Red Flags:**
@@ -156,7 +156,7 @@ Decision: Can't train ML on 80% correct labels. STOP or pivot to rules + GenAI
 
 **Red Flags:**
 - ❌ Data doesn't exist (only "we could collect it")
-- ❌ Data quality <70% (too many missing values, errors)
+- ❌ Data quality &lt;70% (too many missing values, errors)
 - ❌ No labeled training data
 - ❌ Compliance blockers (GDPR, industry regulations)
 - ❌ Data locked in vendor systems we don't control
@@ -224,7 +224,7 @@ Risk Scenario (50% as good):
 
 **Green Lights:**
 - ✅ Positive ROI in Year 1
-- ✅ Payback period <18 months
+- ✅ Payback period &lt;18 months
 - ✅ Budget approved for build and operations
 - ✅ Team has or can acquire skills
 - ✅ Users are engaged and supportive
@@ -375,7 +375,7 @@ graph TD
     D -->|Yes| E[Use Simpler Solution<br/>STOP AI Work]
     D -->|No| F{Data Available?<br/>Quality >85%?}
     F -->|No| G[STOP: Collect Data First]
-    F -->|Yes| H{ROI Positive?<br/>Payback <18mo?}
+    F -->|Yes| H{ROI Positive?<br/>Payback &lt;18mo?}
     H -->|No| I[STOP: Not Financially Justified]
     H -->|Yes| J{AI Level Clear?<br/>Start Simple?}
     J -->|No| K[POC: Validate Approach]
@@ -399,7 +399,7 @@ graph TD
 ```
 Problem: Fraudulent transactions slip through our rule-based system
 Baseline: 2.8% fraud rate, costs €5M annually
-Success: Reduce to <0.8% fraud rate (€3M savings)
+Success: Reduce to &lt;0.8% fraud rate (€3M savings)
 Current process: Manual rules, updated quarterly (too slow)
 Owner: Risk & Payments team
 ```
@@ -526,8 +526,8 @@ Let me show you how this framework applies to real projects I've worked on:
 
 **Desirability:** ✅
 - Current cost: €5M annually in fraud losses
-- Target: Reduce to <0.8% fraud rate (€3M savings)
-- Success metric: 99%+ fraud catch rate, <0.5% false positives
+- Target: Reduce to &lt;0.8% fraud rate (€3M savings)
+- Success metric: 99%+ fraud catch rate, &lt;0.5% false positives
 
 **Feasibility:** ✅
 - Data: 15+ years of transaction history, 100M+ daily transactions
@@ -557,7 +557,7 @@ Let me show you how this framework applies to real projects I've worked on:
 
 **Desirability:** ✅
 - Current cost: 2-3 days per merchant, €15 per merchant
-- Target: <2 hours per merchant, €3 per merchant
+- Target: &lt;2 hours per merchant, €3 per merchant
 - Success metric: 98%+ automation rate
 
 **Feasibility:** ✅
@@ -575,7 +575,7 @@ Let me show you how this framework applies to real projects I've worked on:
 - Validation rules for compliance
 - 98% automated, 2% human review for edge cases
 
-**Result:** 98% fully automated, 80% time savings (2-3 days → <2 hours), 100% compliance accuracy.
+**Result:** 98% fully automated, 80% time savings (2-3 days → &lt;2 hours), 100% compliance accuracy.
 
 **Key Lesson:** Initially planned custom ML classifier. GenAI + rules worked better, faster to deploy, fully explainable. Sometimes hybrid beats pure ML.
 
@@ -800,7 +800,7 @@ Before you move beyond evaluation, answer ALL of these:
 - [ ] Simpler solutions INSUFFICIENT (tested 3-5 alternatives)
 - [ ] Data EXISTS and is CLEAN (quality >85%, labeled, accessible)
 - [ ] AI Level is CLEAR (start simple, can upgrade later)
-- [ ] ROI is POSITIVE (payback <18 months, risk-adjusted)
+- [ ] ROI is POSITIVE (payback &lt;18 months, risk-adjusted)
 - [ ] Stakeholders AGREED (business owner, technical lead, finance)
 - [ ] Budget is APPROVED (build + operations)
 - [ ] Team is ASSIGNED (has or can acquire skills)
