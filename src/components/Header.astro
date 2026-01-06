@@ -13,12 +13,6 @@ const currentPath = Astro.url.pathname;
         <span class="name-last">Yellamaraju</span>
       </a>
       
-      <button class="mobile-menu-toggle" aria-label="Toggle menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-      
       <div class="header-right">
         <nav class="main-nav">
           <ul>
@@ -37,6 +31,12 @@ const currentPath = Astro.url.pathname;
         </nav>
         <ThemeToggle />
       </div>
+      
+      <button class="mobile-menu-toggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </div>
   </div>
 </header>
@@ -71,6 +71,7 @@ const currentPath = Astro.url.pathname;
     justify-content: space-between;
     align-items: center;
     padding: var(--space-md) 0;
+    gap: var(--space-sm);
   }
   
   .header-right {
@@ -88,6 +89,8 @@ const currentPath = Astro.url.pathname;
     display: flex;
     gap: 0.4em;
     transition: opacity var(--transition-fast);
+    flex-shrink: 1;
+    min-width: 0;
   }
   
   .site-title:hover {
@@ -137,6 +140,7 @@ const currentPath = Astro.url.pathname;
     border: none;
     cursor: pointer;
     padding: 8px;
+    flex-shrink: 0;
   }
   
   .mobile-menu-toggle span {
@@ -147,12 +151,37 @@ const currentPath = Astro.url.pathname;
   }
   
   @media (max-width: 768px) {
-    .mobile-menu-toggle {
-      display: flex;
+    .header-content {
+      padding: var(--space-sm) 0;
+      gap: var(--space-xs);
+    }
+    
+    .site-title {
+      font-size: 1rem;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    
+    .site-title .name-first,
+    .site-title .name-last {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .header-right {
       position: relative;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+    
+    .mobile-menu-toggle {
+      display: flex;
+      flex-shrink: 0;
+      margin-left: var(--space-xs);
     }
     
     .main-nav {

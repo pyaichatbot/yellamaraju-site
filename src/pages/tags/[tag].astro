@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import TagBadge from '../../components/TagBadge.astro';
+import SearchInput from '../../components/SearchInput.astro';
 import { getCollection } from 'astro:content';
 import { sortPostsByDate, getUniqueTags, filterPostsByTag } from '../../utils/helpers';
 
@@ -39,6 +40,10 @@ const allTags = getUniqueTags(allPosts);
             Exploring {tag.toLowerCase()} and related topics
           </p>
         </header>
+        
+        <div class="search-section">
+          <SearchInput />
+        </div>
         
         <div class="filters">
           <div class="filter-section">
@@ -129,6 +134,11 @@ const allTags = getUniqueTags(allPosts);
   .page-description {
     font-size: 1.25rem;
     color: var(--color-text-secondary);
+  }
+  
+  .search-section {
+    margin-bottom: var(--space-2xl);
+    padding: 0 var(--space-md);
   }
   
   .filters {

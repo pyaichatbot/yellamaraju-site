@@ -1,0 +1,384 @@
+---
+// SearchInput component - displays search input and handles quick search
+---
+
+<div class="search-container">
+  <div class="search-input-wrapper">
+    <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="m19 19-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <input
+      type="search"
+      id="search-input"
+      class="search-input"
+      placeholder="Search posts..."
+      aria-label="Search blog posts"
+      autocomplete="off"
+    />
+    <button class="search-clear" id="search-clear" aria-label="Clear search" style="display: none;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+  <div id="search-results" class="search-results" style="display: none;"></div>
+</div>
+
+<style>
+  .search-container {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    font-size: 1rem;
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text);
+    transition: all var(--transition-fast);
+  }
+  
+  .search-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.1);
+  }
+  
+  .search-input::placeholder {
+    color: var(--color-text-secondary);
+  }
+  
+  .search-clear {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast);
+  }
+  
+  .search-clear:hover {
+    color: var(--color-text);
+  }
+  
+  .search-results {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    right: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    margin-top: 0.5rem;
+  }
+  
+  [data-theme="dark"] .search-results {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    [data-theme="auto"] .search-results {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  }
+  
+  .search-result-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+  
+  .search-result-item:last-child {
+    border-bottom: none;
+  }
+  
+  .search-result-item:hover {
+    background: var(--color-code-bg);
+  }
+  
+  .search-result-title {
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+  }
+  
+  .search-result-description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+  
+  .search-result-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+  
+  .search-result-tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .search-result-tag {
+    padding: 0.125rem 0.5rem;
+    background: var(--color-code-bg);
+    border-radius: 4px;
+    font-size: 0.75rem;
+  }
+  
+  .search-result-date {
+    font-size: 0.75rem;
+  }
+  
+  .search-highlight {
+    background: var(--color-accent);
+    color: white;
+    padding: 0.125rem 0.25rem;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+  
+  .search-no-results {
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+  
+  .search-loading {
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+  
+  @media (max-width: 768px) {
+    .search-container {
+      max-width: 100%;
+    }
+    
+    .search-results {
+      max-height: 60vh;
+    }
+  }
+</style>
+
+<script>
+  import Fuse from 'fuse.js';
+  
+  interface SearchIndexItem {
+    title: string;
+    description: string;
+    content: string;
+    tags: string[];
+    slug: string;
+    date: string;
+    excerpt: string;
+  }
+  
+  let searchIndex: SearchIndexItem[] = [];
+  let fuse: Fuse<SearchIndexItem> | null = null;
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+  // Load search index
+  async function loadSearchIndex() {
+    try {
+      const response = await fetch('/search-index.json');
+      searchIndex = await response.json();
+      
+      // Configure Fuse.js for fuzzy search
+      fuse = new Fuse(searchIndex, {
+        keys: [
+          { name: 'title', weight: 0.4 },
+          { name: 'description', weight: 0.3 },
+          { name: 'tags', weight: 0.2 },
+          { name: 'content', weight: 0.1 },
+        ],
+        threshold: 0.4, // 0.0 = exact match, 1.0 = match anything
+        includeScore: true,
+        minMatchCharLength: 2,
+      });
+    } catch (error) {
+      console.error('Failed to load search index:', error);
+    }
+  }
+  
+  // Highlight search terms in text
+  function highlightText(text: string, query: string): string {
+    if (!query) return text;
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+  }
+  
+  // Quick search (titles/tags only) - instant results
+  function quickSearch(query: string): SearchIndexItem[] {
+    if (!query || query.length < 2) return [];
+    
+    const lowerQuery = query.toLowerCase();
+    return searchIndex.filter(item => {
+      const titleMatch = item.title.toLowerCase().includes(lowerQuery);
+      const tagMatch = item.tags.some(tag => tag.toLowerCase().includes(lowerQuery));
+      return titleMatch || tagMatch;
+    }).slice(0, 5); // Limit to 5 quick results
+  }
+  
+  // Full-text search using Fuse.js
+  function fullTextSearch(query: string) {
+    if (!fuse || !query || query.length < 2) return [];
+    return fuse.search(query).slice(0, 10); // Limit to 10 results
+  }
+  
+  // Perform hybrid search
+  function performSearch(query: string) {
+    const resultsContainer = document.getElementById('search-results');
+    const clearButton = document.getElementById('search-clear');
+    
+    if (!resultsContainer) return;
+    
+    if (!query || query.length < 2) {
+      resultsContainer.style.display = 'none';
+      if (clearButton) clearButton.style.display = 'none';
+      return;
+    }
+    
+    if (clearButton) clearButton.style.display = 'block';
+    
+    // Show loading state
+    resultsContainer.style.display = 'block';
+    resultsContainer.innerHTML = '<div class="search-loading">Searching...</div>';
+    
+    // Use quick search for instant results, then enhance with full-text
+    setTimeout(() => {
+      const quickResults = quickSearch(query);
+      const fullResults = fullTextSearch(query);
+      
+      // Combine results (quick results first, then full-text)
+      const resultMap = new Map<string, SearchIndexItem>();
+      
+      // Add quick results first (higher priority)
+      quickResults.forEach(item => {
+        resultMap.set(item.slug, item);
+      });
+      
+      // Add full-text results
+      fullResults.forEach(result => {
+        if (!resultMap.has(result.item.slug)) {
+          resultMap.set(result.item.slug, result.item);
+        }
+      });
+      
+      const allResults = Array.from(resultMap.values()).slice(0, 10);
+      
+      if (allResults.length === 0) {
+        resultsContainer.innerHTML = '<div class="search-no-results">No posts found. Try different keywords.</div>';
+        return;
+      }
+      
+      // Render results
+      resultsContainer.innerHTML = allResults.map(item => {
+        const date = new Date(item.date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        
+        return `
+          <a href="/blog/${item.slug}" class="search-result-item">
+            <div class="search-result-title">${highlightText(item.title, query)}</div>
+            <div class="search-result-description">${highlightText(item.description || item.excerpt, query)}</div>
+            <div class="search-result-meta">
+              <span class="search-result-date">${date}</span>
+              ${item.tags.length > 0 ? `
+                <div class="search-result-tags">
+                  ${item.tags.map(tag => `<span class="search-result-tag">${tag}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </a>
+        `;
+      }).join('');
+    }, 100); // Small delay to show loading state
+  }
+  
+  // Initialize search on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    loadSearchIndex();
+    
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    const clearButton = document.getElementById('search-clear');
+    const resultsContainer = document.getElementById('search-results');
+    
+    if (!searchInput) return;
+    
+    // Debounced search
+    searchInput.addEventListener('input', (e) => {
+      const query = (e.target as HTMLInputElement).value.trim();
+      
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      searchTimeout = setTimeout(() => {
+        performSearch(query);
+      }, 150);
+    });
+    
+    // Clear search
+    clearButton?.addEventListener('click', () => {
+      searchInput.value = '';
+      if (resultsContainer) resultsContainer.style.display = 'none';
+      if (clearButton) clearButton.style.display = 'none';
+      searchInput.focus();
+    });
+    
+    // Close results when clicking outside
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.search-container')) {
+        if (resultsContainer) resultsContainer.style.display = 'none';
+      }
+    });
+    
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (resultsContainer) resultsContainer.style.display = 'none';
+        searchInput.blur();
+      }
+    });
+  });
+</script>
+

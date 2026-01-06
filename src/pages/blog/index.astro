@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import TagBadge from '../../components/TagBadge.astro';
+import SearchInput from '../../components/SearchInput.astro';
 import { getCollection } from 'astro:content';
 import { sortPostsByDate, getUniqueTags } from '../../utils/helpers';
 
@@ -20,6 +21,10 @@ const allTags = getUniqueTags(allPosts);
             Thoughts on building intelligent systems, AI architecture, and the future of enterprise technology.
           </p>
         </header>
+        
+        <div class="search-section">
+          <SearchInput />
+        </div>
         
         <div class="filters">
           <div class="filter-section">
@@ -71,6 +76,11 @@ const allTags = getUniqueTags(allPosts);
     color: var(--color-text-secondary);
     max-width: 600px;
     margin: 0 auto;
+  }
+  
+  .search-section {
+    margin-bottom: var(--space-2xl);
+    padding: 0 var(--space-md);
   }
   
   .filters {
