@@ -1,0 +1,288 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../config';
+---
+
+<BaseLayout title="Contact" description="Get in touch with Praveen Srinag Yellamaraju for collaborations, speaking engagements, or discussions about AI and enterprise architecture.">
+  <div class="contact-page">
+    <div class="container">
+      <div class="content-wrapper">
+        <header class="page-header">
+          <h1>Get in Touch</h1>
+          <p class="page-description">
+            I'm always interested in connecting with fellow practitioners, discussing AI architecture 
+            challenges, or exploring collaboration opportunities.
+          </p>
+        </header>
+        
+        <div class="contact-content">
+          <div class="contact-info">
+            <div class="info-card">
+              <h2>Email</h2>
+              <p>
+                For professional inquiries, collaborations, or speaking engagements:
+              </p>
+              <a href="mailto:contact@yellamaraju.com" class="contact-link">
+                contact@yellamaraju.com
+              </a>
+            </div>
+            
+            <div class="info-card">
+              <h2>LinkedIn</h2>
+              <p>
+                Connect with me on LinkedIn for professional networking and updates:
+              </p>
+              <a 
+                href={`https://${SITE.linkedin}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="contact-link"
+              >
+                linkedin.com/in/praveensrinagy
+              </a>
+            </div>
+            
+            <div class="info-card">
+              <h2>What I'm Interested In</h2>
+              <ul class="interests-list">
+                <li>AI architecture and agentic system design</li>
+                <li>Enterprise AI implementation strategies</li>
+                <li>Speaking opportunities at conferences or workshops</li>
+                <li>Collaborative projects in AI/ML space</li>
+                <li>Knowledge sharing and mentorship</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="additional-info">
+            <div class="info-box">
+              <h3>Response Time</h3>
+              <p>
+                I typically respond to emails within 2-3 business days. For urgent matters, 
+                please indicate this in your subject line.
+              </p>
+            </div>
+            
+            <div class="info-box">
+              <h3>Location</h3>
+              <p>
+                Based in Rosbach vor der Höhe, Hesse, Germany<br>
+                Open to remote collaborations and occasional travel for speaking engagements.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="cta-section">
+          <h3>Explore More</h3>
+          <p>Learn more about my work and experience</p>
+          <div class="cta-buttons">
+            <a href="/blog" class="primary-button">Read the Blog</a>
+            <a href="/resume" class="secondary-button">View Resume</a>
+            <a href="/about" class="secondary-button">About Me</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .contact-page {
+    padding: var(--space-2xl) 0;
+  }
+  
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .page-header h1 {
+    font-size: 3rem;
+    margin-bottom: var(--space-sm);
+  }
+  
+  .page-description {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .contact-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-2xl);
+  }
+  
+  .contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+  
+  .info-card {
+    padding: var(--space-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+  
+  .info-card h2 {
+    font-size: 1.5rem;
+    margin-bottom: var(--space-sm);
+    color: var(--color-text);
+  }
+  
+  .info-card p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+  }
+  
+  .contact-link {
+    display: inline-block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: none;
+    padding: 0.75rem 1.5rem;
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.15);
+    border-radius: 6px;
+    transition: all var(--transition-base);
+  }
+  
+  .contact-link:hover {
+    background: var(--color-accent);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  
+  .interests-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .interests-list li {
+    padding: var(--space-xs) 0;
+    padding-left: var(--space-md);
+    position: relative;
+    color: var(--color-text-secondary);
+  }
+  
+  .interests-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--color-accent);
+    font-weight: bold;
+  }
+  
+  .additional-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+  
+  .info-box {
+    padding: var(--space-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+  }
+  
+  .info-box h3 {
+    font-size: 1.1rem;
+    margin-bottom: var(--space-xs);
+    color: var(--color-accent);
+  }
+  
+  .info-box p {
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+  
+  .cta-section {
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .cta-section h3 {
+    margin-bottom: var(--space-xs);
+  }
+  
+  .cta-section > p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+  }
+  
+  .cta-buttons {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .primary-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: var(--color-accent);
+    color: white;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--transition-base);
+  }
+  
+  .primary-button:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  
+  .secondary-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    border: 2px solid var(--color-accent);
+    color: var(--color-accent);
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--transition-base);
+  }
+  
+  .secondary-button:hover {
+    background: var(--color-accent);
+    color: white;
+    transform: translateY(-2px);
+  }
+  
+  @media (max-width: 1024px) {
+    .contact-content {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+    
+    .page-description {
+      font-size: 1.1rem;
+    }
+    
+    .cta-buttons {
+      flex-direction: column;
+    }
+  }
+</style>

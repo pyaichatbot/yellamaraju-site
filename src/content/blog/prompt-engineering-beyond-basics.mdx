@@ -1,0 +1,249 @@
+---
+title: "Prompt Engineering: Beyond the Basics"
+description: "Advanced prompt engineering techniques for building reliable AI systems, from structured outputs to chain-of-thought reasoning."
+date: 2024-12-15
+tags: ["Prompt Engineering", "AI/ML", "Best Practices"]
+---
+
+import Callout from '../../components/Callout.astro';
+
+After conducting 17+ sessions on prompt engineering and working with LLMs daily, I've learned that effective prompting is less about "magic words" and more about understanding how these models process information.
+
+## The Three Pillars of Effective Prompting
+
+### 1. Clarity and Structure
+
+Your prompt should be unambiguous. LLMs are powerful, but they're not mind readers.
+
+**Bad prompt:**
+```
+Write code for the thing we discussed.
+```
+
+**Good prompt:**
+```
+Write a Python function that:
+1. Accepts a list of integers
+2. Filters out negative numbers
+3. Returns the sum of remaining values
+4. Includes error handling for empty lists
+5. Has comprehensive docstrings
+
+Use type hints and follow PEP 8 style guidelines.
+```
+
+### 2. Context and Constraints
+
+Provide just enough context—not too much, not too little.
+
+```python
+# Example: Building context for a code review
+prompt = f"""
+You are a senior Python developer reviewing code for production deployment.
+
+Project context:
+- Banking application (security-critical)
+- Must follow PEP 8 and type hints required
+- Performance is important (processes 10k+ transactions/day)
+
+Review this code and identify:
+1. Security vulnerabilities
+2. Performance issues
+3. Code quality concerns
+
+Code to review:
+{code_snippet}
+"""
+```
+
+### 3. Output Format Specification
+
+Always specify the exact format you want:
+
+```python
+prompt = """
+Analyze the following text and return a JSON object with this exact structure:
+
+{
+  "sentiment": "positive" | "negative" | "neutral",
+  "confidence": 0.0 to 1.0,
+  "key_phrases": [string array],
+  "entities": [
+    {"text": string, "type": "person" | "organization" | "location"}
+  ]
+}
+
+Text: {user_input}
+"""
+```
+
+<Callout type="success" title="Pro Tip">
+When you need structured outputs, explicitly state "Return ONLY valid JSON, no markdown formatting, no explanatory text."
+</Callout>
+
+## Advanced Techniques
+
+### Chain-of-Thought Reasoning
+
+For complex problems, ask the model to think step-by-step:
+
+```
+Solve this problem using chain-of-thought reasoning:
+
+Problem: Calculate the optimal batch size for processing 100,000 records
+where each API call can handle 500 records but has rate limiting of
+10 requests per second.
+
+Think through this step by step:
+1. First, calculate total batches needed
+2. Then, determine time constraints from rate limiting
+3. Finally, recommend optimal batch size and processing strategy
+
+Show your work for each step.
+```
+
+### Few-Shot Learning
+
+Provide examples to guide the model's behavior:
+
+```
+Extract action items from meeting notes.
+
+Example 1:
+Input: "John will prepare the Q4 report by Friday. Sarah mentioned
+she'll review the marketing proposal."
+Output:
+- [ ] John: Prepare Q4 report (Due: Friday)
+- [ ] Sarah: Review marketing proposal
+
+Example 2:
+Input: "We need to schedule a follow-up meeting next week. Mike
+volunteered to create the agenda."
+Output:
+- [ ] Team: Schedule follow-up meeting (Due: Next week)
+- [ ] Mike: Create agenda for meeting
+
+Now process this:
+{meeting_notes}
+```
+
+### Role-Based Prompting
+
+Frame the model's perspective:
+
+```
+You are an experienced DevOps engineer who specializes in Kubernetes
+deployments. You prioritize:
+1. Security best practices
+2. Resource efficiency
+3. Observability
+4. Disaster recovery
+
+Given this context, review the following deployment YAML and suggest
+improvements with explanations.
+```
+
+## Common Pitfalls to Avoid
+
+### 1. Ambiguous Instructions
+
+❌ "Make this better"
+✅ "Improve code readability by: adding descriptive variable names,
+   breaking long functions into smaller ones, and adding type hints"
+
+### 2. Ignoring Token Limits
+
+Always be aware of context windows:
+
+```python
+def build_prompt(context: str, max_context_tokens: int = 3000):
+    if count_tokens(context) > max_context_tokens:
+        # Truncate or summarize
+        context = smart_truncate(context, max_context_tokens)
+    return build_final_prompt(context)
+```
+
+### 3. Not Handling Edge Cases
+
+Test your prompts with:
+- Empty inputs
+- Very long inputs
+- Malformed data
+- Adversarial inputs
+
+## Measuring Prompt Effectiveness
+
+Track these metrics:
+
+```python
+class PromptMetrics:
+    def __init__(self):
+        self.success_rate = 0.0
+        self.avg_tokens_used = 0
+        self.avg_response_time = 0.0
+        self.format_compliance = 0.0
+        
+    def evaluate_prompt(self, test_cases):
+        results = []
+        for test in test_cases:
+            response = llm.generate(test.prompt)
+            results.append({
+                'success': self.is_correct(response, test.expected),
+                'tokens': count_tokens(response),
+                'time': measure_time(response),
+                'format_valid': validate_format(response)
+            })
+        return self.aggregate_metrics(results)
+```
+
+## Prompt Templates for Common Tasks
+
+### Code Generation
+```
+Language: {language}
+Task: {description}
+Requirements:
+- {requirement_1}
+- {requirement_2}
+Style: {style_guide}
+Include: error handling, logging, and tests
+```
+
+### Text Summarization
+```
+Summarize the following text in {word_count} words or less.
+Focus on: {key_aspects}
+Audience: {target_audience}
+Tone: {desired_tone}
+
+Text: {content}
+```
+
+### Data Extraction
+```
+Extract structured data from this text and return as JSON.
+
+Schema:
+{json_schema}
+
+Rules:
+- Use null for missing fields
+- Validate dates are in ISO format
+- Convert numbers to appropriate types
+
+Text: {source_text}
+```
+
+<Callout type="info" title="Further Reading">
+For more comprehensive guidance on prompt engineering, check out Anthropic's documentation at docs.claude.com and the OpenAI cookbook.
+</Callout>
+
+## Conclusion
+
+Effective prompt engineering is a skill that improves with practice. Start with clear, structured prompts, iterate based on results, and build a library of patterns that work for your use cases.
+
+Remember: the best prompt is one that consistently produces the results you need, regardless of how elegant or clever it seems.
+
+---
+
+*Have questions about prompt engineering? [Let's discuss](/contact) your specific use cases.*

@@ -1,0 +1,191 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="About" description="Learn about Praveen Srinag Yellamaraju - AI Architect and enterprise systems specialist.">
+  <div class="about-page">
+    <div class="container">
+      <div class="content-wrapper">
+        <article class="prose">
+          <h1>About Me</h1>
+          
+          <div class="intro-section">
+            <img src="/images/praveen.jpg" alt="Praveen Srinag Yellamaraju" class="profile-image" />
+            <div class="intro-text">
+              <p class="lead">
+                I'm an AI Architect and enterprise systems specialist with 17+ years of experience 
+                building intelligent, scalable solutions that solve real-world challenges.
+              </p>
+            </div>
+          </div>
+          
+          <h2>What I Do</h2>
+          <p>
+            I specialize in designing and implementing AI-powered systems for enterprise environments. 
+            My work focuses on agentic AI, multi-agent orchestration, RAG systems, and LLM-based 
+            solutions using platforms like OpenAI, Anthropic Claude, and Google ADK.
+          </p>
+          
+          <p>
+            Currently, I'm building internal AI agents and tools that integrate with GitLab, Jira, 
+            Confluence, ServiceNow, and various database systems. I've architected production-ready 
+            solutions including automated code reviewers, change request creators, and intelligent 
+            chatbots that enhance developer productivity and operational efficiency.
+          </p>
+          
+          <h2>Knowledge Sharing</h2>
+          <p>
+            I'm passionate about education and community contribution. I've delivered over 17 sessions 
+            on AI-related topics and conducted multiple workshops on Prompt Engineering, AI Agents, 
+            and Agentic AI design. Teaching helps me refine my understanding and contribute to the 
+            broader AI community.
+          </p>
+          
+          <h2>Background</h2>
+          <p>
+            My journey spans full-stack development, cloud architecture, and now AI/ML systems. 
+            I hold a Post Graduate Diploma in Machine Learning and Artificial Intelligence from 
+            NIT Warangal, along with certifications in AWS Solution Architecture, TOGAF Enterprise 
+            Architecture, and Docker.
+          </p>
+          
+          <p>
+            I've worked with leading organizations including Fiserv, CGI, and Capgemini, where I've 
+            led cloud migrations, designed microservices architectures, and implemented DevOps practices 
+            that significantly improved system reliability and deployment efficiency.
+          </p>
+          
+          <h2>This Website</h2>
+          <p>
+            I write about AI/ML, agentic systems, prompt engineering, enterprise architecture, and 
+            the practical challenges of implementing AI in production environments. My goal is to 
+            share what I learn, document patterns that work, and contribute to conversations about 
+            responsible AI development.
+          </p>
+          
+          <p>
+            If you're working on similar challenges or want to discuss AI architecture, feel free to 
+            <a href="/contact">reach out</a>. I'm always interested in connecting with fellow 
+            practitioners and learning from different perspectives.
+          </p>
+          
+          <div class="cta-section">
+            <h3>Let's Connect</h3>
+            <div class="cta-buttons">
+              <a href="/contact" class="primary-button">Get in Touch</a>
+              <a href="/resume" class="secondary-button">View Resume</a>
+              <a href="https://www.linkedin.com/in/praveensrinagy" target="_blank" rel="noopener noreferrer" class="secondary-button">
+                LinkedIn Profile
+              </a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .about-page {
+    padding: var(--space-2xl) 0;
+  }
+  
+  .prose {
+    font-size: 1.1rem;
+    line-height: 1.8;
+  }
+  
+  .intro-section {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+    margin: var(--space-xl) 0 var(--space-2xl);
+  }
+  
+  .profile-image {
+    width: 200px;
+    height: 200px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
+  
+  .lead {
+    font-size: 1.35rem;
+    line-height: 1.6;
+    color: var(--color-text);
+    font-weight: 500;
+  }
+  
+  .cta-section {
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .cta-section h3 {
+    margin-bottom: var(--space-md);
+  }
+  
+  .cta-buttons {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .primary-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: var(--color-accent);
+    color: white;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--transition-base);
+  }
+  
+  .primary-button:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  
+  .secondary-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    border: 2px solid var(--color-accent);
+    color: var(--color-accent);
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--transition-base);
+  }
+  
+  .secondary-button:hover {
+    background: var(--color-accent);
+    color: white;
+    transform: translateY(-2px);
+  }
+  
+  @media (max-width: 768px) {
+    .intro-section {
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+      text-align: center;
+    }
+    
+    .profile-image {
+      margin: 0 auto;
+    }
+    
+    .cta-buttons {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+</style>

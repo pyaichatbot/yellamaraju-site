@@ -1,0 +1,167 @@
+---
+import { NAV_ITEMS } from '../config';
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="site-header">
+  <div class="container">
+    <div class="header-content">
+      <a href="/" class="site-title">
+        <span class="name-first">Praveen</span>
+        <span class="name-last">Yellamaraju</span>
+      </a>
+      
+      <button class="mobile-menu-toggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      
+      <nav class="main-nav">
+        <ul>
+          {NAV_ITEMS.map(item => (
+            <li>
+              <a 
+                href={item.href}
+                class={currentPath === item.href ? 'active' : ''}
+                aria-current={currentPath === item.href ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+    background: rgba(253, 252, 251, 0.95);
+  }
+  
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md) 0;
+  }
+  
+  .site-title {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--color-text);
+    display: flex;
+    gap: 0.4em;
+    transition: opacity var(--transition-fast);
+  }
+  
+  .site-title:hover {
+    opacity: 0.7;
+  }
+  
+  .name-last {
+    color: var(--color-text-secondary);
+  }
+  
+  .main-nav ul {
+    display: flex;
+    gap: var(--space-lg);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .main-nav a {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+    position: relative;
+  }
+  
+  .main-nav a:hover,
+  .main-nav a.active {
+    color: var(--color-accent);
+  }
+  
+  .main-nav a.active::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-accent);
+  }
+  
+  .mobile-menu-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+  }
+  
+  .mobile-menu-toggle span {
+    width: 24px;
+    height: 2px;
+    background: var(--color-text);
+    transition: transform var(--transition-base);
+  }
+  
+  @media (max-width: 768px) {
+    .mobile-menu-toggle {
+      display: flex;
+    }
+    
+    .main-nav {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: var(--space-md);
+      display: none;
+    }
+    
+    .main-nav.open {
+      display: block;
+    }
+    
+    .main-nav ul {
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    
+    .main-nav a.active::after {
+      bottom: -4px;
+    }
+  }
+</style>
+
+<script>
+  // Mobile menu toggle
+  document.addEventListener('DOMContentLoaded', () => {
+    const toggle = document.querySelector('.mobile-menu-toggle');
+    const nav = document.querySelector('.main-nav');
+    
+    toggle?.addEventListener('click', () => {
+      nav?.classList.toggle('open');
+      toggle?.classList.toggle('open');
+    });
+  });
+</script>

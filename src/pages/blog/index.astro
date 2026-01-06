@@ -1,0 +1,115 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import { getCollection } from 'astro:content';
+import { sortPostsByDate, getUniqueTags } from '../../utils/helpers';
+
+const allPosts = await getCollection('blog');
+const sortedPosts = sortPostsByDate(allPosts);
+const allTags = getUniqueTags(allPosts);
+---
+
+<BaseLayout title="Blog" description="Insights on AI/ML, agentic systems, prompt engineering, and building intelligent enterprise solutions.">
+  <div class="blog-page">
+    <div class="container">
+      <div class="wide-wrapper">
+        <header class="page-header">
+          <h1>Blog</h1>
+          <p class="page-description">
+            Thoughts on building intelligent systems, AI architecture, and the future of enterprise technology.
+          </p>
+        </header>
+        
+        <div class="filters">
+          <div class="filter-section">
+            <h3>Filter by Topic</h3>
+            <div class="tags-filter">
+              <a href="/blog" class="tag-badge active">All Posts</a>
+              {allTags.map(tag => (
+                <TagBadge tag={tag} />
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div class="posts-list">
+          {sortedPosts.map(post => (
+            <PostCard
+              title={post.data.title}
+              description={post.data.description}
+              date={post.data.date}
+              tags={post.data.tags}
+              slug={post.slug}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .blog-page {
+    padding: var(--space-xl) 0 var(--space-2xl);
+  }
+  
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .page-header h1 {
+    font-size: 3rem;
+    margin-bottom: var(--space-sm);
+  }
+  
+  .page-description {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .filters {
+    margin-bottom: var(--space-2xl);
+  }
+  
+  .filter-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+  }
+  
+  .tags-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+  
+  .tag-badge.active {
+    background: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+  }
+  
+  .posts-list {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+    
+    .page-description {
+      font-size: 1.1rem;
+    }
+  }
+</style>

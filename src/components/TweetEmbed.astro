@@ -1,0 +1,72 @@
+---
+interface Props {
+  id: string;
+  username?: string;
+}
+
+const { id, username } = Astro.props;
+// Extract tweet ID from URL if full URL is provided
+const tweetId = id.includes('/status/') ? id.split('/status/')[1].split('?')[0] : id;
+---
+
+<div class="tweet-embed">
+  <blockquote class="twitter-tweet" data-theme="light" data-dnt="true">
+    <p lang="en" dir="ltr">
+      Loading tweet...
+    </p>
+    {username && (
+      <a href={`https://twitter.com/${username}/status/${tweetId}`}>
+        View on X
+      </a>
+    )}
+  </blockquote>
+</div>
+
+<script is:inline>
+  (function() {
+    if (typeof window === 'undefined') return;
+    
+    if (!window.twitterWidgetLoaded) {
+      const script = document.createElement('script');
+      script.src = 'https://platform.twitter.com/widgets.js';
+      script.async = true;
+      script.id = 'twitter-wjs';
+      
+      script.onload = function() {
+        if (window.twttr && typeof window.twttr.widgets === 'object' && typeof window.twttr.widgets.load === 'function') {
+          window.twttr.widgets.load();
+        }
+      };
+      
+      document.head.appendChild(script);
+      window.twitterWidgetLoaded = true;
+    } else {
+      // Twitter widgets already loaded, trigger reload
+      setTimeout(function() {
+        if (window.twttr && typeof window.twttr.widgets === 'object' && typeof window.twttr.widgets.load === 'function') {
+          window.twttr.widgets.load();
+        }
+      }, 100);
+    }
+  })();
+</script>
+
+<style>
+  .tweet-embed {
+    margin: var(--space-lg) 0;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .tweet-embed blockquote {
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+  
+  /* Ensure Twitter embed is responsive */
+  .tweet-embed iframe {
+    max-width: 100%;
+  }
+</style>
+

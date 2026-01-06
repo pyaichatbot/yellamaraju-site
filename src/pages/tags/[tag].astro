@@ -1,0 +1,198 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import { getCollection } from 'astro:content';
+import { sortPostsByDate, getUniqueTags, filterPostsByTag } from '../../utils/helpers';
+
+export async function getStaticPaths() {
+  const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+  const uniqueTags = getUniqueTags(allPosts);
+  
+  return uniqueTags.map(tag => {
+    const filteredPosts = filterPostsByTag(allPosts, tag);
+    return {
+      params: { tag: tag.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') },
+      props: { tag, posts: sortPostsByDate(filteredPosts) },
+    };
+  });
+}
+
+const { tag, posts } = Astro.props;
+const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+const allTags = getUniqueTags(allPosts);
+---
+
+<BaseLayout 
+  title={`Posts tagged "${tag}"`}
+  description={`All blog posts about ${tag}`}
+>
+  <div class="tag-page">
+    <div class="container">
+      <div class="wide-wrapper">
+        <header class="page-header">
+          <div class="tag-title">
+            <TagBadge tag={tag} clickable={false} />
+            <h1>{posts.length} {posts.length === 1 ? 'Post' : 'Posts'}</h1>
+          </div>
+          <p class="page-description">
+            Exploring {tag.toLowerCase()} and related topics
+          </p>
+        </header>
+        
+        <div class="sidebar-layout">
+          <div class="main-content">
+            <div class="posts-list">
+              {posts.map(post => (
+                <PostCard
+                  title={post.data.title}
+                  description={post.data.description}
+                  date={post.data.date}
+                  tags={post.data.tags}
+                  slug={post.slug}
+                />
+              ))}
+            </div>
+          </div>
+          
+          <aside class="sidebar">
+            <div class="sidebar-section">
+              <h3>All Topics</h3>
+              <div class="tags-list">
+                {allTags.map(t => (
+                  <TagBadge tag={t} />
+                ))}
+              </div>
+            </div>
+            
+            <div class="sidebar-section">
+              <h3>Explore</h3>
+              <ul class="explore-links">
+                <li><a href="/blog">All Posts</a></li>
+                <li><a href="/about">About Me</a></li>
+                <li><a href="/contact">Get in Touch</a></li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .tag-page {
+    padding: var(--space-xl) 0 var(--space-2xl);
+  }
+  
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .tag-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-sm);
+  }
+  
+  .tag-title h1 {
+    margin: 0;
+    font-size: 2rem;
+  }
+  
+  .page-description {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+  }
+  
+  .sidebar-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--space-xl);
+  }
+  
+  .posts-list {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    position: sticky;
+    top: calc(var(--space-xl) + 80px);
+    align-self: start;
+  }
+  
+  .sidebar-section {
+    padding: var(--space-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    margin-bottom: var(--space-md);
+  }
+  
+  .sidebar-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-sm);
+  }
+  
+  .tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  
+  .explore-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .explore-links li {
+    margin-bottom: var(--space-xs);
+  }
+  
+  .explore-links a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+  
+  .explore-links a:hover {
+    color: var(--color-accent);
+  }
+  
+  @media (max-width: 1024px) {
+    .sidebar-layout {
+      grid-template-columns: 1fr;
+    }
+    
+    .sidebar {
+      position: static;
+    }
+    
+    .sidebar-section {
+      display: inline-block;
+      margin-right: var(--space-md);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .tag-title {
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    
+    .tag-title h1 {
+      font-size: 1.5rem;
+    }
+  }
+</style>

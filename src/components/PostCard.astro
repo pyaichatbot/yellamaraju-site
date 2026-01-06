@@ -1,0 +1,123 @@
+---
+import { formatDate, calculateReadingTime } from '../utils/helpers';
+import TagBadge from './TagBadge.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  date: Date;
+  tags: string[];
+  slug: string;
+  featured?: boolean;
+}
+
+const { title, description, date, tags, slug, featured = false } = Astro.props;
+const readingTime = calculateReadingTime(description);
+---
+
+<article class={`post-card ${featured ? 'featured' : ''}`}>
+  <a href={`/blog/${slug}`} class="post-link">
+    <div class="post-header">
+      <h3 class="post-title">{title}</h3>
+      <div class="post-meta">
+        <time datetime={date.toISOString()}>{formatDate(date)}</time>
+        <span class="separator">·</span>
+        <span class="reading-time">{readingTime}</span>
+      </div>
+    </div>
+    
+    <p class="post-description">{description}</p>
+    
+    {tags && tags.length > 0 && (
+      <div class="post-tags">
+        {tags.map(tag => <TagBadge tag={tag} />)}
+      </div>
+    )}
+  </a>
+</article>
+
+<style>
+  .post-card {
+    padding: var(--space-lg) 0;
+    border-bottom: 1px solid var(--color-border);
+    transition: transform var(--transition-base);
+  }
+  
+  .post-card:hover {
+    transform: translateX(4px);
+  }
+  
+  .post-card.featured {
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    margin-bottom: var(--space-lg);
+  }
+  
+  .post-card.featured:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  }
+  
+  .post-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  
+  .post-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: var(--space-xs);
+    color: var(--color-text);
+    transition: color var(--transition-fast);
+  }
+  
+  .post-card:hover .post-title {
+    color: var(--color-accent);
+  }
+  
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    margin-bottom: var(--space-sm);
+  }
+  
+  .separator {
+    opacity: 0.5;
+  }
+  
+  .post-description {
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-sm);
+  }
+  
+  .post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  
+  .featured .post-title {
+    font-size: 1.75rem;
+  }
+  
+  @media (max-width: 768px) {
+    .post-card {
+      padding: var(--space-md) 0;
+    }
+    
+    .post-title {
+      font-size: 1.25rem;
+    }
+    
+    .featured .post-title {
+      font-size: 1.5rem;
+    }
+  }
+</style>

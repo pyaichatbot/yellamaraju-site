@@ -1,0 +1,168 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import ShareLinks from '../components/ShareLinks.astro';
+import TagBadge from '../components/TagBadge.astro';
+import { formatDate } from '../utils/helpers';
+
+interface Props {
+  title: string;
+  description: string;
+  date: Date;
+  tags: string[];
+  image?: string;
+}
+
+const { title, description, date, tags, image } = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
+
+// Calculate reading time from content
+const readingTime = '8 min read'; // This would be calculated from actual content in production
+---
+
+<BaseLayout 
+  title={title}
+  description={description}
+  image={image}
+  article={true}
+  publishedTime={date.toISOString()}
+>
+  <article class="post-article">
+    <div class="container">
+      <div class="content-wrapper">
+        <header class="post-header">
+          <div class="post-meta">
+            <time datetime={date.toISOString()}>{formatDate(date)}</time>
+            <span class="separator">·</span>
+            <span class="reading-time">{readingTime}</span>
+          </div>
+          
+          <h1 class="post-title">{title}</h1>
+          
+          <p class="post-description">{description}</p>
+          
+          {tags && tags.length > 0 && (
+            <div class="post-tags">
+              {tags.map(tag => <TagBadge tag={tag} />)}
+            </div>
+          )}
+        </header>
+        
+        <div class="post-content prose">
+          <slot />
+        </div>
+        
+        <ShareLinks title={title} url={canonicalURL} />
+        
+        <div class="subscribe-cta">
+          <h3>Want more insights like this?</h3>
+          <p>Get notified when I publish new articles on AI, architecture, and building intelligent systems.</p>
+          <a href="/contact" class="cta-button">Get in Touch</a>
+        </div>
+      </div>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .post-article {
+    padding: var(--space-2xl) 0;
+  }
+  
+  .post-header {
+    margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    margin-bottom: var(--space-md);
+  }
+  
+  .separator {
+    opacity: 0.5;
+  }
+  
+  .post-title {
+    font-size: 2.5rem;
+    line-height: 1.2;
+    margin-bottom: var(--space-md);
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  .post-description {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+  }
+  
+  .post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  
+  .post-content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+  }
+  
+  .subscribe-cta {
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .subscribe-cta h3 {
+    margin-bottom: var(--space-sm);
+    color: var(--color-text);
+  }
+  
+  .subscribe-cta p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .cta-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: var(--color-accent);
+    color: white;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--transition-base);
+  }
+  
+  .cta-button:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  
+  @media (max-width: 768px) {
+    .post-title {
+      font-size: 2rem;
+    }
+    
+    .post-description {
+      font-size: 1.1rem;
+    }
+    
+    .post-content {
+      font-size: 1rem;
+    }
+  }
+</style>
