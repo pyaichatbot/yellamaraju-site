@@ -24,32 +24,14 @@ This isn't about "How do we build an AI/ML model?" It's about "Does this problem
 
 Before diving into the framework, let's understand why AI projects fail. I've seen three patterns repeat across dozens of initiatives:
 
-### 1. Bad Problem Statement
+1. **Bad Problem Statement** - "We want to use AI for customer support" isn't a problem—it's a solution looking for a problem. What's the actual pain? Long response times? High ticket volume? Start with the business problem, not the technology.
 
-**The Symptom:** "We want to use AI for customer support."
+2. **Wrong Abstraction Level** - Building a Level 4 (Advanced ML) system when Level 1 (Rules) would work. Over-engineering kills projects. A simple rule-based system catches 85% of cases, but teams jump to deep learning "because AI is cool." Match the AI level to the problem complexity.
 
-**Why It Fails:** This isn't a problem—it's a solution looking for a problem. What's the actual pain? Long response times? High ticket volume? Poor resolution rates?
-
-**The Fix:** Start with the business problem, not the technology.
-
-### 2. Wrong Abstraction Level
-
-**The Symptom:** Building a Level 4 (Advanced ML) system when Level 1 (Rules) would work.
-
-**Why It Fails:** Over-engineering. A simple rule-based system catches 85% of cases, but teams jump to deep learning "because AI is cool."
-
-**The Fix:** Match the AI level to the problem complexity.
-
-### 3. Wrong Expectations
-
-**The Symptom:** Expecting 100% accuracy from day one.
-
-**Why It Fails:** AI systems are probabilistic. They improve over time. Teams abandon projects when initial accuracy is 75% instead of 95%.
-
-**The Fix:** Set realistic success criteria based on baseline performance.
+3. **Wrong Expectations** - Expecting 100% accuracy from day one. AI systems are probabilistic. They improve over time. Teams abandon projects when initial accuracy is 75% instead of 95%. Set realistic success criteria based on baseline performance.
 
 <Callout type="success" title="Real Example">
-Our fraud detection system started at 85% accuracy with simple Logistic Regression. After two years of iteration, it's now at 99.2% with ensemble models. But we almost killed it in month three because "85% wasn't good enough." The lesson: start simple, improve iteratively.
+A fraud detection system started at 85% accuracy with simple Logistic Regression. After two years of iteration, it reached 99.2% with ensemble models. But they almost killed it in month three because "85% wasn't good enough." The lesson: start simple, improve iteratively.
 </Callout>
 
 ## The 3-Dimensional Assessment Framework
@@ -249,123 +231,24 @@ graph LR
     style F fill:#ffccff
 `} />
 
-### Level 0: This Doesn't Need AI
-
-**What It Is:** Rule-based logic, simple automation, heuristics
-
-**Examples:**
-- "If transaction amount > €5,000, flag for review"
-- "Route ticket to team based on category"
-- "Send email when status changes"
-
-**When to Use:**
-- Problem is deterministic (same input → same output)
-- Rules can capture all cases
-- No pattern recognition needed
-
-**Cost:** €5K-20K | **Time:** 2 weeks
-
-**Real Example:** We built a rule-based system for routing support tickets. It worked perfectly. No AI needed.
-
-### Level 1: Traditional Data Analytics / BI
-
-**What It Is:** Statistical models, regression, basic analytics
-
-**Examples:**
-- Sales forecasting with linear regression
-- Customer segmentation with clustering
-- Trend analysis with time series
-
-**When to Use:**
-- Linear relationships in data
-- Historical patterns predict future
-- No real-time decisions needed
-
-**Cost:** €20K-50K | **Time:** 3 weeks
-
-### Level 2: AI-Supported (Human Decision-Making Enhanced)
-
-**What It Is:** AI suggests, human decides
-
-**Examples:**
-- AI recommends products, human approves
-- AI flags anomalies, human investigates
-- AI generates content, human edits
-
-**When to Use:**
-- Human judgment is critical
-- AI improves efficiency but can't replace humans
-- Error tolerance is low
-
-**Cost:** €50K-150K | **Time:** 4-6 weeks
-
-**Real Example:** Our customer churn prediction model (Level 2) identifies at-risk customers. The retention team decides which offers to send. AI supports, doesn't replace.
-
-### Level 3: AI-Integrated (Automated Decision-Making in Workflow)
-
-**What It Is:** AI makes decisions, embedded in business process
-
-**Examples:**
-- Automated fraud detection (approve/decline)
-- Automated document classification
-- Automated content moderation
-
-**When to Use:**
-- Decisions are routine and well-defined
-- Error tolerance is acceptable
-- High volume requires automation
-
-**Cost:** €150K-400K | **Time:** 8-12 weeks
-
-**Real Example:** Our merchant category code automation (Level 3) uses GenAI + validation rules. 98% automated, 2% human review for edge cases. Processes 200K+ merchants.
-
-### Level 4: Advanced ML (Real-Time, Complex Patterns)
-
-**What It Is:** Deep learning, ensemble models, real-time inference
-
-**Examples:**
-- Real-time fraud detection with ensemble models
-- Computer vision for quality control
-- Natural language understanding for complex queries
-
-**When to Use:**
-- Patterns are complex and evolving
-- Real-time decisions required
-- Traditional ML insufficient
-
-**Cost:** €400K-1M+ | **Time:** 12-24 weeks
-
-**Real Example:** Our fraud detection system (Level 4) processes 100M+ daily transactions with sub-100ms latency. Ensemble model (Random Forest + XGBoost + Neural Network) catches 99.2% of fraud.
-
-### Level 5: Agentic AI (Autonomous Task Execution)
-
-**What It Is:** AI agents that plan, execute, and adapt autonomously
-
-**Examples:**
-- Multi-agent systems for complex workflows
-- Autonomous research agents
-- Self-optimizing systems
-
-**When to Use:**
-- Tasks require planning and multi-step execution
-- System needs to adapt to new situations
-- Human oversight acceptable but not required for each decision
-
-**Cost:** €1M+ | **Time:** 6-24 months
-
-**Requirements for Level 5:**
-- Human-in-the-loop (HITL) for critical decisions
-- Comprehensive audit logging
-- Kill switch for emergency shutdown
-- Extensive testing and validation
+| Level | What It Is | When to Use | Cost | Time | Example |
+|-------|------------|-------------|------|------|---------|
+| **0** | Rule-based logic, heuristics | Deterministic problems, rules capture all cases | €5K-20K | 2 weeks | "If amount > €5K, flag for review" |
+| **1** | Statistical models, regression | Linear relationships, historical patterns | €20K-50K | 3 weeks | Sales forecasting, customer segmentation |
+| **2** | AI suggests, human decides | Human judgment critical, low error tolerance | €50K-150K | 4-6 weeks | Churn prediction: AI flags at-risk customers, team decides offers |
+| **3** | AI makes decisions, automated | Routine decisions, acceptable errors, high volume | €150K-400K | 8-12 weeks | Merchant code automation: 98% automated, GenAI + rules |
+| **4** | Deep learning, ensemble models | Complex evolving patterns, real-time required | €400K-1M+ | 12-24 weeks | Fraud detection: 100M+ daily transactions, 99.2% catch rate |
+| **5** | Autonomous agents, multi-agent systems | Planning + execution, adaptive systems | €1M+ | 6-24 months | Multi-agent workflows (requires HITL, audit logging, kill switch) |
 
 <Callout type="info" title="Default Recommendation">
 Start at Level 2 or 3. Most problems don't need Level 4 or 5. You can always upgrade later if needed. Over-engineering is the #1 cause of AI project failure.
 </Callout>
 
-## The Decision Tree: Step-by-Step Evaluation
+For detailed guidance on selecting the right level, download the [AI Level Decision Matrix](/templates/ai-level-decision-matrix).
 
-Here's the decision framework I use for every AI use case:
+## The Decision Tree: Quick Reference
+
+The 3-Dimensional Framework above covers the detailed assessment. Here's the quick decision flow:
 
 <Mermaid chart={`
 graph TD
@@ -385,124 +268,6 @@ graph TD
     M -->|No| N[PIVOT or STOP]
 `} />
 
-### Step 1: Problem Validation
-
-**Questions:**
-- What's the actual business problem? (Not the solution)
-- What's the quantified impact today?
-- What does "solved" look like?
-- Who owns this problem?
-
-**Output:** 1-page problem statement with metrics
-
-**Example:**
-```
-Problem: Fraudulent transactions slip through our rule-based system
-Baseline: 2.8% fraud rate, costs €5M annually
-Success: Reduce to &lt;0.8% fraud rate (€3M savings)
-Current process: Manual rules, updated quarterly (too slow)
-Owner: Risk & Payments team
-```
-
-### Step 2: Simpler Solution Test
-
-**Questions:**
-- Can rules/heuristics solve this?
-- What's the 80/20—can 20% of rules solve 80% of the problem?
-- Why hasn't simpler worked so far?
-
-**Output:** Comparison of 3-5 simpler alternatives + why they're insufficient
-
-**Example:**
-```
-Rules Only: Catches 1.8% fraud (not enough)
-Hybrid (Rules + Manual Review): Catches 2.4% fraud (takes 4 hours/day)
-Could we do better with rules alone? No - we've hit the ceiling
-Conclusion: NEED data-driven approach
-```
-
-**If simpler works:** Use it. Stop AI work. You've saved months and money.
-
-### Step 3: Data Reality Check
-
-**Questions:**
-- Do we HAVE the data? (Not "can we collect it")
-- Is it labeled? Complete? Fresh?
-- How many records? How much history?
-- What's the quality?
-
-**Output:** Data inventory spreadsheet
-
-**Example:**
-```
-Data Needed: Historical transaction records with fraud labels
-Data We Have: ✅ 15 years of daily transactions (100M+ per day)
-Labels: ✅ Yes, all transactions are labeled (fraud or not)
-Quality: ✅ Complete, clean, continuously updated
-Decision: EXCELLENT data foundation
-```
-
-**If data doesn't exist or quality is poor:** Stop. Collect data first. Come back in 6-12 months.
-
-### Step 4: AI Level Selection
-
-**Questions:**
-- What's the simplest AI level that solves this?
-- What would it cost? How long?
-- Can we start simpler and upgrade later?
-
-**Output:** 1-page recommendation (Level X, Cost Y, ROI Z)
-
-**Example:**
-```
-Problem: 2.8% fraud rate, costs €5M annually
-Simpler (Level 0-1): Caps out at 1.8% fraud catch
-Needed: Level 4 (Real-time deep learning on transaction streams)
-Why: Fraud patterns evolve daily. Need adaptive, not static.
-Cost-Benefit: €1M initial + €300K/year ops → €3M+ savings = WORTH IT
-```
-
-### Step 5: ROI Calculation
-
-**Questions:**
-- Annual benefit: What will be saved/earned?
-- Implementation cost: Level-specific cost
-- Operating cost: Ongoing maintenance/infrastructure
-- Payback period: When does it break even?
-- Risk adjustment: What if it's 50% as good as promised?
-
-**Output:** ROI spreadsheet
-
-**Example:**
-```
-ROI CALCULATION: Fraud Detection (Level 4)
-
-Year 1 (Implementation Year):
-├─ Implementation cost: €600K
-├─ Infrastructure cost: €200K
-├─ Team cost (2 FTE): €250K
-└─ Total Year 1 cost: €1,050K
-
-Annual Benefit (Ongoing):
-├─ Fraud reduction: €2M/year (0.8% rate instead of 2.8%)
-├─ Manual review savings: €300K/year
-└─ Total annual benefit: €2.3M/year
-
-Payback Period: Year 1 = -€1,050K + €2.3M = +€1.25M
-→ Positive in Year 1. ✅ GO
-
-Risk Scenario (50% as good):
-├─ Fraud reduction: €1M/year
-├─ Manual review savings: €150K/year
-├─ Total benefit: €1.15M/year
-├─ Payback: 0.9 years
-→ Still positive. ✅ GO
-```
-
-**If ROI is negative or payback >2 years:** Stop. Not financially justified.
-
-### Step 6: Go/No-Go Decision
-
 **Decision Matrix:**
 
 | Problem? | Simpler Works? | Data Available? | ROI Positive? | DECISION |
@@ -514,236 +279,80 @@ Risk Scenario (50% as good):
 | NO | - | - | - | 🛑 **STOP** - No real problem |
 | YES | NO | YES | NO | 🛑 **STOP** - Not financially justified |
 
-## Real Examples: Three Production Use Cases
+For detailed step-by-step evaluation, use the [AI Use Case Assessment Worksheet](/templates/ai-use-case-assessment-worksheet).
 
-Let me show you how this framework applies to real projects I've worked on:
+## Real Examples: Two Use Cases
 
-### Example 1: Real-Time Fraud Detection ✅ Production (2+ years)
+Let me show you how this framework applies to real projects:
 
-**Problem:** A payment processing network handles 100M+ daily payment transactions. Rule-based fraud detection had high false positive rates—legitimate transactions were being declined.
+### Example 1: Real-Time Fraud Detection ✅
 
-**Assessment:**
+**Problem:** Payment processing network handles 100M+ daily transactions. Rule-based fraud detection had high false positive rates—legitimate transactions were being declined.
 
-**Desirability:** ✅
-- Current cost: €5M annually in fraud losses
-- Target: Reduce to &lt;0.8% fraud rate (€3M savings)
-- Success metric: 99%+ fraud catch rate, &lt;0.5% false positives
+**Assessment:** ✅ Desirability (€5M annual cost → €3M savings target), ✅ Feasibility (15+ years of labeled data, ML expertise), ✅ Viability (€2M+/year savings, positive Year 1 ROI)
 
-**Feasibility:** ✅
-- Data: 15+ years of transaction history, 100M+ daily transactions
-- Labels: All transactions labeled (fraud or not)
-- Quality: Complete, clean, continuously updated
-- Skills: Team had ML expertise
+**AI Level:** Level 4 (Advanced ML) - Real-time ensemble model, sub-100ms latency
 
-**Viability:** ✅
-- ROI: €2M+/year savings vs €1M initial + €300K/year ops
-- Payback: Positive in Year 1
-- Team: Risk management team committed
+**Result:** 99.2% fraud catch rate, 40% reduction in false positives, €2M+/year savings
 
-**AI Level:** Level 4 (Advanced ML)
-- Real-time transaction scoring (sub-100ms latency)
-- Ensemble model: Random Forest + XGBoost + Neural Network
-- Monthly retraining as fraud patterns evolve
+**Key Lesson:** Took 2 years to mature. Started with Logistic Regression (85% accuracy), evolved to ensemble models. Don't expect Level 4 perfection on day one.
 
-**Result:** 99.2% fraud catch rate, 40% reduction in false positives, €2M+/year savings. Production for 2+ years, continuously improving.
+### Example 2: Customer Churn Prediction 🟡 PoC
 
-**Key Lesson:** This took 2 years to mature. Started with simple Logistic Regression (85% accuracy), evolved to ensemble models. Don't expect Level 4 perfection on day one.
+**Problem:** Banking platform needs to identify at-risk customers before they switch banks.
 
-### Example 2: Merchant Category Code Automation ✅ Production (6 months)
+**Assessment:** ✅ Desirability (early identification → retention offers), 🟡 Feasibility (data quality gaps between banks, varying definitions), 🟡 Viability (€50K PoC, €200K+ full build, Year 1.5 payback)
 
-**Problem:** Every merchant in a payment processing network must be assigned a Merchant Category Code (MCC). Manual process took 2-3 days per merchant, high error rate.
+**AI Level:** Level 2-3 (Predictive Analytics) - Baseline 72% accuracy, target 82-85%
 
-**Assessment:**
+**Status:** PoC Week 3 of 4. Initial validation: 81% accuracy (beats 72% baseline). Data quality issues discovered. Decision gate: GO, PIVOT, or STOP.
 
-**Desirability:** ✅
-- Current cost: 2-3 days per merchant, €15 per merchant
-- Target: &lt;2 hours per merchant, €3 per merchant
-- Success metric: 98%+ automation rate
+**Key Lesson:** This is what a real PoC looks like. 4 weeks, clear success criteria, decision gates. €50K to answer a €5M question is smart. Data quality issues are real—better to discover them in PoC than after 6 months of development.
 
-**Feasibility:** ✅
-- Data: 200K+ merchant records, business descriptions
-- Issue: Historical data 80% correct (can't train ML on 20% wrong labels)
-- Pivot: Use GenAI + validation rules instead of custom ML
+## PoC Validation: When Uncertainty Exists
 
-**Viability:** ✅
-- ROI: 80% time savings, 100% compliance
-- Cost: €50K over 6 months
-- Payback: Immediate (time savings)
+If you're uncertain about any dimension, run a 2-4 week PoC. **Define success criteria BEFORE starting:**
 
-**AI Level:** Level 3 (AI-Integrated)
-- GenAI prompt: "Based on this business description, what's the correct MCC code?"
-- Validation rules for compliance
-- 98% automated, 2% human review for edge cases
+- Model accuracy ≥75% (or beats baseline by X points)
+- Data quality acceptable for production
+- Team can operationalize this
+- ROI math holds (actual results match projections)
+- Technical feasibility confirmed
 
-**Result:** 98% fully automated, 80% time savings (2-3 days → &lt;2 hours), 100% compliance accuracy.
+**Decision Points:**
+- All criteria met? → ✅ GO to full build
+- 1-2 criteria missed? → 🔄 PIVOT (change approach, simplify)
+- 3+ criteria missed? → 🛑 STOP (not viable right now)
 
-**Key Lesson:** Initially planned custom ML classifier. GenAI + rules worked better, faster to deploy, fully explainable. Sometimes hybrid beats pure ML.
+**Structure:** Week 1 (data assessment) → Week 2 (baseline) → Week 3 (ML model) → Week 4 (decision gate)
 
-### Example 3: Customer Churn Prediction 🟡 PoC (Decision Pending)
+**Cost:** €50K-100K for 4-week PoC. **Value:** Answers "Is this solvable?" before committing €200K-1M+ to full build.
 
-**Problem:** Banking platform clients need to identify customers at risk of leaving before they switch banks.
-
-**Assessment:**
-
-**Desirability:** ✅
-- Current: Only find out when customers close accounts (too late)
-- Target: Early identification → targeted retention offers
-- Success metric: 15-20% improvement in retention
-
-**Feasibility:** 🟡
-- Data: 6-12 months per customer (minimum viable)
-- Issue: Some regions have only 3 months of history
-- Issue: Definition of "churn" varies by product
-- Issue: Data quality gaps between banks
-
-**Viability:** 🟡
-- ROI: Estimated 15-20% retention improvement
-- Cost: €50K for PoC, €200K+ for full build
-- Payback: Year 1.5 (if PoC succeeds)
-
-**AI Level:** Level 2-3 (Predictive Analytics)
-- Baseline: Simple rule "No login in 3 months" = 72% accuracy
-- ML Model: Gradient Boosting (XGBoost) with 15-20 features
-- Target: 82-85% accuracy (beats baseline by 10+ points)
-
-**Status:** PoC Week 3 of 4. Initial validation: 81% accuracy (beats 72% baseline). Data quality issues discovered. Decision gate this week: GO, PIVOT, or STOP.
-
-**Key Lesson:** This is what a real PoC looks like. 4 weeks, clear success criteria, decision gates. €50K to answer a €5M question is a good investment. Data quality issues are real—better to discover them in PoC than after 6 months of development.
-
-## PoC Validation Checklist
-
-If you're uncertain about any dimension, run a 2-4 week PoC. Here's the checklist:
-
-### PoC Success Criteria (Define BEFORE Starting)
-
-- [ ] **Model Accuracy:** ≥75% (or beats baseline by X points)
-- [ ] **Data Quality:** Acceptable for production (completeness, accuracy)
-- [ ] **Team Readiness:** Can operationalize this
-- [ ] **ROI Math Holds:** Actual results match projections
-- [ ] **Technical Feasibility:** Can integrate with existing systems
-
-### PoC Decision Points
-
-**All criteria met?** → ✅ GO to full build
-
-**1-2 criteria missed?** → 🔄 PIVOT (change approach, simplify, extend PoC)
-
-**3+ criteria missed?** → 🛑 STOP (not viable right now)
-
-### PoC Structure (4 Weeks)
-
-**Week 1:** Data collection and quality assessment
-- [ ] Extract and validate data
-- [ ] Assess completeness and accuracy
-- [ ] Identify gaps and blockers
-
-**Week 2:** Baseline model
-- [ ] Build simple rule-based baseline
-- [ ] Measure baseline performance
-- [ ] Set target to beat
-
-**Week 3:** ML model development
-- [ ] Feature engineering
-- [ ] Model training and validation
-- [ ] Performance comparison vs baseline
-
-**Week 4:** Decision gate
-- [ ] Review all findings
-- [ ] Compare against success criteria
-- [ ] Make GO/PIVOT/STOP decision
-
-**Cost:** €50K-100K for 4-week PoC
-
-**Value:** Answers "Is this solvable?" before committing to full build (€200K-1M+)
+For the complete PoC framework, download the [PoC Validation Checklist](/templates/poc-validation-checklist).
 
 ## Common Mistakes (And How to Avoid Them)
 
-### Mistake 1: "The Data is Terrible"
+1. **"The Data is Terrible"** - Data quality is 60% but building Level 4 hoping ML can fix it. **Fix:** STOP and clean data first, or PIVOT to rules + manual, or GO WITH CAUTION with Level 1-2 models tolerant of bad data.
 
-**Finding:** "We have data, but quality is 60% (too many missing values)"
+2. **"Simpler Works, Just Not Perfectly"** - Rules solve 85% of the problem. **Fix:** Maybe 85% is good enough? Or run a PoC to see if AI gets to 92% and if it's worth 3x the cost.
 
-**What NOT to Do:** Build Level 4 hoping ML can fix bad data
+3. **"ROI is Marginal"** - Benefit is €100K/year, cost is €200K + €50K/year. **Fix:** STOP (payback >2 years), or POC to test cheaper approach, or PIVOT to reduce costs.
 
-**What TO Do:**
-1. **STOP** - Come back when data is clean (6-12 months?)
-2. **PIVOT** - Use a different approach (rules + manual instead of ML)
-3. **GO WITH CAUTION** - Build Level 1-2 model that's tolerant of bad data
-
-### Mistake 2: "Simpler Works, Just Not Perfectly"
-
-**Finding:** "We can get 85% of the problem solved with better rules"
-
-**What NOT to Do:** Build AI when rules already work
-
-**What TO Do:**
-1. **STOP AI work** - Rules solve 85%, maybe that's good enough?
-2. **POC** - 2-week PoC to see if AI can get to 92% and if it's worth 3x the cost
-3. **GO** - AI gets us from 85% to 95%, ROI justifies it
-
-### Mistake 3: "ROI is Marginal"
-
-**Finding:** "Benefit is €100K/year, but cost is €200K + €50K/year to operate"
-
-**What NOT to Do:** Build because "AI is cool" when ROI doesn't work
-
-**What TO Do:**
-1. **STOP** - Payback is 2 years, not worth the risk
-2. **POC** - Test if you can achieve the benefit with cheaper approach
-3. **PIVOT** - Can we reduce cost and still solve the problem?
-
-### Mistake 4: "We're Uncertain"
-
-**Finding:** "We THINK this could work, but we're not sure"
-
-**What NOT to Do:**
-- STOP because you're uncertain
-- GO blindly when you're uncertain
-
-**What TO Do:**
-- 🟡 **POC** - Run a small, time-bound PoC (2-4 weeks) to reduce uncertainty
+4. **"We're Uncertain"** - Think it could work but not sure. **Fix:** Run a 2-4 week PoC. Don't STOP because uncertain, don't GO blindly. Use PoC to reduce uncertainty.
 
 ## The AI Architecture Gate
 
-For enterprise organizations, I recommend implementing an **AI Architecture Gate**—a mandatory review before any AI project gets budget approval.
+For enterprise organizations, implement an **AI Architecture Gate**—a mandatory review before any AI project gets budget approval. Five gates: Problem Validation → AI Necessity → AI Level Approval → Data & Compliance → Risk Assessment.
 
-### Gate Structure
-
-**Gate 1: Problem Validation**
-- [ ] Clear business owner
-- [ ] Measurable success metric
-- [ ] Non-AI solution considered
-
-**Gate 2: AI Necessity**
-- [ ] Why rules are insufficient
-- [ ] Why heuristics fail
-- [ ] Why AI adds value
-
-**Gate 3: AI Level Approval**
-- [ ] Approved level: Assisted / Integrated / Driven / Agentic
-- [ ] Agentic AI requires: HITL, audit logging, kill switch
-
-**Gate 4: Data & Compliance**
-- [ ] Data source approved
-- [ ] GDPR / regulatory review done
-- [ ] Security sign-off
-
-**Gate 5: Risk Assessment**
-- [ ] Error tolerance defined
-- [ ] Fallback strategy defined
-- [ ] Monitoring KPIs agreed
-
-**Final Decision:**
-- [ ] Approved to build
-- [ ] Revise & resubmit
-- [ ] Rejected (Non-AI solution recommended)
-
-This gate ensures only justified, feasible, and safe AI use cases move into implementation.
+This ensures only justified, feasible, and safe AI use cases move into implementation. For the complete gate framework, download the [AI Architecture Gate template](/templates/ai-architecture-gate).
 
 ## Practical Tools & Templates
 
+All templates are available on the [Templates page](/templates) with descriptions and download options.
+
 ### 1. 3-Dimensional Assessment Worksheet
 
-Download: [AI Use Case Assessment Worksheet](/templates/ai-use-case-assessment-worksheet.md)
+Download: [AI Use Case Assessment Worksheet](/templates/ai-use-case-assessment-worksheet)
 
 **Sections:**
 - Desirability scoring (1-10 for each criterion)
@@ -753,7 +362,7 @@ Download: [AI Use Case Assessment Worksheet](/templates/ai-use-case-assessment-w
 
 ### 2. ROI Calculator Template
 
-Download: [AI ROI Calculator](/templates/ai-roi-calculator.md)
+Download: [AI ROI Calculator](/templates/ai-roi-calculator)
 
 **Includes:**
 - Implementation cost breakdown
@@ -764,7 +373,7 @@ Download: [AI ROI Calculator](/templates/ai-roi-calculator.md)
 
 ### 3. PoC Validation Checklist
 
-Download: [PoC Validation Checklist](/templates/poc-validation-checklist.md)
+Download: [PoC Validation Checklist](/templates/poc-validation-checklist)
 
 **Includes:**
 - Success criteria definition
@@ -774,23 +383,23 @@ Download: [PoC Validation Checklist](/templates/poc-validation-checklist.md)
 
 ### 4. AI Level Decision Matrix
 
-Download: [AI Level Decision Matrix](/templates/ai-level-decision-matrix.md)
+Download: [AI Level Decision Matrix](/templates/ai-level-decision-matrix)
 
 **Helps you:**
-- Understand each AI level
+- Understand each AI level (0-5)
 - Match level to problem complexity
 - Estimate cost and timeline
 - Avoid over-engineering
 
-### 5. Decision Tree Flowchart
+### 5. AI Architecture Gate (Enterprise)
 
-Download: [AI Use Case Decision Tree](/templates/ai-decision-tree.md)
+Download: [AI Architecture Gate](/templates/ai-architecture-gate)
 
-**Visual guide:**
-- Step-by-step evaluation process
-- Decision points and criteria
-- Go/No-Go gates
-- POC triggers
+**For enterprise organizations:**
+- 5-gate approval process
+- Problem Validation → AI Necessity → Level Approval → Data/Compliance → Risk Assessment
+- Sign-offs and governance
+- Mandatory before budget approval
 
 ## Checklist: Are You Ready to Build?
 
@@ -829,14 +438,13 @@ Before you move beyond evaluation, answer ALL of these:
 
 Now that you've evaluated your use case, here's where to go:
 
-- **If GO:** Start with [The Anatomy of a Production LLM Call](/blog/the-anatomy-of-a-production-llm-call) to understand the fundamentals
-- **If POC:** Use the PoC checklist above and plan your 4-week validation
-- **If STOP:** Document why, revisit in 6 months when conditions may have changed
+- **If GO:** Download the [AI Use Case Assessment Worksheet](/templates/ai-use-case-assessment-worksheet) and start planning your implementation
+- **If POC:** Use the [PoC Validation Checklist](/templates/poc-validation-checklist) and plan your 4-week validation
+- **If STOP:** Document why in the assessment worksheet, revisit in 6 months when conditions may have changed
 
-For technical implementation guides:
-- [RAG Fundamentals](/blog/rag-fundamentals-making-llms-trustworthy) - When you need external knowledge
-- [Building Your First AI Agent](/blog/building-your-first-ai-agent) - When you need autonomous systems
-- [Red Teaming AI Systems](/blog/red-teaming-ai-systems) - Before you deploy
+For technical implementation, check out:
+- [Building Production-Ready AI Agents](/blog/building-production-ai-agents) - When you need autonomous systems
+- [Prompt Engineering Beyond Basics](/blog/prompt-engineering-beyond-basics) - When you're ready to build
 
 <Callout type="info" title="Want Help Evaluating Your Use Case?">
 I offer office hours for teams evaluating AI use cases. Book a session to walk through the framework with your specific problem. [Contact me](/contact) to schedule.

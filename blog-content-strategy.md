@@ -1627,7 +1627,7 @@ Start here → 0.1 (Assessment) → 6.1 (Legacy Integration) → 6.2 (Economics 
 ### Evergreen Content Versioning
 
 **For Technical Posts:**
-- Add version note: "Updated for Claude 4.5 (Jan 2025)"
+- Add version note: "Updated for Claude 4.5 (Jan 2026)"
 - Keep old code in comments for reference
 - Explain what changed and why
 
@@ -1638,7 +1638,7 @@ Start here → 0.1 (Assessment) → 6.1 (Legacy Integration) → 6.2 (Economics 
 
 ### Signaling Updates to Readers
 
-- Twitter/LinkedIn: "Just updated my RAG guide for 2025"
+- Twitter/LinkedIn: "Just updated my RAG guide for 2026"
 - Newsletter: "Refreshed Content This Month" section
 - Website: "Recently Updated" badge on posts
 - RSS feed: New item for major updates
