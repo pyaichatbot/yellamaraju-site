@@ -102,10 +102,11 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
         }
         
         // Only show indicator if table is actually scrollable
+        const htmlWrapper = wrapper as HTMLElement;
         if (!isScrollable) {
-          wrapper.style.setProperty('--show-indicator', 'none');
+          htmlWrapper.style.setProperty('--show-indicator', 'none');
         } else {
-          wrapper.style.setProperty('--show-indicator', 'block');
+          htmlWrapper.style.setProperty('--show-indicator', 'block');
         }
       }
       

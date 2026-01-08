@@ -535,20 +535,20 @@ import { SITE } from '../config';
     // Email copy functionality
     const copyBtn = document.querySelector('.email-copy-btn');
     if (copyBtn) {
-      const email = copyBtn.getAttribute('data-email');
+      const email = copyBtn.getAttribute('data-email') || '';
       const feedback = document.querySelector('.email-copy-feedback');
       
-      copyBtn.addEventListener('click', function(e) {
+      copyBtn.addEventListener('click', function(e: Event) {
         e.preventDefault();
         e.stopPropagation();
         
-        if (navigator.clipboard && navigator.clipboard.writeText) {
+        if (navigator.clipboard && navigator.clipboard.writeText && email) {
           navigator.clipboard.writeText(email).then(() => {
             showFeedback();
           }).catch(() => {
             fallbackCopy(email);
           });
-        } else {
+        } else if (email) {
           fallbackCopy(email);
         }
       });
@@ -562,7 +562,7 @@ import { SITE } from '../config';
         }
       }
       
-      function fallbackCopy(text) {
+      function fallbackCopy(text: string) {
         const textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.position = 'fixed';
@@ -583,16 +583,16 @@ import { SITE } from '../config';
     const serviceButtons = document.querySelectorAll('.service-btn');
     
     serviceButtons.forEach(btn => {
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function(this: HTMLElement) {
         serviceButtons.forEach(b => b.classList.remove('active'));
         this.classList.add('active');
       });
     });
     
     // Form submission
-    const form = document.getElementById('contact-form');
+    const form = document.getElementById('contact-form') as HTMLFormElement;
     if (form) {
-      form.addEventListener('submit', function(e) {
+      form.addEventListener('submit', function(e: Event) {
         e.preventDefault();
         
         const formData = new FormData(form);
@@ -613,12 +613,13 @@ import { SITE } from '../config';
     }
     
     // File upload preview
-    const fileInput = document.getElementById('file-upload');
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     const fileLabel = document.querySelector('.file-label');
     
     if (fileInput && fileLabel) {
-      fileInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
+      fileInput.addEventListener('change', function(e: Event) {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
         if (file) {
           const fileText = fileLabel.querySelector('.file-text');
           if (fileText) {
