@@ -119,12 +119,12 @@ h1 {
 h2 {
   font-size: 2rem;
   letter-spacing: -0.01em;
-  margin-top: var(--space-xl);
+  margin-top: var(--space-lg);
 }
 
 h3 {
   font-size: 1.5rem;
-  margin-top: var(--space-lg);
+  margin-top: var(--space-md);
 }
 
 h4 {
@@ -222,6 +222,217 @@ blockquote {
   margin: var(--space-lg) 0;
   font-style: italic;
   color: var(--color-text-secondary);
+}
+
+/* Tables - Professional, scrollable, readable */
+.prose table,
+.post-content table {
+  width: 100%;
+  min-width: 800px; /* Ensure table has minimum width for scrolling */
+  border-collapse: collapse;
+  margin: var(--space-lg) 0;
+  font-size: 0.95rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Table wrapper for horizontal scrolling */
+.prose .table-wrapper,
+.post-content .table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  margin: var(--space-lg) 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+  position: relative;
+}
+
+/* Visual indicator that table is scrollable */
+.prose .table-wrapper::after,
+.post-content .table-wrapper::after {
+  content: 'Scroll →';
+  position: absolute;
+  right: 0;
+  top: 0.5rem;
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: opacity var(--transition-base);
+  z-index: 10;
+  background: var(--color-surface);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  display: var(--show-indicator, block);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .prose .table-wrapper::after,
+[data-theme="dark"] .post-content .table-wrapper::after,
+[data-theme="auto"] .prose .table-wrapper::after,
+[data-theme="auto"] .post-content .table-wrapper::after {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] .prose .table-wrapper::after,
+  [data-theme="auto"] .post-content .table-wrapper::after {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
+[data-theme="dark"] .prose .table-wrapper::after,
+[data-theme="dark"] .post-content .table-wrapper::after,
+[data-theme="auto"] .prose .table-wrapper::after,
+[data-theme="auto"] .post-content .table-wrapper::after {
+  background: linear-gradient(to right, transparent 0%, var(--color-surface) 50%, var(--color-surface) 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] .prose .table-wrapper::after,
+  [data-theme="auto"] .post-content .table-wrapper::after {
+    background: linear-gradient(to right, transparent 0%, var(--color-surface) 50%, var(--color-surface) 100%);
+  }
+}
+
+/* Hide indicator when scrolled to end */
+.prose .table-wrapper.scrolled-end::after,
+.post-content .table-wrapper.scrolled-end::after {
+  opacity: 0;
+}
+
+/* Show scroll hint on hover */
+.prose .table-wrapper:hover::after,
+.post-content .table-wrapper:hover::after {
+  opacity: 0.8;
+}
+
+.prose .table-wrapper::-webkit-scrollbar,
+.post-content .table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.prose .table-wrapper::-webkit-scrollbar-track,
+.post-content .table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prose .table-wrapper::-webkit-scrollbar-thumb,
+.post-content .table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.prose .table-wrapper::-webkit-scrollbar-thumb:hover,
+.post-content .table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+.prose .table-wrapper table,
+.post-content .table-wrapper table {
+  min-width: 100%;
+  white-space: nowrap;
+  display: table; /* Override block display when in wrapper */
+}
+
+.prose table thead,
+.post-content table thead {
+  background: var(--color-code-bg);
+  border-bottom: 2px solid var(--color-border);
+  display: table-header-group;
+}
+
+.prose table tbody,
+.post-content table tbody {
+  display: table-row-group;
+}
+
+.prose table tr,
+.post-content table tr {
+  display: table-row;
+}
+
+.prose table th,
+.post-content table th {
+  padding: var(--space-md) var(--space-sm);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text);
+  border-right: 1px solid var(--color-border);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  display: table-cell;
+}
+
+.prose table th:last-child,
+.post-content table th:last-child {
+  border-right: none;
+}
+
+.prose table td,
+.post-content table td {
+  padding: var(--space-md) var(--space-sm);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  white-space: nowrap;
+  vertical-align: top;
+  display: table-cell;
+}
+
+.prose table td:last-child,
+.post-content table td:last-child {
+  border-right: none;
+}
+
+.prose table tbody tr,
+.post-content table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.prose table tbody tr:hover,
+.post-content table tbody tr:hover {
+  background: var(--color-code-bg);
+}
+
+.prose table tbody tr:last-child td,
+.post-content table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Responsive table behavior */
+@media (max-width: 768px) {
+  .prose table,
+  .post-content table {
+    font-size: 0.85rem;
+  }
+  
+  .prose table th,
+  .prose table td,
+  .post-content table th,
+  .post-content table td {
+    padding: var(--space-sm) 0.75rem;
+  }
+  
+  /* Enhanced scroll indicator on mobile */
+  .prose .table-wrapper::after,
+  .post-content .table-wrapper::after {
+    font-size: 1.25rem;
+    opacity: 0.7;
+    padding-left: 1.5rem;
+  }
 }
 
 /* Images */

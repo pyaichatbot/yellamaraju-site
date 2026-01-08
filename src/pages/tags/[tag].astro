@@ -4,7 +4,7 @@ import PostCard from '../../components/PostCard.astro';
 import TagBadge from '../../components/TagBadge.astro';
 import SearchInput from '../../components/SearchInput.astro';
 import { getCollection } from 'astro:content';
-import { sortPostsByDate, getUniqueTags, filterPostsByTag } from '../../utils/helpers';
+import { calculateReadingTime, sortPostsByDate, getUniqueTags, filterPostsByTag } from '../../utils/helpers';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('blog', ({ data }) => !data.draft);
@@ -76,6 +76,7 @@ const allTags = getUniqueTags(allPosts);
                   date={post.data.date}
                   tags={post.data.tags}
                   slug={post.slug}
+                  readingTime={calculateReadingTime(post.body)}
                 />
               ))}
             </div>
@@ -108,13 +109,13 @@ const allTags = getUniqueTags(allPosts);
 
 <style>
   .tag-page {
-    padding: var(--space-xl) 0 var(--space-2xl);
+    padding: var(--space-lg) 0 var(--space-xl);
   }
   
   .page-header {
     text-align: center;
-    margin-bottom: var(--space-2xl);
-    padding-bottom: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
     border-bottom: 1px solid var(--color-border);
   }
   
@@ -137,12 +138,12 @@ const allTags = getUniqueTags(allPosts);
   }
   
   .search-section {
-    margin-bottom: var(--space-2xl);
+    margin-bottom: var(--space-lg);
     padding: 0 var(--space-md);
   }
   
   .filters {
-    margin-bottom: var(--space-2xl);
+    margin-bottom: var(--space-lg);
   }
   
   .filter-section h3 {
@@ -151,7 +152,7 @@ const allTags = getUniqueTags(allPosts);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-secondary);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
   }
   
   .tags-filter {
@@ -194,7 +195,7 @@ const allTags = getUniqueTags(allPosts);
   .sidebar-layout {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: var(--space-xl);
+    gap: var(--space-lg);
   }
   
   .posts-list {
@@ -209,11 +210,11 @@ const allTags = getUniqueTags(allPosts);
   }
   
   .sidebar-section {
-    padding: var(--space-md);
+    padding: var(--space-sm);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 8px;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
   }
   
   .sidebar-section h3 {
@@ -222,7 +223,7 @@ const allTags = getUniqueTags(allPosts);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-secondary);
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-xs);
   }
   
   .tags-list {

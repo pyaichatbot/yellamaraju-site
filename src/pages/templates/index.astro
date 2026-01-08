@@ -83,8 +83,8 @@ const templates = [
 
   .templates-header {
     text-align: center;
-    margin-bottom: var(--space-2xl);
-    padding-bottom: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   }
 
@@ -95,7 +95,7 @@ const templates = [
 
   .templates-header h1 {
     font-size: 2.5rem;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
     color: var(--color-text);
   }
 
@@ -110,15 +110,15 @@ const templates = [
   .templates-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: var(--space-lg);
-    margin-bottom: var(--space-2xl);
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
   }
-
+  
   .template-card {
     background: rgba(0, 0, 0, 0.02);
     border: none;
     border-radius: 4px;
-    padding: var(--space-lg);
+    padding: var(--space-md);
     transition: background 0.2s;
   }
 
@@ -139,7 +139,7 @@ const templates = [
   .template-card h2 {
     font-size: 1.75rem;
     font-weight: 700;
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-xs);
     line-height: 1.2;
   }
 
@@ -157,15 +157,15 @@ const templates = [
     color: var(--color-text-secondary);
     font-size: 0.95rem;
     line-height: 1.6;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-
+  
   .template-actions {
-    margin-top: var(--space-md);
+    margin-top: var(--space-sm);
   }
 
   .template-link {
@@ -181,13 +181,13 @@ const templates = [
 
   .templates-info {
     background: var(--color-bg-secondary);
-    padding: var(--space-xl);
+    padding: var(--space-lg);
     border-radius: 8px;
-    margin-bottom: var(--space-xl);
-  }
-
-  .templates-info h2 {
     margin-bottom: var(--space-lg);
+  }
+  
+  .templates-info h2 {
+    margin-bottom: var(--space-md);
   }
 
   .templates-info ol {

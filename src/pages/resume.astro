@@ -139,15 +139,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </div>
           </section>
           
-          <div class="cta-section">
-            <p>For complete work history and additional details, please</p>
-            <div class="cta-buttons">
-              <a href="/resume/PraveenSrinagYellamaraju_CV.pdf" download class="primary-button">Download Full Resume</a>
-              <a href="https://www.linkedin.com/in/praveensrinagy" target="_blank" rel="noopener noreferrer" class="secondary-button">
-                View LinkedIn Profile
-              </a>
-            </div>
-          </div>
         </article>
       </div>
     </div>
@@ -156,15 +147,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <style>
   .resume-page {
-    padding: var(--space-2xl) 0;
+    padding: var(--space-lg) 0;
   }
   
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-2xl);
-    padding-bottom: var(--space-lg);
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-md);
     border-bottom: 2px solid var(--color-border);
   }
   
@@ -210,14 +201,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
   
   .resume-section {
-    margin-bottom: var(--space-2xl);
+    margin-bottom: var(--space-xl);
   }
   
   .resume-section h2 {
     font-size: 1.75rem;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
     color: var(--color-text);
-    padding-bottom: var(--space-sm);
+    padding-bottom: var(--space-xs);
     border-bottom: 1px solid var(--color-border);
   }
   
@@ -232,7 +223,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .expertise-grid, .skills-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-lg);
+    gap: var(--space-md);
   }
   
   .expertise-item, .skill-category {
@@ -255,7 +246,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
   
   .position {
-    padding: var(--space-lg);
+    padding: var(--space-md);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 8px;
@@ -265,7 +256,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     display: flex;
     justify-content: space-between;
     align-items: start;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
   }
   
   .position h3 {
@@ -306,8 +297,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .education-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-md);
-    margin-bottom: var(--space-lg);
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
   }
   
   .education-item {
@@ -353,26 +344,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .certifications li {
     color: var(--color-text-secondary);
     margin-bottom: var(--space-xs);
-  }
-  
-  .cta-section {
-    margin-top: var(--space-2xl);
-    padding: var(--space-xl);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    text-align: center;
-  }
-  
-  .cta-section p {
-    margin-bottom: var(--space-md);
-    color: var(--color-text-secondary);
-  }
-  
-  .cta-buttons {
-    display: flex;
-    gap: var(--space-md);
-    justify-content: center;
   }
   
   .primary-button {
@@ -434,9 +405,5 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       flex-direction: column;
     }
     
-    .cta-buttons {
-      flex-direction: column;
-      width: 100%;
-    }
   }
 </style>

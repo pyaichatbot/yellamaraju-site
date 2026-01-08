@@ -3,6 +3,7 @@ import BaseLayout from './BaseLayout.astro';
 import ShareLinks from '../components/ShareLinks.astro';
 import TagBadge from '../components/TagBadge.astro';
 import ScrollButtons from '../components/ScrollButtons.astro';
+import Comments from '../components/Comments.astro';
 import { formatDate } from '../utils/helpers';
 
 interface Props {
@@ -11,14 +12,12 @@ interface Props {
   date: Date;
   tags: string[];
   image?: string;
+  readingTime: string;
 }
 
-const { title, description, date, tags, image } = Astro.props;
+const { title, description, date, tags, image, readingTime } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
-
-// Calculate reading time from content
-const readingTime = '8 min read'; // This would be calculated from actual content in production
 ---
 
 <BaseLayout 
@@ -30,7 +29,7 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
 >
   <article class="post-article">
     <div class="container">
-      <div class="content-wrapper">
+      <div class="content-wrapper post-content-wrapper">
         <nav class="post-nav">
           <a href="/blog" class="nav-link">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -70,6 +69,8 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
         
         <ShareLinks title={title} url={canonicalURL} />
         
+        <Comments title={title} identifier={Astro.url.pathname} />
+        
         <div class="subscribe-cta">
           <h3>Want more insights like this?</h3>
           <p>Get notified when I publish new articles on AI, architecture, and building intelligent systems.</p>
@@ -81,17 +82,59 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
   <ScrollButtons />
 </BaseLayout>
 
+<script>
+  // Table scroll indicator management
+  document.addEventListener('DOMContentLoaded', () => {
+    const tableWrappers = document.querySelectorAll('.table-wrapper');
+    
+    tableWrappers.forEach(wrapper => {
+      const table = wrapper.querySelector('table');
+      if (!table) return;
+      
+      function checkScroll() {
+        const isScrollable = wrapper.scrollWidth > wrapper.clientWidth;
+        const isAtEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 5; // 5px tolerance
+        
+        if (isAtEnd) {
+          wrapper.classList.add('scrolled-end');
+        } else {
+          wrapper.classList.remove('scrolled-end');
+        }
+        
+        // Only show indicator if table is actually scrollable
+        if (!isScrollable) {
+          wrapper.style.setProperty('--show-indicator', 'none');
+        } else {
+          wrapper.style.setProperty('--show-indicator', 'block');
+        }
+      }
+      
+      // Check on load
+      checkScroll();
+      
+      // Check on scroll
+      wrapper.addEventListener('scroll', checkScroll);
+      
+      // Check on resize
+      window.addEventListener('resize', checkScroll);
+      
+      // Initial check after a short delay to ensure table is rendered
+      setTimeout(checkScroll, 100);
+    });
+  });
+</script>
+
 <style>
   .post-article {
-    padding: var(--space-2xl) 0;
+    padding: var(--space-lg) 0;
   }
   
   .post-nav {
     display: flex;
     align-items: center;
     gap: var(--space-md);
-    margin-bottom: var(--space-xl);
-    padding-bottom: var(--space-md);
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-sm);
     border-bottom: 1px solid var(--color-border);
   }
   
@@ -120,8 +163,8 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
   }
   
   .post-header {
-    margin-bottom: var(--space-2xl);
-    padding-bottom: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
     border-bottom: 1px solid var(--color-border);
   }
   
@@ -131,7 +174,7 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
     gap: var(--space-xs);
     font-size: 0.875rem;
     color: var(--color-text-tertiary);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
   }
   
   .separator {
@@ -141,7 +184,7 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
   .post-title {
     font-size: 2.5rem;
     line-height: 1.2;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
     animation: fadeIn 0.6s ease-out;
   }
   
@@ -149,7 +192,7 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
     font-size: 1.25rem;
     line-height: 1.6;
     color: var(--color-text-secondary);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
   }
   
   .post-tags {
@@ -158,14 +201,18 @@ const readingTime = '8 min read'; // This would be calculated from actual conten
     gap: var(--space-xs);
   }
   
+  .post-content-wrapper {
+    max-width: 900px;
+  }
+  
   .post-content {
     font-size: 1.1rem;
     line-height: 1.8;
   }
   
   .subscribe-cta {
-    margin-top: var(--space-2xl);
-    padding: var(--space-xl);
+    margin-top: var(--space-xl);
+    padding: var(--space-lg);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 8px;

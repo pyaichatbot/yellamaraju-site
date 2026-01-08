@@ -1,0 +1,150 @@
+---
+interface Props {
+  title?: string;
+  identifier?: string;
+}
+
+const { title, identifier } = Astro.props;
+
+// Get configuration from environment variables or use defaults
+// These should be set in your .env file or Netlify environment variables
+const repo = import.meta.env.PUBLIC_GISCUS_REPO || '';
+const repoId = import.meta.env.PUBLIC_GISCUS_REPO_ID || '';
+const category = import.meta.env.PUBLIC_GISCUS_CATEGORY || 'General';
+const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID || '';
+
+// Use the current page path as identifier if not provided
+const commentId = identifier || Astro.url.pathname;
+
+// Only render if configuration is provided
+const isConfigured = repo && repoId && categoryId;
+---
+
+{isConfigured && (
+  <div class="comments-container">
+    <div class="comments-header">
+      <h2 class="comments-title">Discussion</h2>
+      <p class="comments-subtitle">
+        Have thoughts or questions? Join the discussion on GitHub. 
+        <a 
+          href={`https://github.com/${repo}/discussions`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="comments-link"
+        >
+          View all discussions
+        </a>
+      </p>
+    </div>
+    
+    <div class="giscus-container">
+      <script 
+        src="https://giscus.app/client.js"
+        data-repo={repo}
+        data-repo-id={repoId}
+        data-category={category}
+        data-category-id={categoryId}
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="en"
+        data-loading="lazy"
+        crossorigin="anonymous"
+        async
+      ></script>
+    </div>
+  </div>
+)}
+
+{!isConfigured && import.meta.env.DEV && (
+  <div class="comments-container comments-warning">
+    <p>
+      <strong>Giscus not configured:</strong> Set PUBLIC_GISCUS_REPO, PUBLIC_GISCUS_REPO_ID, 
+      and PUBLIC_GISCUS_CATEGORY_ID in your environment variables.
+      <a 
+        href="https://giscus.app" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="comments-link"
+      >
+        Get configuration →
+      </a>
+    </p>
+  </div>
+)}
+
+<style>
+  .comments-container {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--color-border);
+  }
+  
+  .comments-header {
+    margin-bottom: var(--space-md);
+  }
+  
+  .comments-title {
+    font-size: 1.75rem;
+    font-family: var(--font-serif);
+    font-weight: 700;
+    margin-bottom: var(--space-xs);
+    color: var(--color-text);
+  }
+  
+  .comments-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+  
+  .comments-link {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+  }
+  
+  .comments-link:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+  }
+  
+  .giscus-container {
+    margin-top: var(--space-md);
+  }
+  
+  /* Giscus theme customization to match site design */
+  .giscus-container :global(.giscus) {
+    font-family: var(--font-sans);
+  }
+  
+  /* Warning message for development */
+  .comments-warning {
+    padding: var(--space-md);
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+  }
+  
+  .comments-warning strong {
+    color: var(--color-text);
+  }
+  
+  @media (max-width: 768px) {
+    .comments-title {
+      font-size: 1.5rem;
+    }
+    
+    .comments-subtitle {
+      font-size: 0.9rem;
+    }
+  }
+</style>
+

@@ -1,13 +1,55 @@
 ---
 interface Props {
   chart: string;
+  id?: string;
+  title?: string;
 }
 
-const { chart } = Astro.props;
+const { chart, id, title } = Astro.props;
+
+// Generate a unique ID if not provided
+const diagramId = id || `diagram-${Math.random().toString(36).substring(2, 9)}`;
 ---
 
-<div class="mermaid-wrapper">
-  <pre class="mermaid">{chart}</pre>
+<div class="mermaid-wrapper" id={diagramId}>
+  {title && (
+    <div class="mermaid-header">
+      <h3 class="mermaid-title">{title}</h3>
+    </div>
+  )}
+  <div class="mermaid-content">
+    <pre class="mermaid">{chart}</pre>
+    <template data-mermaid-source>{chart}</template>
+  </div>
+  <div class="mermaid-actions">
+    <button 
+      class="mermaid-copy-btn mermaid-copy-code-btn" 
+      data-diagram-id={diagramId}
+      data-action="code"
+      aria-label="Copy Mermaid code"
+      title="Copy Mermaid code to clipboard"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 6L6 9L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M15 6L18 9L15 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 3V21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button 
+      class="mermaid-copy-btn mermaid-copy-link-btn" 
+      data-diagram-id={diagramId}
+      data-action="link"
+      aria-label="Copy link to this diagram"
+      title="Copy link to share this diagram"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 13C10.4295 13.5741 10.9774 14.0491 11.6066 14.3929C12.2357 14.7367 12.9315 14.9411 13.6467 14.9923C14.3618 15.0435 15.0796 14.9403 15.7513 14.6897C16.4231 14.4392 17.0331 14.047 17.54 13.54L20.54 10.54C21.4508 9.59695 21.9548 8.33394 21.9434 7.02296C21.932 5.71198 21.4061 4.45791 20.4791 3.53087C19.5521 2.60383 18.298 2.07801 16.987 2.06659C15.676 2.05517 14.413 2.55918 13.47 3.46997L11.75 5.17997" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 11C13.5705 10.4259 13.0226 9.9508 12.3934 9.60704C11.7643 9.26328 11.0685 9.05886 10.3533 9.00766C9.63816 8.95645 8.92037 9.05972 8.24865 9.31026C7.57693 9.5608 6.96688 9.95301 6.45997 10.46L3.45997 13.46C2.54918 14.403 2.04517 15.666 2.05659 16.977C2.06801 18.288 2.59383 19.5421 3.52087 20.4691C4.44791 21.3961 5.70198 21.922 7.01296 21.9334C8.32394 21.9448 9.58695 21.4408 10.53 20.53L12.24 18.82" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <span class="mermaid-copy-feedback" data-feedback-id={diagramId} data-feedback-type="code">Code copied!</span>
+    <span class="mermaid-copy-feedback" data-feedback-id={diagramId} data-feedback-type="link">Link copied!</span>
+  </div>
 </div>
 
 <script is:inline>
@@ -82,6 +124,108 @@ const { chart } = Astro.props;
         }
       }
     });
+    
+    // Handle copy functionality (both code and link)
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.mermaid-copy-btn');
+      if (!btn) return;
+      
+      const diagramId = btn.getAttribute('data-diagram-id');
+      const action = btn.getAttribute('data-action');
+      if (!diagramId || !action) return;
+      
+      let textToCopy;
+      
+      if (action === 'code') {
+        // Get Mermaid code from the pre element's textContent
+        const wrapper = document.getElementById(diagramId);
+        if (!wrapper) return;
+        const preElement = wrapper.querySelector('pre.mermaid');
+        if (!preElement) return;
+        // Get the raw text content before Mermaid renders it
+        // Mermaid might modify the DOM, so we need to get it from the original source
+        // We store it in a template tag for reliability
+        const codeTemplate = wrapper.querySelector('template[data-mermaid-source]');
+        if (codeTemplate) {
+          textToCopy = codeTemplate.content.textContent || codeTemplate.innerHTML || '';
+        } else {
+          // Fallback: try to get from pre element (might not work if Mermaid has rendered)
+          textToCopy = preElement.textContent || '';
+        }
+      } else if (action === 'link') {
+        // Get current page URL (without hash)
+        const currentUrl = window.location.origin + window.location.pathname;
+        textToCopy = `${currentUrl}#${diagramId}`;
+      } else {
+        return;
+      }
+      
+      // Copy to clipboard
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          showCopyFeedback(diagramId, action);
+        }).catch(() => {
+          fallbackCopy(textToCopy, diagramId, action);
+        });
+      } else {
+        fallbackCopy(textToCopy, diagramId, action);
+      }
+    });
+    
+    function showCopyFeedback(diagramId, type) {
+      const feedback = document.querySelector(`[data-feedback-id="${diagramId}"][data-feedback-type="${type}"]`);
+      if (feedback) {
+        feedback.classList.add('show');
+        setTimeout(() => {
+          feedback.classList.remove('show');
+        }, 2000);
+      }
+    }
+    
+    function fallbackCopy(text, diagramId, type) {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showCopyFeedback(diagramId, type);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+      document.body.removeChild(textarea);
+    }
+    
+    // Scroll to diagram if hash is present in URL
+    function scrollToDiagram() {
+      const hash = window.location.hash;
+      if (hash) {
+        const element = document.querySelector(hash);
+        if (element) {
+          setTimeout(() => {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Add highlight effect
+            element.classList.add('highlight');
+            setTimeout(() => {
+              element.classList.remove('highlight');
+            }, 2000);
+          }, 300); // Wait for mermaid to render
+        }
+      }
+    }
+    
+    // Scroll on page load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', scrollToDiagram);
+    } else {
+      scrollToDiagram();
+    }
+    
+    // Scroll on hash change (for same-page navigation)
+    window.addEventListener('hashchange', scrollToDiagram);
   })();
 </script>
 
@@ -93,6 +237,32 @@ const { chart } = Astro.props;
     border: 1px solid var(--color-border);
     border-radius: 8px;
     overflow-x: auto;
+    position: relative;
+    scroll-margin-top: 2rem;
+    transition: all var(--transition-base);
+  }
+  
+  .mermaid-wrapper.highlight {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .mermaid-header {
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .mermaid-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+  
+  .mermaid-content {
+    margin-bottom: var(--space-sm);
   }
   
   .mermaid {
@@ -101,5 +271,64 @@ const { chart } = Astro.props;
     background: transparent;
     padding: 0;
     margin: 0;
+  }
+  
+  .mermaid-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--color-border);
+    flex-wrap: wrap;
+  }
+  
+  .mermaid-copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  
+  .mermaid-copy-btn:hover {
+    background: var(--color-code-bg);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  
+  .mermaid-copy-btn:active {
+    transform: scale(0.98);
+  }
+  
+  .mermaid-copy-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  
+  .mermaid-copy-feedback {
+    font-size: 0.875rem;
+    color: var(--color-accent);
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all var(--transition-fast);
+    pointer-events: none;
+  }
+  
+  .mermaid-copy-feedback.show {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  
+  @media (max-width: 768px) {
+    .mermaid-wrapper {
+      padding: var(--space-sm);
+    }
   }
 </style>

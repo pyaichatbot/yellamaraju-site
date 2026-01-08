@@ -4,7 +4,7 @@ import PostCard from '../../components/PostCard.astro';
 import TagBadge from '../../components/TagBadge.astro';
 import SearchInput from '../../components/SearchInput.astro';
 import { getCollection } from 'astro:content';
-import { sortPostsByDate, getUniqueTags } from '../../utils/helpers';
+import { calculateReadingTime, sortPostsByDate, getUniqueTags } from '../../utils/helpers';
 
 const allPosts = await getCollection('blog');
 const sortedPosts = sortPostsByDate(allPosts);
@@ -46,6 +46,7 @@ const allTags = getUniqueTags(allPosts);
               date={post.data.date}
               tags={post.data.tags}
               slug={post.slug}
+              readingTime={calculateReadingTime(post.body)}
             />
           ))}
         </div>
@@ -56,19 +57,19 @@ const allTags = getUniqueTags(allPosts);
 
 <style>
   .blog-page {
-    padding: var(--space-xl) 0 var(--space-2xl);
+    padding: var(--space-lg) 0 var(--space-xl);
   }
   
   .page-header {
     text-align: center;
-    margin-bottom: var(--space-2xl);
-    padding-bottom: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
     border-bottom: 1px solid var(--color-border);
   }
   
   .page-header h1 {
     font-size: 3rem;
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-xs);
   }
   
   .page-description {
@@ -79,12 +80,12 @@ const allTags = getUniqueTags(allPosts);
   }
   
   .search-section {
-    margin-bottom: var(--space-2xl);
+    margin-bottom: var(--space-lg);
     padding: 0 var(--space-md);
   }
   
   .filters {
-    margin-bottom: var(--space-2xl);
+    margin-bottom: var(--space-lg);
   }
   
   .filter-section h3 {
@@ -93,13 +94,32 @@ const allTags = getUniqueTags(allPosts);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-secondary);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
   }
   
   .tags-filter {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-sm);
+  }
+
+  .tags-filter .tag-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-accent);
+    background: var(--color-code-bg);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--color-border);
+  }
+
+  .tags-filter .tag-badge:hover {
+    background: var(--color-surface);
+    border-color: var(--color-accent);
+    transform: translateY(-1px);
   }
   
   .tag-badge.active {

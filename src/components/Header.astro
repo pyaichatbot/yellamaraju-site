@@ -5,7 +5,7 @@ import ThemeToggle from './ThemeToggle.astro';
 const currentPath = Astro.url.pathname;
 ---
 
-<header class="site-header">
+<header class={`site-header ${currentPath === '/' ? 'home' : ''}`}>
   <div class="container">
     <div class="header-content">
       <a href="/" class="site-title">
@@ -152,6 +152,7 @@ const currentPath = Astro.url.pathname;
   
   @media (max-width: 768px) {
     .header-content {
+      display: flex;
       padding: var(--space-sm) 0;
       gap: var(--space-xs);
     }
@@ -173,7 +174,7 @@ const currentPath = Astro.url.pathname;
     .header-right {
       position: relative;
       flex-shrink: 0;
-      display: flex;
+      display: flex !important;
       align-items: center;
       gap: var(--space-xs);
     }
@@ -206,6 +207,31 @@ const currentPath = Astro.url.pathname;
     
     .main-nav a.active::after {
       bottom: -4px;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .header-content {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+    }
+
+    .header-right {
+      display: contents;
+    }
+
+    .main-nav {
+      grid-column: 2;
+      justify-self: center;
+    }
+
+    .theme-toggle-wrapper {
+      grid-column: 3;
+      justify-self: end;
+      align-self: center;
+      display: flex;
+      align-items: center;
     }
   }
 </style>

@@ -6,80 +6,153 @@ import { SITE } from '../config';
 <BaseLayout title="Contact" description="Get in touch with Praveen Srinag Yellamaraju for collaborations, speaking engagements, or discussions about AI and enterprise architecture.">
   <div class="contact-page">
     <div class="container">
-      <div class="content-wrapper">
+      <div class="contact-wrapper">
         <header class="page-header">
-          <h1>Get in Touch</h1>
+          <h1>Tell us about your project</h1>
           <p class="page-description">
-            I'm always interested in connecting with fellow practitioners, discussing AI architecture 
-            challenges, or exploring collaboration opportunities.
+            I'm always open to thoughtful conversations about AI architecture, enterprise systems, 
+            and collaboration opportunities.
           </p>
         </header>
         
-        <div class="contact-content">
+        <div class="contact-layout">
+          <!-- Left Column: Benefits & Contact Info -->
           <div class="contact-info">
-            <div class="info-card">
-              <h2>Email</h2>
-              <p>
-                For professional inquiries, collaborations, or speaking engagements:
-              </p>
-              <a href="mailto:contact@yellamaraju.com" class="contact-link">
-                contact@yellamaraju.com
-              </a>
+            <div class="benefits-list">
+              <div class="benefit-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>I respond within 2-3 business days</span>
+              </div>
+              <div class="benefit-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>NDA available upon request</span>
+              </div>
+              <div class="benefit-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Access to AI architecture expertise</span>
+              </div>
             </div>
             
-            <div class="info-card">
-              <h2>LinkedIn</h2>
-              <p>
-                Connect with me on LinkedIn for professional networking and updates:
-              </p>
-              <a 
-                href={`https://${SITE.linkedin}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="contact-link"
-              >
-                linkedin.com/in/praveensrinagy
-              </a>
-            </div>
-            
-            <div class="info-card">
-              <h2>What I'm Interested In</h2>
-              <ul class="interests-list">
-                <li>AI architecture and agentic system design</li>
-                <li>Enterprise AI implementation strategies</li>
-                <li>Speaking opportunities at conferences or workshops</li>
-                <li>Collaborative projects in AI/ML space</li>
-                <li>Knowledge sharing and mentorship</li>
-              </ul>
+            <div class="contact-details">
+              <div class="email-section">
+                <label class="detail-label">Email</label>
+                <div class="email-container">
+                  <a href="mailto:contact@yellamaraju.com" class="email-link">
+                    contact@yellamaraju.com
+                  </a>
+                  <button 
+                    class="email-copy-btn" 
+                    data-email="contact@yellamaraju.com"
+                    aria-label="Copy email address"
+                    title="Copy email address"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                  <span class="email-copy-feedback">Email copied!</span>
+                </div>
+              </div>
+              
+              <div class="linkedin-section">
+                <label class="detail-label">Connect</label>
+                <a 
+                  href={`https://${SITE.linkedin}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="linkedin-link"
+                >
+                  LinkedIn Profile
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+              </div>
+              
             </div>
           </div>
           
-          <div class="additional-info">
-            <div class="info-box">
-              <h3>Response Time</h3>
-              <p>
-                I typically respond to emails within 2-3 business days. For urgent matters, 
-                please indicate this in your subject line.
-              </p>
-            </div>
-            
-            <div class="info-box">
-              <h3>Location</h3>
-              <p>
-                Based in Rosbach vor der Höhe, Hesse, Germany<br>
-                Open to remote collaborations and occasional travel for speaking engagements.
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="cta-section">
-          <h3>Explore More</h3>
-          <p>Learn more about my work and experience</p>
-          <div class="cta-buttons">
-            <a href="/blog" class="primary-button">Read the Blog</a>
-            <a href="/resume" class="secondary-button">View Resume</a>
-            <a href="/about" class="secondary-button">About Me</a>
+          <!-- Right Column: Contact Form -->
+          <div class="contact-form-wrapper">
+            <form class="contact-form" id="contact-form">
+              <div class="form-group">
+                <label class="form-label">Service Type</label>
+                <div class="service-buttons">
+                  <button type="button" class="service-btn active" data-service="consulting">
+                    Consulting
+                  </button>
+                  <button type="button" class="service-btn" data-service="architecture">
+                    Architecture
+                  </button>
+                  <button type="button" class="service-btn" data-service="workshop">
+                    Workshop
+                  </button>
+                  <button type="button" class="service-btn" data-service="collaboration">
+                    Collaboration
+                  </button>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="full-name" class="form-label">Full Name *</label>
+                <input 
+                  type="text" 
+                  id="full-name" 
+                  name="name" 
+                  class="form-input" 
+                  required
+                  placeholder="Your name"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="email" class="form-label">Email *</label>
+                <input 
+                  type="email" 
+                  id="email" 
+                  name="email" 
+                  class="form-input" 
+                  required
+                  placeholder="your.email@example.com"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="project-details" class="form-label">Project Details *</label>
+                <textarea 
+                  id="project-details" 
+                  name="message" 
+                  class="form-textarea" 
+                  rows="6"
+                  required
+                  placeholder="Tell me about your project, goals, timeline, and any specific requirements..."
+                ></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Attach a file (optional)</label>
+                <div class="file-upload">
+                  <input type="file" id="file-upload" class="file-input" accept=".pdf,.doc,.docx,.txt" />
+                  <label for="file-upload" class="file-label">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="file-text">Choose a file or drag and drop here</span>
+                    <span class="file-hint">PDF, DOC, DOCX, TXT (max 10MB)</span>
+                  </label>
+                </div>
+              </div>
+              
+              <button type="submit" class="submit-button">
+                Submit inquiry
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -89,186 +162,335 @@ import { SITE } from '../config';
 
 <style>
   .contact-page {
-    padding: var(--space-2xl) 0;
+    padding: var(--space-lg) 0 var(--space-xl);
+  }
+  
+  .contact-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--space-md);
   }
   
   .page-header {
     text-align: center;
-    margin-bottom: var(--space-2xl);
-    padding-bottom: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
     border-bottom: 1px solid var(--color-border);
   }
   
   .page-header h1 {
-    font-size: 3rem;
+    font-size: 2.5rem;
     margin-bottom: var(--space-sm);
+    color: var(--color-text);
   }
   
   .page-description {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     color: var(--color-text-secondary);
     max-width: 600px;
     margin: 0 auto;
   }
   
-  .contact-content {
+  .contact-layout {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr 1.2fr;
     gap: var(--space-xl);
-    margin-bottom: var(--space-2xl);
+    align-items: start;
   }
   
+  /* Left Column: Contact Info */
   .contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+  }
+  
+  .benefits-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+  
+  .benefit-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--color-text);
+    font-size: 0.95rem;
+  }
+  
+  .benefit-item svg {
+    color: var(--color-accent);
+    flex-shrink: 0;
+  }
+  
+  .contact-details {
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
   }
   
-  .info-card {
-    padding: var(--space-lg);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-  }
-  
-  .info-card h2 {
-    font-size: 1.5rem;
-    margin-bottom: var(--space-sm);
-    color: var(--color-text);
-  }
-  
-  .info-card p {
-    color: var(--color-text-secondary);
-    margin-bottom: var(--space-md);
-  }
-  
-  .contact-link {
-    display: inline-block;
-    font-size: 1.1rem;
+  .detail-label {
+    display: block;
+    font-size: 0.875rem;
     font-weight: 600;
-    color: var(--color-accent);
-    text-decoration: none;
-    padding: 0.75rem 1.5rem;
-    background: rgba(37, 99, 235, 0.08);
-    border: 1px solid rgba(37, 99, 235, 0.15);
-    border-radius: 6px;
-    transition: all var(--transition-base);
-  }
-  
-  .contact-link:hover {
-    background: var(--color-accent);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-  }
-  
-  .interests-list {
-    list-style: none;
-    padding: 0;
-  }
-  
-  .interests-list li {
-    padding: var(--space-xs) 0;
-    padding-left: var(--space-md);
-    position: relative;
     color: var(--color-text-secondary);
+    margin-bottom: var(--space-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
   
-  .interests-list li::before {
-    content: '→';
-    position: absolute;
-    left: 0;
-    color: var(--color-accent);
-    font-weight: bold;
-  }
-  
-  .additional-info {
+  .email-section {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
   }
   
-  .info-box {
-    padding: var(--space-md);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
+  .email-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    position: relative;
   }
   
-  .info-box h3 {
-    font-size: 1.1rem;
-    margin-bottom: var(--space-xs);
+  .email-link {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+  
+  .email-link:hover {
     color: var(--color-accent);
   }
   
-  .info-box p {
-    font-size: 0.95rem;
+  .email-copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
     color: var(--color-text-secondary);
-    line-height: 1.6;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
   }
   
-  .cta-section {
-    margin-top: var(--space-2xl);
-    padding: var(--space-xl);
+  .email-copy-btn:hover {
+    background: var(--color-surface);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  
+  .email-copy-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .email-copy-feedback {
+    position: absolute;
+    left: 0;
+    bottom: -1.5rem;
+    font-size: 0.875rem;
+    color: var(--color-accent);
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: all var(--transition-fast);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  
+  .email-copy-feedback.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .linkedin-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+  
+  .linkedin-link:hover {
+    color: var(--color-accent-hover);
+  }
+  
+  .linkedin-link svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Right Column: Contact Form */
+  .contact-form-wrapper {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: 12px;
+    padding: var(--space-lg);
+  }
+  
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .service-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  
+  .service-btn {
+    padding: 0.625rem 1rem;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: var(--font-sans);
+  }
+  
+  .service-btn:hover {
+    background: var(--color-surface);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  
+  .service-btn.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: white;
+  }
+  
+  .form-input,
+  .form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    transition: all var(--transition-fast);
+  }
+  
+  .form-input:focus,
+  .form-textarea:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .form-textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+  
+  .file-upload {
+    position: relative;
+  }
+  
+  .file-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .file-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: var(--space-lg);
+    background: var(--color-code-bg);
+    border: 2px dashed var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
     text-align: center;
   }
   
-  .cta-section h3 {
-    margin-bottom: var(--space-xs);
+  .file-label:hover {
+    border-color: var(--color-accent);
+    background: var(--color-surface);
   }
   
-  .cta-section > p {
-    color: var(--color-text-secondary);
-    margin-bottom: var(--space-md);
+  .file-label svg {
+    color: var(--color-text-tertiary);
   }
   
-  .cta-buttons {
-    display: flex;
-    gap: var(--space-md);
-    justify-content: center;
-    flex-wrap: wrap;
+  .file-text {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    font-weight: 500;
   }
   
-  .primary-button {
-    display: inline-block;
-    padding: 0.75rem 2rem;
+  .file-hint {
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary);
+  }
+  
+  .submit-button {
+    padding: 0.875rem 2rem;
     background: var(--color-accent);
     color: white;
     font-weight: 600;
+    font-size: 1rem;
+    border: none;
     border-radius: 6px;
-    text-decoration: none;
+    cursor: pointer;
     transition: all var(--transition-base);
+    font-family: var(--font-sans);
+    margin-top: var(--space-sm);
   }
   
-  .primary-button:hover {
+  .submit-button:hover {
     background: var(--color-accent-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
   }
   
-  .secondary-button {
-    display: inline-block;
-    padding: 0.75rem 2rem;
-    border: 2px solid var(--color-accent);
-    color: var(--color-accent);
-    font-weight: 600;
-    border-radius: 6px;
-    text-decoration: none;
-    transition: all var(--transition-base);
-  }
-  
-  .secondary-button:hover {
-    background: var(--color-accent);
-    color: white;
-    transform: translateY(-2px);
+  .submit-button:active {
+    transform: translateY(0);
   }
   
   @media (max-width: 1024px) {
-    .contact-content {
+    .contact-layout {
       grid-template-columns: 1fr;
+      gap: var(--space-lg);
+    }
+    
+    .contact-info {
+      gap: var(--space-lg);
     }
   }
   
@@ -278,11 +500,132 @@ import { SITE } from '../config';
     }
     
     .page-description {
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
     
-    .cta-buttons {
+    .contact-form-wrapper {
+      padding: var(--space-md);
+    }
+    
+    .service-buttons {
       flex-direction: column;
+    }
+    
+    .service-btn {
+      width: 100%;
+    }
+    
+    .email-container {
+      flex-wrap: wrap;
+    }
+    
+    .email-copy-feedback {
+      position: static;
+      display: block;
+      margin-top: var(--space-xs);
+      width: 100%;
     }
   }
 </style>
+
+<script>
+  (function() {
+    if (typeof window === 'undefined') return;
+    
+    // Email copy functionality
+    const copyBtn = document.querySelector('.email-copy-btn');
+    if (copyBtn) {
+      const email = copyBtn.getAttribute('data-email');
+      const feedback = document.querySelector('.email-copy-feedback');
+      
+      copyBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(email).then(() => {
+            showFeedback();
+          }).catch(() => {
+            fallbackCopy(email);
+          });
+        } else {
+          fallbackCopy(email);
+        }
+      });
+      
+      function showFeedback() {
+        if (feedback) {
+          feedback.classList.add('show');
+          setTimeout(() => {
+            feedback.classList.remove('show');
+          }, 2000);
+        }
+      }
+      
+      function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          showFeedback();
+        } catch (err) {
+          console.error('Failed to copy:', err);
+        }
+        document.body.removeChild(textarea);
+      }
+    }
+    
+    // Service button selection
+    const serviceButtons = document.querySelectorAll('.service-btn');
+    
+    serviceButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        serviceButtons.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+    
+    // Form submission
+    const form = document.getElementById('contact-form');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const service = document.querySelector('.service-btn.active')?.getAttribute('data-service') || '';
+        
+        // Build email subject and body
+        const subject = encodeURIComponent(`Contact Form: ${service || 'General Inquiry'}`);
+        const body = encodeURIComponent(
+          `Name: ${formData.get('name')}\n` +
+          `Email: ${formData.get('email')}\n` +
+          `Service: ${service || 'Not specified'}\n\n` +
+          `Project Details:\n${formData.get('message')}`
+        );
+        
+        // Open mail client
+        window.location.href = `mailto:contact@yellamaraju.com?subject=${subject}&body=${body}`;
+      });
+    }
+    
+    // File upload preview
+    const fileInput = document.getElementById('file-upload');
+    const fileLabel = document.querySelector('.file-label');
+    
+    if (fileInput && fileLabel) {
+      fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const fileText = fileLabel.querySelector('.file-text');
+          if (fileText) {
+            fileText.textContent = file.name;
+          }
+        }
+      });
+    }
+  })();
+</script>
