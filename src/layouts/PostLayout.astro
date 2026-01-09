@@ -13,9 +13,12 @@ interface Props {
   tags: string[];
   image?: string;
   readingTime: string;
+  series?: string;
+  seriesPart?: number;
+  seriesPosts?: Array<{ title: string; slug: string; part: number }>;
 }
 
-const { title, description, date, tags, image, readingTime } = Astro.props;
+const { title, description, date, tags, image, readingTime, series, seriesPart, seriesPosts } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
 ---
@@ -46,6 +49,16 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
         </nav>
         
         <header class="post-header">
+          {series && (
+            <div class="series-badge">
+              <span class="series-label">Series:</span>
+              <span class="series-name">{series}</span>
+              {seriesPart && (
+                <span class="series-part">Part {seriesPart}</span>
+              )}
+            </div>
+          )}
+          
           <div class="post-meta">
             <time datetime={date.toISOString()}>{formatDate(date)}</time>
             <span class="separator">·</span>
@@ -66,6 +79,23 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
         <div class="post-content prose">
           <slot />
         </div>
+        
+        {series && seriesPosts && seriesPosts.length > 1 && (
+          <div class="series-navigation">
+            <h3 class="series-nav-title">More from {series}</h3>
+            <div class="series-posts-list">
+              {seriesPosts.map((post) => (
+                <a 
+                  href={`/blog/${post.slug}`}
+                  class={`series-post-link ${post.part === seriesPart ? 'active' : ''}`}
+                >
+                  <span class="series-post-number">Part {post.part}</span>
+                  <span class="series-post-title">{post.title}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
         
         <ShareLinks title={title} url={canonicalURL} />
         
@@ -169,6 +199,33 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
     border-bottom: 1px solid var(--color-border);
   }
   
+  .series-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    margin-bottom: var(--space-md);
+  }
+  
+  .series-label {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+  
+  .series-name {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  
+  .series-part {
+    color: var(--color-text-tertiary);
+    font-weight: 500;
+  }
+  
   .post-meta {
     display: flex;
     align-items: center;
@@ -248,6 +305,72 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
     background: var(--color-accent-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  
+  .series-navigation {
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-lg);
+    padding: var(--space-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+  
+  .series-nav-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: var(--space-md);
+    color: var(--color-text);
+  }
+  
+  .series-posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .series-post-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--color-text);
+    transition: all var(--transition-fast);
+    border: 1px solid transparent;
+  }
+  
+  .series-post-link:hover {
+    background: var(--color-code-bg);
+    border-color: var(--color-border);
+  }
+  
+  .series-post-link.active {
+    background: var(--color-code-bg);
+    border-color: var(--color-accent);
+  }
+  
+  .series-post-link.active .series-post-number {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  
+  .series-post-number {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    min-width: 60px;
+  }
+  
+  .series-post-title {
+    font-size: 0.9375rem;
+    color: var(--color-text);
+    flex: 1;
+  }
+  
+  .series-post-link:hover .series-post-title {
+    color: var(--color-accent);
   }
   
   @media (max-width: 768px) {

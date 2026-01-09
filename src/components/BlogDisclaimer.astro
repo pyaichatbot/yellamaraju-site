@@ -1,0 +1,55 @@
+---
+interface Props {
+  type?: 'lightweight' | 'full';
+}
+
+const { type = 'lightweight' } = Astro.props;
+---
+
+{type === 'lightweight' && (
+  <p class="disclaimer-lightweight">
+    Views expressed are my own and do not represent my employer.
+  </p>
+)}
+
+{type === 'full' && (
+  <div class="blog-disclaimer-full">
+    <p class="disclaimer-text">
+      <strong>Disclaimer:</strong> The views and opinions expressed on this site are my own and do not necessarily reflect those of my employer. Content is provided for informational purposes based on my experience building AI systems. Technical implementations and approaches may vary based on specific use cases, organizational requirements, and versions of tools, packages, and software dependencies.
+    </p>
+  </div>
+)}
+
+<style>
+  .disclaimer-lightweight {
+    margin-top: var(--space-lg);
+    font-size: 0.8125rem;
+    color: var(--color-text-tertiary);
+    text-align: center;
+    font-style: normal;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .blog-disclaimer-full {
+    margin-top: var(--space-xl);
+    padding: var(--space-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .disclaimer-text {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .disclaimer-text strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+</style>
+

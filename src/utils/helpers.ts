@@ -34,6 +34,23 @@ export function sortPostsByDate(posts: any[]): any[] {
   });
 }
 
+// Sort posts with pinned posts first, then by date
+export function sortPostsWithPinned(posts: any[]): any[] {
+  return posts.sort((a, b) => {
+    // Pinned posts always come first
+    const aPinned = a.data.pinned || false;
+    const bPinned = b.data.pinned || false;
+    
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    
+    // If both pinned or both not pinned, sort by date (newest first)
+    const dateA = new Date(a.data.date);
+    const dateB = new Date(b.data.date);
+    return dateB.getTime() - dateA.getTime();
+  });
+}
+
 // Get unique tags from posts
 export function getUniqueTags(posts: any[]): string[] {
   const tags = new Set<string>();

@@ -1,8 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import BlogDisclaimer from '../components/BlogDisclaimer.astro';
 ---
 
-<BaseLayout title="About" description="Learn about Praveen Srinag Yellamaraju - AI Architect and enterprise systems specialist.">
+<BaseLayout title="About" description="Learn about Praveen Srinag Yellamaraju - AI Advisor and enterprise systems specialist.">
   <div class="about-page">
     <div class="container">
       <div class="content-wrapper">
@@ -13,24 +14,26 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <img src="/images/praveen.jpg" alt="Praveen Srinag Yellamaraju" class="profile-image" />
             <div class="intro-text">
               <p class="lead">
-                I'm an AI Architect and enterprise systems specialist with 17+ years of experience 
-                building intelligent, scalable solutions that solve real-world challenges.
+                I'm an AI Advisor and enterprise systems specialist with 17+ years of experience 
+                building intelligent, scalable solutions. In my current role, I perform architecture 
+                and design responsibilities for AI systems.
               </p>
             </div>
           </div>
           
           <h2>What I Do</h2>
           <p>
-            I specialize in designing and implementing AI-powered systems for enterprise environments. 
-            My work focuses on agentic AI, multi-agent orchestration, RAG systems, and LLM-based 
-            solutions using platforms like OpenAI, Anthropic Claude, and Google ADK.
+            In my role as an AI Advisor, I specialize in designing and implementing AI-powered systems 
+            for enterprise environments. My responsibilities include architecting solutions for agentic AI, 
+            multi-agent orchestration, RAG systems, and LLM-based applications using platforms like OpenAI, 
+            Anthropic Claude, and Google ADK.
           </p>
           
           <p>
             Currently, I'm building internal AI agents and tools that integrate with GitLab, Jira, 
-            Confluence, ServiceNow, and various database systems. I've architected production-ready 
-            solutions including automated code reviewers, change request creators, and intelligent 
-            chatbots that enhance developer productivity and operational efficiency.
+            Confluence, ServiceNow, and various database systems. Through my work, I've designed and 
+            architected production-ready solutions including automated code reviewers, change request creators, 
+            and intelligent chatbots that enhance developer productivity and operational efficiency.
           </p>
           
           <h2>Knowledge Sharing</h2>
@@ -78,6 +81,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 LinkedIn Profile
               </a>
             </div>
+          </div>
+
+          <div class="disclaimer-section">
+            <BlogDisclaimer type="full" />
           </div>
         </article>
       </div>
@@ -136,6 +143,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     gap: var(--space-md);
     justify-content: center;
     flex-wrap: wrap;
+  }
+
+  .disclaimer-section {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--color-border);
   }
   
   .primary-button {

@@ -3,10 +3,12 @@ title: "Before You Build: A Realistic Framework for Evaluating AI Use Cases"
 description: "Why 80% of AI projects fail and how to avoid being one of them. A practitioner's framework for evaluating AI use cases before you write a single line of code."
 date: 2026-01-06
 tags: ["AI", "Architecture", "Best Practices"]
+pinned: true
 ---
 
 import Callout from '../../components/Callout.astro';
 import Mermaid from '../../components/Mermaid.astro';
+import BlogDisclaimer from '../../components/BlogDisclaimer.astro';
 
 Imagine this scenario: At 2 AM on a Tuesday, a team gets a call. Their AI-powered fraud detection system has flagged 40% of legitimate transactions as fraudulent. Customers are furious. The system has been in production for three months, and they've just discovered a fundamental flaw: they'd never properly validated whether AI was the right solution.
 
@@ -38,20 +40,7 @@ A fraud detection system started at 85% accuracy with simple Logistic Regression
 
 Every AI use case must pass three dimensions: **Desirability**, **Feasibility**, and **Viability**. Fail any dimension, and the project should stop or pivot.
 
-<Mermaid 
-  chart={`
-graph TD
-    A[AI Use Case Idea] --> B[Desirability Check]
-    B -->|Pass| C[Feasibility Check]
-    B -->|Fail| D[STOP: No Business Value]
-    C -->|Pass| E[Viability Check]
-    C -->|Fail| F[STOP: Can't Build It]
-    E -->|Pass| G[Proceed to AI Level Selection]
-    E -->|Fail| H[STOP: Can't Sustain It]
-`}
-  id="3d-assessment-framework"
-  title="3-Dimensional Assessment Framework"
-/>
+![3-Dimensional Assessment Framework: Desirability Check → Feasibility Check → Viability Check](/images/3d-framework.png)
 
 ### Dimension 1: Desirability — Is the Problem Worth Solving?
 
@@ -219,25 +208,7 @@ Risk Scenario (50% as good):
 
 Not all AI is created equal. Understanding AI levels helps you pick the right solution for your problem and avoid over-engineering.
 
-<Mermaid 
-  chart={`
-graph LR
-    A[Level 0:<br/>No AI Needed] --> B[Level 1:<br/>Analytics/BI]
-    B --> C[Level 2:<br/>AI-Supported]
-    C --> D[Level 3:<br/>AI-Integrated]
-    D --> E[Level 4:<br/>Advanced ML]
-    E --> F[Level 5:<br/>Agentic AI]
-    
-    style A fill:#ffcccc
-    style B fill:#ffffcc
-    style C fill:#ccffcc
-    style D fill:#ccffff
-    style E fill:#ccccff
-    style F fill:#ffccff
-`}
-  id="ai-levels"
-  title="The 5 Levels of AI"
-/>
+![The 5 Levels of AI: Level 0 (No AI Needed) through Level 5 (Agentic AI)](/images/ai-levels-diagram.png)
 
 <div class="table-wrapper">
 
@@ -262,27 +233,8 @@ For detailed guidance on selecting the right level, download the [AI Level Decis
 
 The framework above covers the detailed assessment. If you need a quick reference, here's the decision flow:
 
-<Mermaid 
-  chart={`
-graph TD
-    A[AI Use Case Idea] --> B{Problem Real?<br/>Quantified Impact?}
-    B -->|No| C[STOP: No Problem]
-    B -->|Yes| D{Simpler Solution<br/>Works?}
-    D -->|Yes| E[Use Simpler Solution<br/>STOP AI Work]
-    D -->|No| F{Data Available?<br/>Quality >85%?}
-    F -->|No| G[STOP: Collect Data First]
-    F -->|Yes| H{ROI Positive?<br/>Payback &lt;18mo?}
-    H -->|No| I[STOP: Not Financially Justified]
-    H -->|Yes| J{AI Level Clear?<br/>Start Simple?}
-    J -->|No| K[POC: Validate Approach]
-    J -->|Yes| L[GO: Build to Specified Level]
-    K --> M{POC Success?}
-    M -->|Yes| L
-    M -->|No| N[PIVOT or STOP]
-`}
-  id="decision-tree"
-  title="AI Use Case Decision Tree"
-/>
+![The Decision Tree](/images/decision-tree.png)
+
 
 **Decision Matrix:**
 
@@ -301,11 +253,11 @@ graph TD
 
 For detailed step-by-step evaluation, use the [AI Use Case Assessment Worksheet](/templates/ai-use-case-assessment-worksheet).
 
-## Real Examples: Two Use Cases
+## Examples: Two Use Cases
 
 Here's how this framework played out in two real projects:
 
-### Example 1: Real-Time Fraud Detection ✅
+### Example 1: Real-Time Fraud Detection
 
 **Problem:** Payment processing network handles 100M+ daily transactions. Rule-based fraud detection had high false positive rates—legitimate transactions were being declined.
 
@@ -317,7 +269,7 @@ Here's how this framework played out in two real projects:
 
 **Key Lesson:** This took two years to mature. They started with Logistic Regression at 85% accuracy, then evolved to ensemble models. Don't expect Level 4 perfection on day one—it doesn't work that way.
 
-### Example 2: Customer Churn Prediction 🟡 PoC
+### Example 2: Customer Churn Prediction
 
 **Problem:** Banking platform needs to identify at-risk customers before they switch banks.
 
@@ -471,6 +423,8 @@ I offer office hours for teams evaluating AI use cases. Book a session to walk t
 </Callout>
 
 ---
+
+<BlogDisclaimer />
 
 *What AI use cases are you evaluating? I'd love to hear about your experiences. Connect with me on [LinkedIn](https://www.linkedin.com/in/praveensrinagy) or [reach out](/contact) directly.*
 

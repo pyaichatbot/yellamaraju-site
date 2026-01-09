@@ -10,14 +10,22 @@ interface Props {
   slug: string;
   readingTime: string;
   featured?: boolean;
+  series?: string;
+  seriesPart?: number;
 }
 
-const { title, description, date, tags, slug, readingTime, featured = false } = Astro.props;
+const { title, description, date, tags, slug, readingTime, featured = false, series, seriesPart } = Astro.props;
 ---
 
 <article class={`post-card ${featured ? 'featured' : ''}`}>
   <a href={`/blog/${slug}`} class="post-link">
     <div class="post-header">
+      {series && (
+        <div class="post-series-badge">
+          <span class="series-name">{series}</span>
+          {seriesPart && <span class="series-part">Part {seriesPart}</span>}
+        </div>
+      )}
       <h3 class="post-title">{title}</h3>
       <div class="post-meta">
         <time datetime={date.toISOString()}>{formatDate(date)}</time>
@@ -81,6 +89,28 @@ const { title, description, date, tags, slug, readingTime, featured = false } = 
   
   .post-card:hover .post-title {
     color: var(--color-accent);
+  }
+  
+  .post-series-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-bottom: var(--space-xs);
+  }
+  
+  .series-name {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  
+  .series-part {
+    color: var(--color-text-secondary);
+    font-weight: 500;
   }
   
   .post-meta {

@@ -47,6 +47,8 @@ const allTags = getUniqueTags(allPosts);
               tags={post.data.tags}
               slug={post.slug}
               readingTime={calculateReadingTime(post.body)}
+              series={post.data.series}
+              seriesPart={post.data.seriesPart}
             />
           ))}
         </div>

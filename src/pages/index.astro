@@ -3,10 +3,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import TagBadge from '../components/TagBadge.astro';
 import { getCollection } from 'astro:content';
-import { calculateReadingTime, sortPostsByDate, getUniqueTags } from '../utils/helpers';
+import { calculateReadingTime, sortPostsWithPinned, getUniqueTags } from '../utils/helpers';
 
 const allPosts = await getCollection('blog');
-const sortedPosts = sortPostsByDate(allPosts);
+const sortedPosts = sortPostsWithPinned(allPosts);
+// Show up to 3 posts: pinned posts first, then newest posts
 const featuredPosts = sortedPosts.slice(0, 3);
 const popularTags = getUniqueTags(allPosts).slice(0, 8);
 ---
@@ -21,8 +22,8 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
               Building Intelligent Systems<br />for Enterprise Scale
             </h1>
             <p class="hero-description">
-              AI Architect with 17+ years specializing in agentic AI, LLM-based solutions, 
-              and cloud-native architectures. Writing about the intersection of AI, 
+              AI Advisor with 17+ years of experience, specializing in architecting agentic AI systems, 
+              LLM-based solutions, and cloud-native architectures. Writing about the intersection of AI, 
               enterprise systems, and practical implementation strategies.
             </p>
             <div class="hero-cta">
@@ -52,6 +53,8 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
                   slug={post.slug}
                   readingTime={calculateReadingTime(post.body)}
                   featured={index === 0}
+                  series={post.data.series}
+                  seriesPart={post.data.seriesPart}
                 />
               </div>
             ))}

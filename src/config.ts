@@ -1,6 +1,6 @@
 export const SITE = {
   title: 'Praveen Srinag Yellamaraju',
-  description: 'AI Architect and enterprise systems specialist writing about AI/ML, agentic systems, and building intelligent solutions.',
+  description: 'AI Advisor and enterprise systems specialist writing about AI/ML, agentic systems, and building intelligent solutions.',
   author: 'Praveen Srinag Yellamaraju',
   url: 'https://www.yellamaraju.com',
   image: '/images/praveen.jpg',
