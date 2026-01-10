@@ -246,26 +246,8 @@ contract DePINReputation {
 
 **GDPR Compliance Architecture**:
 
-<Mermaid 
-  chart={`
-sequenceDiagram
-    participant User
-    participant Orchestrator
-    participant EU_Node
-    participant Non_EU_Node
-    participant Blockchain
-    
-    User->>Orchestrator: Submit task with PII
-    Orchestrator->>Orchestrator: Tag as GDPR-sensitive
-    Orchestrator->>EU_Node: Route ONLY to EU jurisdiction
-    Orchestrator-->>Non_EU_Node: Skip (compliance filter)
-    EU_Node->>Blockchain: Anchor proof (NO PII data)
-    
-    Note over Blockchain: Only metadata on-chain:<br/>TaskID, NodeID, Timestamp
-  `}
-  id="gdpr-compliance-flow"
-  title="GDPR Compliance Flow"
-/>
+<img id="gdpr-compliance-flow" src="/images/gdpr-compliance-flow.png" alt="GDPR Compliance Flow" />
+
 
 **Key Principle**: **Privacy by design**. Personal data never touches [blockchain](https://en.wikipedia.org/wiki/Blockchain). Only computational proofs do. This is critical for [GDPR compliance](https://gdpr.eu/what-is-gdpr/) in DePIN systems.
 
