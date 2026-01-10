@@ -5,6 +5,8 @@ import TagBadge from '../components/TagBadge.astro';
 import ScrollButtons from '../components/ScrollButtons.astro';
 import Comments from '../components/Comments.astro';
 import { formatDate } from '../utils/helpers';
+import { generateArticleSchema, generateBreadcrumbSchema } from '../utils/seo';
+import type { CollectionEntry } from 'astro:content';
 
 interface Props {
   title: string;
@@ -16,11 +18,31 @@ interface Props {
   series?: string;
   seriesPart?: number;
   seriesPosts?: Array<{ title: string; slug: string; part: number }>;
+  post?: CollectionEntry<'blog'>;
 }
 
-const { title, description, date, tags, image, readingTime, series, seriesPart, seriesPosts } = Astro.props;
+const { title, description, date, tags, image, readingTime, series, seriesPart, seriesPosts, post } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
+
+// Generate structured data
+let articleSchema = null;
+let breadcrumbSchema = null;
+
+if (post) {
+  articleSchema = generateArticleSchema(post, canonicalURL);
+  
+  // Generate breadcrumbs
+  const breadcrumbItems = [
+    { name: 'Home', url: '/' },
+    { name: 'Blog', url: '/blog' },
+    { name: title, url: Astro.url.pathname },
+  ];
+  breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems);
+}
+
+// Generate keywords from tags
+const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
 ---
 
 <BaseLayout 
@@ -29,7 +51,11 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
   image={image}
   article={true}
   publishedTime={date.toISOString()}
+  modifiedTime={date.toISOString()}
+  keywords={keywords}
 >
+  {articleSchema && <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />}
+  {breadcrumbSchema && <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />}
   <article class="post-article">
     <div class="container">
       <div class="content-wrapper post-content-wrapper">
