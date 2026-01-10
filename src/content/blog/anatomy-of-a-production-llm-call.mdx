@@ -21,7 +21,7 @@ This post is about how to build the kind of production LLM call that would have 
 **Demos prove possibility; production proves responsibility.**
 </Callout>
 
-## What "Production-Ready" Really Means
+<h2 id="what-production-ready-really-means">What "Production-Ready" Really Means</h2>
 
 <Callout type="info" title="">
 **In production, calling an LLM looks less like a chat window and more like a distributed system.**
@@ -43,11 +43,11 @@ A production-ready LLM call usually needs:
 
 The rest of this post unpacks each of these layers with Python code and a reusable wrapper you can drop into your own stack.
 
-## Setting Up Python Clients (OpenAI, Anthropic, Google)
+<h2 id="setting-up-python-clients">Setting Up Python Clients (OpenAI, Anthropic, Google)</h2>
 
 Each major provider now ships a reasonably ergonomic Python SDK, but the ergonomics hide important differences in defaults, timeouts, and streaming support.
 
-### Minimal client setup
+<h3 id="minimal-client-setup">Minimal client setup</h3>
 
 ```python
 # openai_client.py
@@ -87,7 +87,7 @@ gemini_client = genai.Client(
 
 These clients are intentionally kept thin; the goal is to do almost everything else (timeouts, logging, retries) in one shared wrapper rather than scattering it across three different SDK idioms.
 
-## Authentication Patterns and Security
+<h2 id="authentication-patterns-and-security">Authentication Patterns and Security</h2>
 
 Production systems tend to fail in surprisingly boring ways: someone hard-codes a key in a test script, that script gets committed, and bots scrape the repo. Once an LLM key leaks, it can be abused silently until your next billing email arrives.
 
@@ -129,7 +129,7 @@ openai_client = OpenAI(
 
 This pattern keeps secrets out of your codebase and centralizes knobs like timeouts so you can tune them without hunting through multiple files.
 
-## Deep Dive: Request and Response Shape
+<h2 id="request-and-response-shape">Deep Dive: Request and Response Shape</h2>
 
 Despite different branding, most chat-style LLM APIs share a similar conceptual request:
 
@@ -145,7 +145,7 @@ The responses carry:
 - Usage metadata: prompt tokens, completion tokens, and sometimes cost
 - Finish reasons like `stop`, `length`, or `tool_calls`
 
-### A unified request object
+<h3 id="unified-request-object">A unified request object</h3>
 
 ```python
 # schemas.py
@@ -170,7 +170,7 @@ class LLMRequest(BaseModel):
 
 Wrapping provider details behind `LLMRequest` lets you swap models without rewriting every call site.
 
-## Streaming vs Batch Responses
+<h2 id="streaming-vs-batch-responses">Streaming vs Batch Responses</h2>
 
 Streaming feels magical in a demo, but it needs explicit design decisions in production. A streaming response can reduce perceived latency and make interfaces feel much more responsive, but it complicates error handling, logging, and cost tracking.
 
@@ -184,7 +184,7 @@ Prefer non-streaming when:
 - You run batch workloads
 - You need to validate or transform the entire response before sending it anywhere
 
-### Streaming with OpenAI
+<h3 id="streaming-with-openai">Streaming with OpenAI</h3>
 
 ```python
 # streaming_example.py
@@ -205,7 +205,7 @@ def stream_answer(prompt: str):
 
 This pattern pushes tokens out as they arrive while keeping your application logic in control of the iteration.
 
-## Error Handling and Retry Logic
+<h2 id="error-handling-and-retry-logic">Error Handling and Retry Logic</h2>
 
 Most production failures are not "the system is down"; they are "the system sort of works, but badly." LLM calls add several more failure modes on top of classic HTTP errors: hallucinations, long tail prompts, and unexpected formats.
 
@@ -238,7 +238,7 @@ flowchart TD
 
 This tree separates "try again" problems from "stop now" problems, which is essential for cost control under load.
 
-### Python wrapper with retries
+<h3 id="python-wrapper-with-retries">Python wrapper with retries</h3>
 
 ```python
 # llm_wrapper.py
@@ -327,7 +327,7 @@ This wrapper is intentionally minimal but shows the basic pattern: explicit atte
 **If you can't observe it, you can't trust it.**
 </Callout>
 
-## Token Counting and Cost Tracking
+<h2 id="token-counting-and-cost-tracking">Token Counting and Cost Tracking</h2>
 
 LLM calls feel cheap per request, but costs accumulate quickly with retries, long prompts, and unbounded context. The teams that catch cost issues early treat token usage like performance metrics: always measured, always visible.
 
@@ -338,7 +338,7 @@ Typical instrumentation for each call:
 - Per-request cost, derived from your current pricing matrix
 - A link between LLM events and user actions or jobs
 
-### Simple cost calculator
+<h3 id="simple-cost-calculator">Simple cost calculator</h3>
 
 You can keep a static dictionary of prices updated from vendor pricing pages or from your billing system.
 
@@ -380,7 +380,7 @@ def estimate_cost(
 
 With this helper you can attach per-request cost to traces and dashboards alongside latency and error rates.
 
-### Instrumenting usage
+<h3 id="instrumenting-usage">Instrumenting usage</h3>
 
 If your provider returns usage fields:
 
@@ -413,7 +413,7 @@ This structure makes it trivial to build "cost per feature" and "cost per user" 
 **Every token is a decision, both technical and financial.**
 </Callout>
 
-## Rate Limiting Strategies
+<h2 id="rate-limiting-strategies">Rate Limiting Strategies</h2>
 
 LLM APIs are aggressively rate limited: too many calls in a short period and you will hit 429 responses, followed by retries, followed by higher costs. Simple "sleep a bit and try again" logic works in prototypes, but shared backends need a consistent strategy that protects both users and wallets.
 
@@ -423,7 +423,7 @@ Common approaches:
 - Central concurrency limits per workload (for example, max 50 concurrent calls per environment)
 - Queueing and backpressure for bursty jobs (background workers with explicit throughput caps)
 
-### Minimal in-process rate limiter
+<h3 id="minimal-in-process-rate-limiter">Minimal in-process rate limiter</h3>
 
 ```python
 # rate_limiter.py
@@ -460,7 +460,7 @@ class TokenBucket:
 
 You can wrap `call_llm` to call `bucket.consume()` before each request and tune `rate_per_sec` per provider key.
 
-## A Production-Ready LLM Wrapper Class
+<h2 id="production-ready-llm-wrapper-class">A Production-Ready LLM Wrapper Class</h2>
 
 Bringing everything together, here is a simplified wrapper class that you can grow into a full client library.
 
@@ -532,7 +532,7 @@ class ProductionLLMClient:
 
 This client gives you one stable entry point per provider and model; everything else is configuration and observability.
 
-## Visual Flow: Request → Error → Retry → Success
+<h2 id="visual-flow-request-error-retry-success">Visual Flow: Request → Error → Retry → Success</h2>
 
 <Mermaid 
   chart={`
@@ -557,7 +557,7 @@ sequenceDiagram
 
 This sequence diagram mirrors what your logs should show during high load: clear distinctions between first attempts, retries, and final success.
 
-## Tiny Cost Calculator Tool (CLI)
+<h2 id="tiny-cost-calculator-tool-cli">Tiny Cost Calculator Tool (CLI)</h2>
 
 As a final practical tool, here is a tiny CLI script you can run locally to estimate costs for different token budgets.
 
@@ -592,7 +592,7 @@ This is not meant to replace proper monitoring, but it makes planning and discus
 If this post was about the plumbing around a single LLM call, the next post in this series will focus on the other half of reliability: prompts themselves. That post dives into real prompt engineering in production, including templates, formats like JSON and XML, and how to test prompts the way you test code.
 </Callout>
 
-## Key Takeaways
+<h2 id="key-takeaways">Key Takeaways</h2>
 
 1. **Authentication matters** - Leaked keys cost money. Use secret managers and never commit keys.
 
@@ -604,7 +604,7 @@ If this post was about the plumbing around a single LLM call, the next post in t
 
 5. **Unified interfaces reduce complexity** - One wrapper for all providers beats three different SDK patterns.
 
-## What's Next
+<h2 id="whats-next">What's Next</h2>
 
 Internal links:
 - [Prompt Engineering: The Difference Between Demos and Production](/blog/prompt-engineering-demos-vs-production) - Next in the Foundations series

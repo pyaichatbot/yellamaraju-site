@@ -17,7 +17,7 @@ One fictional example captures this gap. A startup shipped an onboarding assista
 
 This post is about how to design prompts that survive those real-world edges, not just look impressive in one screenshot.
 
-## Why Prompt Engineering Matters in Production
+<h2 id="why-prompt-engineering-matters-in-production">Why Prompt Engineering Matters in Production</h2>
 
 <Callout type="warning" title="">
 **The real problem with prompt engineering is not that it's wrong. It's that it doesn't scale.**
@@ -42,7 +42,7 @@ Treating prompts as configuration rather than as text is the first step from dem
 **In production, prompts are configuration, not intelligence.**
 </Callout>
 
-## Structured Prompt Templates
+<h2 id="structured-prompt-templates">Structured Prompt Templates</h2>
 
 A structured prompt template is a repeatable shape for instructions, context, examples, and output format. Instead of concatenating strings until it "looks right," you define sections and fill them with data.
 
@@ -54,7 +54,7 @@ A robust template often has:
 - Optional examples: a few demonstrative input/output pairs
 - Output format: explicit JSON, XML, or Markdown
 
-### Example: JSON prompt template
+<h3 id="example-json-prompt-template">Example: JSON prompt template</h3>
 
 Even though JSON is still widely used, several practitioners have argued that it is not always the best format for prompting itself, especially when models handle other structures like XML or Markdown more reliably.
 
@@ -78,11 +78,11 @@ Input:
 
 This is much more readable and testable than a one-off concatenated string literal.
 
-## Prompt Formats: JSON, XML, and Structured Patterns
+<h2 id="prompt-formats-json-xml-structured-patterns">Prompt Formats: JSON, XML, and Structured Patterns</h2>
 
 In practice, production prompts often gravitate towards a small set of structured formats. Below is a tour of several styles that work well for different workflows.
 
-### JSON: Machine-First Structure
+<h3 id="json-machine-first-structure">JSON: Machine-First Structure</h3>
 
 JSON remains a workhorse for machine-readable outputs and function calling because it is straightforward to parse and validates well against schemas.
 
@@ -97,7 +97,7 @@ Limitations:
 - Less forgiving of trailing commas and quotes
 - Harder for non-technical collaborators to read and adjust
 
-### XML and XML-like structures
+<h3 id="xml-and-xml-like-structures">XML and XML-like structures</h3>
 
 XML shines in prompts where nested structure and human readability both matter. Claude in particular responds very well to explicit XML tags and nested sections.
 
@@ -121,7 +121,7 @@ A recent practitioner post pointed to empirical gains when switching from JSON t
 **A prompt that works perfectly today can silently fail tomorrow after a model update, without a single line of code changing.**
 </Callout>
 
-### Markdown for Readability
+<h3 id="markdown-for-readability">Markdown for Readability</h3>
 
 Markdown offers a middle ground: structured enough for parsing, readable enough for humans.
 
@@ -141,7 +141,7 @@ Extract customer information from the following text.
 Return a JSON object with: name, email, signup_date
 ```
 
-## How Different Vendors Like to be Prompted
+<h2 id="how-different-vendors-like-to-be-prompted">How Different Vendors Like to be Prompted</h2>
 
 Each major vendor has its own preferred flavor of structure, and aligning with it often yields better results.
 
@@ -151,7 +151,7 @@ Each major vendor has its own preferred flavor of structure, and aligning with i
 
 The exact numbers will vary by use case, but the pattern is consistent: structured prompts tailored to the model's training style perform better than ad-hoc strings.
 
-## Few-Shot Learning Patterns
+<h2 id="few-shot-learning-patterns">Few-Shot Learning Patterns</h2>
 
 Few-shot prompts are still one of the most powerful levers for steering model behavior without fine-tuning. In production, the question is not "should we use examples" but "how many, where, and how do we keep them consistent."
 
@@ -161,7 +161,7 @@ Useful patterns:
 - Edge case examples: samples that specifically highlight tricky inputs
 - Negative examples: what not to do, or inputs that should produce "no answer"
 
-### Few-shot template (XML flavor)
+<h3 id="few-shot-template-xml-flavor">Few-shot template (XML flavor)</h3>
 
 ```xml
 <prompt>
@@ -192,7 +192,7 @@ Useful patterns:
 
 This structure keeps the task, examples, and output format clearly separated, which in turn makes it easier to test systematically.
 
-## Output Format Control
+<h2 id="output-format-control">Output Format Control</h2>
 
 The model will only be as strict as the prompt is. If you say "return JSON" but accept prose, you will eventually ship a broken release where downstream code expects a dictionary and receives a paragraph.
 
@@ -202,7 +202,7 @@ General guidelines:
 - Prefer syntactic anchors like `<json>` or `<xml>` wrappers for easier parsing
 - Use schemas or validators in your application to enforce structure
 
-### Format-locked JSON example
+<h3 id="format-locked-json-example">Format-locked JSON example</h3>
 
 ```python
 PROMPT_JSON_STRICT = """
@@ -223,7 +223,7 @@ Review:
 
 In your code, parse and validate this JSON before using it; if parsing fails, treat it as a soft failure and apply a fallback or re-ask strategy.
 
-## Handling Edge Cases and Adversarial Inputs
+<h2 id="handling-edge-cases-and-adversarial-inputs">Handling Edge Cases and Adversarial Inputs</h2>
 
 Real users will:
 
@@ -239,28 +239,13 @@ Helpful prompt-side mitigations:
 - Separate "what the model should do" from "raw user content" with delimiters
 - Add adversarial examples to your test suite to catch regression
 
-### Defensive wrapper pattern
+<h3 id="defensive-wrapper-pattern">Defensive wrapper pattern</h3>
 
-<Mermaid 
-  chart={`
-flowchart TD
-    A[User Input] --> B[Sanitize / trim length]
-    B --> C{Contains injection patterns?}
-    C -->|yes| D[Add warning tag to metadata]
-    C -->|no| E[Normal metadata]
-    D --> F[Apply defensive prompt template]
-    E --> F[Apply standard prompt template]
-    F --> G[LLM call]
-    G --> H[Validate structure]
-    H --> I[Return or trigger fallback]
-  `}
-  id="defensive-prompt-flow"
-  title="Defensive Prompt Processing Flow"
-/>
+<img id="defensive-wrapper-pattern-diagram" src="/images/defensive-wrapper-pattern.png" alt="Defensive Prompt Processing Flow: Defensive Prompt Processing Flow" />
 
 This diagram represents a simple but effective path: detect suspicious patterns, switch to a stricter template, and always validate outputs before trusting them.
 
-## Prompt Versioning and Registries
+<h2 id="prompt-versioning-and-registries">Prompt Versioning and Registries</h2>
 
 If prompts can change, they must be versioned. A growing set of tools and best-practice guides recommend treating prompts as immutable, versioned artifacts with semantic versioning and linked evaluation metrics.
 
@@ -270,7 +255,7 @@ Common patterns:
 - Prompt registry: a central store with metadata (owner, purpose, metrics, rollout status)
 - Environment pinning: development uses "latest," production pins to a tested version
 
-### Simple YAML-based registry
+<h3 id="simple-yaml-based-registry">Simple YAML-based registry</h3>
 
 ```yaml
 # prompts/profile_summary.yaml
@@ -304,7 +289,7 @@ def load_prompt(prompt_id: str, version: str) -> str:
 
 This is intentionally bare-bones; in practice, a dedicated platform like LangSmith, PromptLayer, Braintrust, or others will handle much of this, but the key idea is the same.
 
-## Testing Prompts Systematically
+<h2 id="testing-prompts-systematically">Testing Prompts Systematically</h2>
 
 Prompt testing is the difference between "this seems fine" and "we know this version is better than the previous one across 200 test cases." Modern guides recommend building prompt tests into CI/CD, using both synthetic and real examples, and automating evaluation where possible.
 
@@ -314,7 +299,7 @@ Key components of a testing framework:
 - Evaluators: exact match, fuzzy match, rubric-based, or LLM-as-a-judge
 - Regression tests: ensure new prompt versions do not break existing behavior
 
-### Python skeleton for prompt tests
+<h3 id="python-skeleton-for-prompt-tests">Python skeleton for prompt tests</h3>
 
 ```python
 # test_prompts.py
@@ -350,11 +335,11 @@ def run_tests(prompt_template: str) -> float:
 
 A testing framework like this can power CI jobs that fail builds when a new prompt version underperforms compared with the current production one.
 
-## Naive vs Production Prompt
+<h2 id="naive-vs-production-prompt">Naive vs Production Prompt</h2>
 
 A single example says more than any definition.
 
-### Side-by-side comparison
+<h3 id="side-by-side-comparison">Side-by-side comparison</h3>
 
 <div class="table-wrapper">
 
@@ -370,7 +355,7 @@ A single example says more than any definition.
 
 The production prompt looks more "bureaucratic," but it behaves predictably across a much wider set of inputs, which is exactly what you want once real customers are involved.
 
-## A Minimal Prompt Testing Diagram
+<h2 id="minimal-prompt-testing-diagram">A Minimal Prompt Testing Diagram</h2>
 
 <Mermaid 
   chart={`
@@ -388,7 +373,7 @@ flowchart TD
 
 This loop illustrates how prompts can follow the same lifecycle as code: propose, test, compare to baseline, and either ship or iterate.
 
-## What You Can Reuse
+<h2 id="what-you-can-reuse">What You Can Reuse</h2>
 
 From this post you can directly reuse:
 
@@ -403,7 +388,7 @@ Production prompt engineering is about reliability, not cleverness. The best pro
 **Reliable AI systems are engineered, not prompted.**
 </Callout>
 
-## Key Takeaways
+<h2 id="key-takeaways">Key Takeaways</h2>
 
 1. **Structure beats cleverness** - Templates and formats make prompts testable and maintainable.
 
@@ -417,7 +402,7 @@ Production prompt engineering is about reliability, not cleverness. The best pro
 
 6. **Validate outputs** - Never trust LLM output blindly. Parse and validate before using.
 
-## What's Next
+<h2 id="whats-next">What's Next</h2>
 
 Internal links:
 - [The Anatomy of a Production LLM Call](/blog/anatomy-of-a-production-llm-call) - Previous in the Foundations series
