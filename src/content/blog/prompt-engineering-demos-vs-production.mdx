@@ -357,19 +357,7 @@ The production prompt looks more "bureaucratic," but it behaves predictably acro
 
 <h2 id="minimal-prompt-testing-diagram">A Minimal Prompt Testing Diagram</h2>
 
-<Mermaid 
-  chart={`
-flowchart TD
-    A[New Prompt Version] --> B[Load test dataset]
-    B --> C[Run LLM over tests]
-    C --> D[Evaluate with metrics / LLM judge]
-    D --> E{Better than baseline?}
-    E -->|yes| F[Promote to staging / prod]
-    E -->|no| G[Reject and iterate]
-  `}
-  id="prompt-testing-flow"
-  title="Prompt Testing Workflow"
-/>
+<img id="prompt-testing-workflow" src="/images/prompt-testing-workflow.png" alt="Prompt Testing Workflow" />
 
 This loop illustrates how prompts can follow the same lifecycle as code: propose, test, compare to baseline, and either ship or iterate.
 

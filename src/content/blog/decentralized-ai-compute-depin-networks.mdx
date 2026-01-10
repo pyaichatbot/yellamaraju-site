@@ -127,23 +127,7 @@ class ExecutorAgent:
 
 **Solution Spectrum**:
 
-<Mermaid 
-  chart={`
-graph LR
-    A[Probabilistic Sampling] --> B[Deterministic Checks]
-    B --> C[Zero-Knowledge Proofs]
-    
-    A1["Fast, 95% confidence<br/>Sample 10% outputs"] -.-> A
-    B1["Hash matching<br/>Merkle trees"] -.-> B
-    C1["Cryptographic proof<br/>Slow but absolute"] -.-> C
-    
-    style A fill:#ffebcc
-    style B fill:#fff4cc
-    style C fill:#ccf4ff
-  `}
-  id="verification-spectrum"
-  title="Verification Solution Spectrum"
-/>
+<img id="verification-sol-spectrum" src="/images/verification-sol-spectrum.png" alt="Verification Solution Spectrum" />
 
 **Example Verification Logic**:
 

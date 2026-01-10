@@ -217,24 +217,8 @@ A simple but robust taxonomy:
 
 For hard failures, exponential backoff with jitter is the usual default; for soft failures, you need evaluation and guardrails rather than automatic retries.
 
-<Mermaid 
-  chart={`
-flowchart TD
-    A[LLM call started] --> B{HTTP / SDK error?}
-    B -->|yes| C{Is error transient?<br/>429, 5xx, timeout}
-    C -->|yes| D[Retry with backoff and jitter]
-    D --> A
-    C -->|no| E[Fail fast, log error, alert]
-    B -->|no| F{Output structurally valid?}
-    F -->|no| G[Attempt one safe retry<br/>with stricter instructions]
-    G --> A
-    F -->|yes| H{Domain checks pass?<br/>schema, constraints, eval}
-    H -->|no| I[Flag as soft failure,<br/>apply fallback path]
-    H -->|yes| J[Return success]
-  `}
-  id="error-handling-decision-tree"
-  title="Error Handling Decision Tree"
-/>
+<img id="error-handling-decision-tree" src="/images/error-handling-decision-tree.png" alt="Error Handling Decision Tree" />
+
 
 This tree separates "try again" problems from "stop now" problems, which is essential for cost control under load.
 
@@ -534,26 +518,7 @@ This client gives you one stable entry point per provider and model; everything 
 
 <h2 id="visual-flow-request-error-retry-success">Visual Flow: Request → Error → Retry → Success</h2>
 
-<Mermaid 
-  chart={`
-sequenceDiagram
-    participant App as Application
-    participant Client as LLM Client
-    participant Provider as LLM API
-
-    App->>Client: generate(messages, metadata)
-    Client->>Client: rate_limit.consume()
-    Client->>Provider: HTTP request
-    Provider-->>Client: 429 Too Many Requests
-    Client->>Client: classify as transient
-    Client->>Client: sleep(backoff)
-    Client->>Provider: HTTP retry
-    Provider-->>Client: 200 OK + tokens
-    Client-->>App: content + usage metadata
-  `}
-  id="llm-call-flow"
-  title="LLM Call Flow: Request to Success"
-/>
+<img id="llm-call-flow-rts" src="/images/llm-call-flow-rts.png" alt="LLM Call Flow: Request to Success" />
 
 This sequence diagram mirrors what your logs should show during high load: clear distinctions between first attempts, retries, and final success.
 
