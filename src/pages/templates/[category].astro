@@ -1,0 +1,315 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SearchInput from '../../components/SearchInput.astro';
+import { getCategoryById, getTemplatesByCategory, categories } from '../../data/templates';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  return categories.map((category) => ({
+    params: { category: category.id }
+  }));
+}
+
+const { category: categoryId } = Astro.params;
+const category = getCategoryById(categoryId || '');
+const categoryTemplates = categoryId ? getTemplatesByCategory(categoryId) : [];
+
+if (!category) {
+  return Astro.redirect('/templates');
+}
+
+// Get related blog post if available
+let relatedBlogPost = null;
+if (categoryTemplates.length > 0 && categoryTemplates[0].relatedBlogPost) {
+  const blogPosts = await getCollection('blog', ({ data }) => !data.draft && !data.hide);
+  relatedBlogPost = blogPosts.find(p => p.slug === categoryTemplates[0].relatedBlogPost);
+}
+---
+
+<BaseLayout 
+  title={`${category.name} Templates`}
+  description={category.description}
+>
+  <div class="category-page">
+    <header class="category-header">
+      <a href="/templates" class="back-link">← Back to Templates</a>
+      <h1>{category.name}</h1>
+      <p class="category-description">{category.description}</p>
+      {relatedBlogPost && (
+        <div class="related-post">
+          <p>
+            <strong>Related article:</strong>{' '}
+            <a href={`/blog/${relatedBlogPost.slug}`}>{relatedBlogPost.data.title}</a>
+          </p>
+        </div>
+      )}
+    </header>
+
+    <div class="search-section">
+      <SearchInput />
+    </div>
+
+    <div class="templates-grid">
+      {categoryTemplates.map((template) => (
+        <article class="template-card">
+          <div class="template-badge">{category.name}</div>
+          <h2><a href={`/templates/${categoryId}/${template.slug}`}>{template.title}</a></h2>
+          <p class="template-description">{template.description}</p>
+          {template.tags && template.tags.length > 0 && (
+            <div class="template-tags">
+              {template.tags.map(tag => (
+                <span class="tag">{tag}</span>
+              ))}
+            </div>
+          )}
+          <div class="template-actions">
+            <a href={`/templates/${categoryId}/${template.slug}`} class="template-link">View template →</a>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <section class="category-info">
+      <h2>How to Use These Templates</h2>
+      {categoryId === 'ai-use-cases' && (
+        <ol>
+          <li><strong>Start with the Assessment Worksheet</strong> - Use this for initial evaluation of any AI use case</li>
+          <li><strong>Calculate ROI</strong> - Use the ROI Calculator to determine financial viability</li>
+          <li><strong>Select AI Level</strong> - Reference the Decision Matrix to choose the right complexity level</li>
+          <li><strong>Run a PoC if uncertain</strong> - Use the PoC Checklist for 4-week validation</li>
+          <li><strong>Enterprise approval?</strong> - Use the Architecture Gate for formal governance</li>
+        </ol>
+      )}
+      {categoryId === 'ralph-wiggum' && (
+        <ol>
+          <li><strong>Start with the Task Definition Guide</strong> - Learn how to write Ralph-ready task definitions</li>
+          <li><strong>Use the Pre-Launch Checklist</strong> - Ensure success before every Ralph run</li>
+          <li><strong>Reference the PRD</strong> - Understand requirements for implementing Ralph workflows</li>
+          <li><strong>Follow the Skill Guide</strong> - Master autonomous AI coding from basics to advanced patterns</li>
+        </ol>
+      )}
+    </section>
+
+    <section class="templates-note">
+      <p>
+        <strong>Note:</strong> These templates are designed to be filled out and used as working documents. 
+        Download the Markdown files to edit them directly, or view them online for reference.
+      </p>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .category-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+  }
+
+  .category-header {
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-bottom: var(--space-md);
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--color-accent);
+  }
+
+  .category-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-sm);
+    color: var(--color-text);
+  }
+
+  .category-description {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+    max-width: 700px;
+    line-height: 1.6;
+    margin-bottom: var(--space-md);
+  }
+
+  .related-post {
+    margin-top: var(--space-md);
+    padding: var(--space-sm);
+    background: var(--color-bg-secondary);
+    border-radius: 6px;
+  }
+
+  .related-post p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-post a {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .related-post a:hover {
+    text-decoration: underline;
+  }
+
+  .search-section {
+    margin-bottom: var(--space-lg);
+    padding: 0 var(--space-md);
+  }
+
+  .templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+  }
+  
+  .template-card {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: var(--space-md);
+    transition: all 0.2s;
+  }
+
+  [data-theme="dark"] .template-card,
+  [data-theme="auto"] .template-card {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .template-card:hover {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  [data-theme="dark"] .template-card:hover,
+  [data-theme="auto"] .template-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .template-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-bottom: var(--space-sm);
+  }
+
+  .template-card h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: var(--space-xs);
+    line-height: 1.2;
+  }
+
+  .template-card h2 a {
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .template-card h2 a:hover {
+    color: var(--color-accent);
+  }
+
+  .template-description {
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: var(--space-sm);
+  }
+
+  .template-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+  }
+
+  .template-tags .tag {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--color-code-bg);
+    border-radius: 4px;
+    color: var(--color-text-secondary);
+  }
+  
+  .template-actions {
+    margin-top: var(--space-sm);
+  }
+
+  .template-link {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .template-link:hover {
+    color: var(--color-accent-hover);
+  }
+
+  .category-info {
+    background: var(--color-bg-secondary);
+    padding: var(--space-lg);
+    border-radius: 8px;
+    margin-bottom: var(--space-lg);
+  }
+  
+  .category-info h2 {
+    margin-bottom: var(--space-md);
+  }
+
+  .category-info ol {
+    line-height: 1.8;
+  }
+
+  .category-info li {
+    margin-bottom: var(--space-sm);
+  }
+
+  .templates-note {
+    background: var(--color-bg-tertiary);
+    padding: var(--space-lg);
+    border-radius: 8px;
+    border-left: 4px solid var(--color-primary);
+  }
+
+  .templates-note p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    .category-header h1 {
+      font-size: 2rem;
+    }
+    
+    .category-description {
+      font-size: 1.1rem;
+    }
+
+    .templates-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+    }
+  }
+</style>
+

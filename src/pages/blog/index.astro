@@ -6,7 +6,7 @@ import SearchInput from '../../components/SearchInput.astro';
 import { getCollection } from 'astro:content';
 import { calculateReadingTime, sortPostsByDate, getUniqueTags } from '../../utils/helpers';
 
-const allPosts = await getCollection('blog');
+const allPosts = await getCollection('blog', ({ data }) => !data.hide);
 const sortedPosts = sortPostsByDate(allPosts);
 const allTags = getUniqueTags(allPosts);
 ---

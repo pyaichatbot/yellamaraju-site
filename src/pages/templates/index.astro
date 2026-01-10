@@ -1,68 +1,98 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import SearchInput from '../../components/SearchInput.astro';
+import { categories, templates, getTemplatesByCategory, getFeaturedTemplates } from '../../data/templates';
 
-const templates = [
-  {
-    slug: 'ai-use-case-assessment-worksheet',
-    title: 'AI Use Case Assessment Worksheet',
-    description: '3-dimensional evaluation framework (Desirability, Feasibility, Viability) with scoring system.'
-  },
-  {
-    slug: 'ai-architecture-gate',
-    title: 'AI Architecture Gate',
-    description: 'Enterprise governance and approval process with 5 gates. Mandatory before budget approval.'
-  },
-  {
-    slug: 'ai-roi-calculator',
-    title: 'AI ROI Calculator',
-    description: 'Financial analysis template with cost/benefit calculations, risk scenarios, and sensitivity analysis.'
-  },
-  {
-    slug: 'poc-validation-checklist',
-    title: 'PoC Validation Checklist',
-    description: '4-week proof-of-concept framework with success criteria, week-by-week structure, and decision gates.'
-  },
-  {
-    slug: 'ai-level-decision-matrix',
-    title: 'AI Level Decision Matrix',
-    description: 'Reference guide for selecting the appropriate AI level (0-5) with explanations and cost estimates.'
-  }
-];
+const featuredTemplates = getFeaturedTemplates();
 ---
 
 <BaseLayout 
-  title="AI Use Case Templates"
-  description="Downloadable templates and frameworks for evaluating AI use cases, calculating ROI, and making informed decisions."
+  title="Templates & Resources"
+  description="Downloadable templates, frameworks, and guides for AI use case evaluation, autonomous coding, and building intelligent systems."
 >
   <div class="templates-page">
     <header class="templates-header">
-      <h1>AI Use Case Templates</h1>
+      <h1>Templates & Resources</h1>
       <p class="lead">
-        Frameworks and templates for evaluating AI use cases, calculating ROI, and making informed decisions.
+        Production-ready templates, frameworks, and guides to help you build better AI systems and workflows.
       </p>
     </header>
 
-    <div class="templates-grid">
-      {templates.map((template) => (
-        <article class="template-card">
-          <h2><a href={`/templates/${template.slug}`}>{template.title}</a></h2>
-          <p class="template-description">{template.description}</p>
-          <div class="template-actions">
-            <a href={`/templates/${template.slug}`} class="template-link">View template →</a>
-          </div>
-        </article>
-      ))}
+    <div class="search-section">
+      <SearchInput />
     </div>
 
-    <section class="templates-info">
-      <h2>How to Use These Templates</h2>
-      <ol>
-        <li><strong>Start with the Assessment Worksheet</strong> - Use this for initial evaluation of any AI use case</li>
-        <li><strong>Calculate ROI</strong> - Use the ROI Calculator to determine financial viability</li>
-        <li><strong>Select AI Level</strong> - Reference the Decision Matrix to choose the right complexity level</li>
-        <li><strong>Run a PoC if uncertain</strong> - Use the PoC Checklist for 4-week validation</li>
-        <li><strong>Enterprise approval?</strong> - Use the Architecture Gate for formal governance</li>
-      </ol>
+    {featuredTemplates.length > 0 && (
+      <section class="featured-section">
+        <h2 class="section-title">Featured Templates</h2>
+    <div class="templates-grid">
+          {featuredTemplates.map((template) => {
+            const category = categories.find(c => c.id === template.category);
+            return (
+              <article class="template-card featured">
+                <div class="template-badge">{category?.name || template.category}</div>
+                <h2><a href={`/templates/${template.category}/${template.slug}`}>{template.title}</a></h2>
+          <p class="template-description">{template.description}</p>
+          <div class="template-actions">
+                  <a href={`/templates/${template.category}/${template.slug}`} class="template-link">View template →</a>
+          </div>
+        </article>
+            );
+          })}
+        </div>
+      </section>
+    )}
+
+    <section class="categories-section">
+      <h2 class="section-title">Browse by Category</h2>
+      <div class="categories-grid">
+        {categories.map((category) => {
+          const categoryTemplates = getTemplatesByCategory(category.id);
+          return (
+            <article class="category-card">
+              <div class="category-header">
+                <h3><a href={`/templates/${category.id}`}>{category.name}</a></h3>
+                <span class="template-count">{categoryTemplates.length} {categoryTemplates.length === 1 ? 'template' : 'templates'}</span>
+              </div>
+              <p class="category-description">{category.description}</p>
+              <div class="category-templates-preview">
+                {categoryTemplates.slice(0, 3).map((template) => (
+                  <a href={`/templates/${category.id}/${template.slug}`} class="preview-link">
+                    {template.title}
+                  </a>
+                ))}
+                {categoryTemplates.length > 3 && (
+                  <a href={`/templates/${category.id}`} class="view-all-link">
+                    View all {categoryTemplates.length} templates →
+                  </a>
+                )}
+              </div>
+              <div class="category-actions">
+                <a href={`/templates/${category.id}`} class="category-link">Explore {category.name} →</a>
+              </div>
+            </article>
+          );
+        })}
+    </div>
+    </section>
+
+    <section class="all-templates-section">
+      <h2 class="section-title">All Templates</h2>
+      <div class="templates-grid">
+        {templates.map((template) => {
+          const category = categories.find(c => c.id === template.category);
+          return (
+            <article class="template-card">
+              <div class="template-badge">{category?.name || template.category}</div>
+              <h2><a href={`/templates/${template.category}/${template.slug}`}>{template.title}</a></h2>
+              <p class="template-description">{template.description}</p>
+              <div class="template-actions">
+                <a href={`/templates/${template.category}/${template.slug}`} class="template-link">View template →</a>
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </section>
 
     <section class="templates-note">
@@ -107,6 +137,146 @@ const templates = [
     line-height: 1.6;
   }
 
+  .search-section {
+    margin-bottom: var(--space-xl);
+    padding: 0 var(--space-md);
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    margin-bottom: var(--space-lg);
+    color: var(--color-text);
+  }
+
+  .featured-section {
+    margin-bottom: var(--space-xl);
+  }
+
+  .categories-section {
+    margin-bottom: var(--space-xl);
+  }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--space-lg);
+    margin-bottom: var(--space-lg);
+  }
+
+  .category-card {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: var(--space-lg);
+    transition: all 0.2s;
+  }
+
+  [data-theme="dark"] .category-card,
+  [data-theme="auto"] .category-card {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .category-card:hover {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  [data-theme="dark"] .category-card:hover,
+  [data-theme="auto"] .category-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--space-sm);
+  }
+
+  .category-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .category-header h3 a {
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .category-header h3 a:hover {
+    color: var(--color-accent);
+  }
+
+  .template-count {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+
+  .category-description {
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: var(--space-md);
+  }
+
+  .category-templates-preview {
+    margin-bottom: var(--space-md);
+  }
+
+  .preview-link {
+    display: block;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: var(--space-xs) 0;
+    transition: color 0.2s;
+  }
+
+  .preview-link:hover {
+    color: var(--color-accent);
+  }
+
+  .view-all-link {
+    display: block;
+    color: var(--color-accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: var(--space-xs);
+    transition: color 0.2s;
+  }
+
+  .view-all-link:hover {
+    color: var(--color-accent-hover);
+  }
+
+  .category-actions {
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .category-link {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: color 0.2s;
+  }
+
+  .category-link:hover {
+    color: var(--color-accent-hover);
+  }
+
+  .all-templates-section {
+    margin-bottom: var(--space-xl);
+  }
+
   .templates-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -116,10 +286,16 @@ const templates = [
   
   .template-card {
     background: rgba(0, 0, 0, 0.02);
-    border: none;
-    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
     padding: var(--space-md);
-    transition: background 0.2s;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .template-card.featured {
+    border-color: var(--color-accent);
+    border-width: 2px;
   }
 
   [data-theme="dark"] .template-card,
@@ -129,6 +305,9 @@ const templates = [
 
   .template-card:hover {
     background: rgba(0, 0, 0, 0.04);
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
   [data-theme="dark"] .template-card:hover,
@@ -136,8 +315,21 @@ const templates = [
     background: rgba(255, 255, 255, 0.05);
   }
 
+  .template-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-bottom: var(--space-sm);
+  }
+
   .template-card h2 {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     margin-bottom: var(--space-xs);
     line-height: 1.2;
@@ -159,7 +351,7 @@ const templates = [
     line-height: 1.6;
     margin-bottom: var(--space-sm);
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -169,47 +361,43 @@ const templates = [
   }
 
   .template-link {
-    color: var(--color-text);
+    color: var(--color-accent);
     text-decoration: none;
     font-size: 0.95rem;
+    font-weight: 500;
     transition: color 0.2s;
   }
 
   .template-link:hover {
-    color: var(--color-accent);
-  }
-
-  .templates-info {
-    background: var(--color-bg-secondary);
-    padding: var(--space-lg);
-    border-radius: 8px;
-    margin-bottom: var(--space-lg);
-  }
-  
-  .templates-info h2 {
-    margin-bottom: var(--space-md);
-  }
-
-  .templates-info ol {
-    line-height: 1.8;
-  }
-
-  .templates-info li {
-    margin-bottom: var(--space-sm);
+    color: var(--color-accent-hover);
   }
 
   .templates-note {
-    background: var(--color-bg-tertiary);
+    background: var(--color-bg-secondary);
     padding: var(--space-lg);
     border-radius: 8px;
     border-left: 4px solid var(--color-primary);
+    margin-bottom: var(--space-lg);
+  }
+  
+  .templates-note p {
+    margin: 0;
+    color: var(--color-text-secondary);
   }
 
   @media (max-width: 768px) {
+    .templates-header h1 {
+      font-size: 2rem;
+    }
+    
+    .lead {
+      font-size: 1.1rem;
+    }
+
+    .categories-grid,
     .templates-grid {
       grid-template-columns: 1fr;
       gap: var(--space-lg);
     }
   }
 </style>
-

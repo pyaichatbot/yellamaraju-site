@@ -5,7 +5,7 @@ import TagBadge from '../components/TagBadge.astro';
 import { getCollection } from 'astro:content';
 import { calculateReadingTime, sortPostsWithPinned, getUniqueTags } from '../utils/helpers';
 
-const allPosts = await getCollection('blog');
+const allPosts = await getCollection('blog', ({ data }) => !data.hide);
 const sortedPosts = sortPostsWithPinned(allPosts);
 // Show up to 3 posts: pinned posts first, then newest posts
 const featuredPosts = sortedPosts.slice(0, 3);

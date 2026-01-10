@@ -12,6 +12,7 @@ const blog = defineCollection({
     series: z.string().optional(),
     seriesPart: z.number().optional(),
     pinned: z.boolean().optional().default(false),
+    hide: z.boolean().optional().default(false),
   }),
 });
 

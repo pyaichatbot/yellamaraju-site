@@ -19,7 +19,7 @@ const readingTime = calculateReadingTime(post.body);
 // Get series posts if this post is part of a series
 let seriesPosts = undefined;
 if (post.data.series) {
-  const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+  const allPosts = await getCollection('blog', ({ data }) => !data.draft && !data.hide);
   const seriesPostsList = allPosts
     .filter(p => p.data.series === post.data.series && p.data.seriesPart)
     .sort((a, b) => (a.data.seriesPart || 0) - (b.data.seriesPart || 0))

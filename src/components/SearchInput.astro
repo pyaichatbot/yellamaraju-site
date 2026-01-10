@@ -126,11 +126,31 @@
     background: var(--color-code-bg);
   }
   
+  .search-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+    gap: 0.5rem;
+  }
+
   .search-result-title {
     font-weight: 600;
     color: var(--color-text);
-    margin-bottom: 0.25rem;
     font-size: 1rem;
+    flex: 1;
+  }
+
+  .search-result-type {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
   }
   
   .search-result-description {
@@ -146,6 +166,14 @@
     flex-wrap: wrap;
     font-size: 0.75rem;
     color: var(--color-text-secondary);
+    align-items: center;
+  }
+  
+  .search-result-category {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-accent);
+    text-transform: capitalize;
   }
   
   .search-result-tags {
@@ -389,24 +417,30 @@
           const allResults = Array.from(resultMap.values()).slice(0, 10);
           
           if (allResults.length === 0) {
-            resultsContainer.innerHTML = '<div class="search-no-results">No posts found. Try different keywords.</div>';
+            resultsContainer.innerHTML = '<div class="search-no-results">No results found. Try different keywords.</div>';
             return;
           }
           
           // Render results
           resultsContainer.innerHTML = allResults.map(item => {
-            const date = new Date(item.date).toLocaleDateString('en-US', {
+            const isTemplate = item.type === 'template';
+            const url = isTemplate ? `/templates/${item.slug}` : `/blog/${item.slug}`;
+            const date = item.date ? new Date(item.date).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'short',
               day: 'numeric'
-            });
+            }) : null;
             
             return `
-              <a href="/blog/${item.slug}" class="search-result-item">
+              <a href="${url}" class="search-result-item ${isTemplate ? 'search-result-template' : ''}">
+                <div class="search-result-header">
                 <div class="search-result-title">${highlightText(item.title, query)}</div>
+                  ${isTemplate ? `<span class="search-result-type">Template</span>` : ''}
+                </div>
                 <div class="search-result-description">${highlightText(item.description || item.excerpt || '', query)}</div>
                 <div class="search-result-meta">
-                  <span class="search-result-date">${date}</span>
+                  ${date ? `<span class="search-result-date">${date}</span>` : ''}
+                  ${item.category ? `<span class="search-result-category">${item.category}</span>` : ''}
                   ${item.tags && item.tags.length > 0 ? `
                     <div class="search-result-tags">
                       ${item.tags.map(tag => `<span class="search-result-tag">${tag}</span>`).join('')}
