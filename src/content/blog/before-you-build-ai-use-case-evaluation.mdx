@@ -26,7 +26,7 @@ This isn't about "How do we build an AI/ML model?" It's about "Does this problem
 
 Why do AI projects fail? After working on dozens of initiatives, I've noticed three patterns that keep showing up:
 
-1. **Bad Problem Statement** - "We want to use AI for customer support" isn't a problem—it's a solution looking for a problem. What's the actual pain? Long response times? High ticket volume? Start with the business problem, not the technology.
+1. **Bad Problem Statement** - "We want to use AI for customer support" isn't a problem-it's a solution looking for a problem. What's the actual pain? Long response times? High ticket volume? Start with the business problem, not the technology.
 
 2. **Wrong Abstraction Level** - Building a Level 4 (Advanced ML) system when Level 1 (Rules) would work. Over-engineering kills projects. A simple rule-based system catches 85% of cases, but teams jump to deep learning "because AI is cool." Match the AI level to the problem complexity.
 
@@ -42,7 +42,7 @@ Every AI use case must pass three dimensions: **Desirability**, **Feasibility**,
 
 <img id="3d-assessment-framework" src="/images/3d-framework.png" alt="3-Dimensional Assessment Framework: Desirability Check → Feasibility Check → Viability Check" />
 
-<h3 id="dimension-1-desirability">Dimension 1: Desirability — Is the Problem Worth Solving?</h3>
+<h3 id="dimension-1-desirability">Dimension 1: Desirability - Is the Problem Worth Solving?</h3>
 
 **Question:** Would solving this problem create measurable business value?
 
@@ -85,14 +85,14 @@ Success Metric: Fraud catch rate >99%, false positives &lt;0.5%
 - ✅ Measurable success metrics
 - ✅ Business owner identified
 
-<h3 id="dimension-2-feasibility">Dimension 2: Feasibility — Can We Technically Do This?</h3>
+<h3 id="dimension-2-feasibility">Dimension 2: Feasibility - Can We Technically Do This?</h3>
 
 **Question:** Do we have the data, skills, and infrastructure to build this?
 
 **What to Assess:**
 
 1. **Data Reality Check**
-   - Do we have the data we need? (Not "can we collect it"—do we HAVE it?)
+   - Do we have the data we need? (Not "can we collect it"-do we HAVE it?)
    - Is the data labeled? Complete? Fresh?
    - How much historical data exists?
    - What's the data quality?
@@ -143,7 +143,7 @@ Decision: Can't train ML on 80% correct labels. STOP or pivot to rules + GenAI
 - ✅ Compliance approval obtained
 - ✅ Technical team has required skills
 
-<h3 id="dimension-3-viability">Dimension 3: Viability — Can We Sustain This?</h3>
+<h3 id="dimension-3-viability">Dimension 3: Viability - Can We Sustain This?</h3>
 
 **Question:** Is this financially justified and operationally sustainable?
 
@@ -224,7 +224,7 @@ Not all AI is created equal. Understanding AI levels helps you pick the right so
 </div>
 
 <Callout type="info" title="Default Recommendation">
-Start at Level 2 or 3. Most problems don't need Level 4 or 5. You can always upgrade later if needed. Over-engineering is a leading cause of AI project failure—[McKinsey's research](https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai) ([analysis](https://medium.com/@david.hung.yang/deep-dive-into-mckinseys-the-state-of-ai-in-2025-from-everyone-using-ai-to-a-few-using-it-6095987cec14)) shows that most organizations remain stuck in pilot mode, often because they've over-engineered solutions instead of starting simple.
+Start at Level 2 or 3. Most problems don't need Level 4 or 5. You can always upgrade later if needed. Over-engineering is a leading cause of AI project failure-[McKinsey's research](https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai) ([analysis](https://medium.com/@david.hung.yang/deep-dive-into-mckinseys-the-state-of-ai-in-2025-from-everyone-using-ai-to-a-few-using-it-6095987cec14)) shows that most organizations remain stuck in pilot mode, often because they've over-engineered solutions instead of starting simple.
 </Callout>
 
 For detailed guidance on selecting the right level, download the [AI Level Decision Matrix](/templates/ai-use-cases/ai-level-decision-matrix).
@@ -259,27 +259,34 @@ Here's how this framework played out in two real projects:
 
 <h3 id="example-1-real-time-fraud-detection">Example 1: Real-Time Fraud Detection</h3>
 
-**Problem:** Payment processing network handles 100M+ daily transactions. Rule-based fraud detection had high false positive rates—legitimate transactions were being declined.
-
-**Assessment:** ✅ Desirability (€5M annual cost → €3M savings target), ✅ Feasibility (15+ years of labeled data, ML expertise), ✅ Viability (€2M+/year savings, positive Year 1 ROI)
-
-**AI Level:** Level 4 (Advanced ML) - Real-time ensemble model, sub-100ms latency
-
-**Result:** 99.2% fraud catch rate, 40% reduction in false positives, €2M+/year savings
-
-**Key Lesson:** This took two years to mature. They started with Logistic Regression at 85% accuracy, then evolved to ensemble models. Don't expect Level 4 perfection on day one—it doesn't work that way.
+- **Problem:** Payment processing network handles 100M+ daily transactions. Rule-based fraud detection had high false positive rates—legitimate transactions were being declined.
+- **Assessment:**
+  - ✅ Desirability (€5M annual cost → €3M savings target)
+  - ✅ Feasibility (15+ years of labeled data, ML expertise)
+  - ✅ Viability (€2M+/year savings, positive Year 1 ROI)
+- **AI Level:** Level 4 (Advanced ML) – Real-time ensemble model, sub-100ms latency
+- **Result:** 99.2% fraud catch rate, 40% reduction in false positives, €2M+/year savings
+- **Key Lesson:** This took two years to mature. They started with Logistic Regression at 85% accuracy, then evolved to ensemble models. Don't expect Level 4 perfection on day one—it doesn't work that way.
 
 <h3 id="example-2-customer-churn-prediction">Example 2: Customer Churn Prediction</h3>
 
-**Problem:** Banking platform needs to identify at-risk customers before they switch banks.
-
-**Assessment:** ✅ Desirability (early identification → retention offers), 🟡 Feasibility (data quality gaps between banks, varying definitions), 🟡 Viability (€50K PoC, €200K+ full build, Year 1.5 payback)
-
-**AI Level:** Level 2-3 (Predictive Analytics) - Baseline 72% accuracy, target 82-85%
-
-**Status:** PoC Week 3 of 4. Initial validation: 81% accuracy (beats 72% baseline). Data quality issues discovered. Decision gate: GO, PIVOT, or STOP.
-
-**Key Lesson:** This is what a real PoC looks like. Four weeks. Clear success criteria. Decision gates. Spending €50K to answer a €5M question? That's smart. Data quality issues are real, and you want to find them in a PoC, not after six months of development.
+- **Problem:** Banking platform needs to identify at-risk customers before they switch banks.
+- **Assessment:**
+  - ✅ Desirability: Early identification → retention offers
+  - 🟡 Feasibility: Data quality gaps between banks, varying definitions
+  - 🟡 Viability: €50K PoC, €200K+ full build, Year 1.5 payback
+- **AI Level:** Level 2-3 (Predictive Analytics)
+  - Baseline: 72% accuracy
+  - Target: 82-85% accuracy
+- **Status:** 
+  - PoC Week 3 of 4
+  - Initial validation: 81% accuracy (beats 72% baseline)
+  - Data quality issues discovered
+  - Decision gate: GO, PIVOT, or STOP
+- **Key Lesson:** 
+  - This is what a real PoC looks like: Four weeks, clear success criteria, and decision gates.
+  - Spending €50K to answer a €5M question is smart.
+  - Data quality issues are real—it's much better to discover them in a PoC than after six months of development.
 
 <h2 id="poc-validation-when-uncertainty-exists">PoC Validation: When Uncertainty Exists</h2>
 
@@ -314,7 +321,7 @@ For the complete PoC framework, download the [PoC Validation Checklist](/templat
 
 <h2 id="ai-architecture-gate">The AI Architecture Gate</h2>
 
-For enterprise organizations, implement an **AI Architecture Gate**—a mandatory review before any AI project gets budget approval. Five gates: Problem Validation → AI Necessity → AI Level Approval → Data & Compliance → Risk Assessment.
+For enterprise organizations, implement an **AI Architecture Gate**-a mandatory review before any AI project gets budget approval. Five gates: Problem Validation → AI Necessity → AI Level Approval → Data & Compliance → Risk Assessment.
 
 The goal? Only justified, feasible, and safe AI use cases get budget approval. Download the [AI Architecture Gate template](/templates/ai-use-cases/ai-architecture-gate) for the complete framework.
 
@@ -412,7 +419,7 @@ You've evaluated your use case. What happens now depends on your decision:
 
 - **If GO:** Grab the [AI Use Case Assessment Worksheet](/templates/ai-use-cases/ai-use-case-assessment-worksheet) and start planning implementation
 - **If POC:** Use the [PoC Validation Checklist](/templates/ai-use-cases/poc-validation-checklist) to structure your 4-week validation
-- **If STOP:** Document why in the assessment worksheet. Revisit in six months—conditions change
+- **If STOP:** Document why in the assessment worksheet. Revisit in six months-conditions change
 
 Need help with technical implementation?
 - [Building Production-Ready AI Agents](/blog/building-production-ai-agents) - For autonomous systems
