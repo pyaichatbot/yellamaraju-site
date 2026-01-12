@@ -139,6 +139,91 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
 </BaseLayout>
 
 <script is:inline>
+  // External links enhancement - automatically processes all external links in blog posts
+  function enhanceExternalLinks() {
+    const currentHost = window.location.hostname;
+    const postContent = document.querySelector('.post-content');
+    
+    if (!postContent) return;
+    
+    const links = postContent.querySelectorAll('a[href]:not(.external-link)');
+    
+    links.forEach(link => {
+      // Skip if already processed
+      if (link.classList.contains('external-link')) return;
+      
+      const href = link.getAttribute('href');
+      if (!href) return;
+      
+      // Skip anchor links and mailto/tel links
+      if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+      
+      // Check if it's an external link
+      try {
+        let url;
+        // Handle absolute URLs
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          url = new URL(href);
+        } else if (href.startsWith('//')) {
+          url = new URL(window.location.protocol + href);
+        } else {
+          // Relative URL - not external
+          return;
+        }
+        
+        const isExternal = url.hostname !== currentHost && 
+                         url.hostname !== '' &&
+                         !url.hostname.startsWith('localhost') && 
+                         !url.hostname.startsWith('127.0.0.1') &&
+                         url.hostname !== window.location.hostname.replace('www.', '') &&
+                         currentHost.replace('www.', '') !== url.hostname.replace('www.', '');
+        
+        if (isExternal) {
+          // Add external link attributes
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
+          const linkText = link.textContent.trim() || href;
+          link.setAttribute('aria-label', `${linkText} (opens in new tab: ${url.hostname})`);
+          link.classList.add('external-link');
+          
+          // Add external link icon if not already present
+          if (!link.querySelector('.external-link-icon')) {
+            const icon = document.createElement('span');
+            icon.className = 'external-link-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.innerHTML = `
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10.5 1.5L1.5 10.5M10.5 1.5H6M10.5 1.5V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            `;
+            link.appendChild(icon);
+          }
+          
+          // Add tooltip on hover
+          link.addEventListener('mouseenter', function() {
+            if (!this.querySelector('.external-link-tooltip')) {
+              const tooltip = document.createElement('span');
+              tooltip.className = 'external-link-tooltip';
+              tooltip.textContent = url.hostname;
+              this.appendChild(tooltip);
+            }
+          });
+        }
+      } catch (e) {
+        // Invalid URL, skip
+        console.debug('Skipping invalid URL:', href);
+      }
+    });
+  }
+
+  // Run on DOMContentLoaded or immediately if already loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enhanceExternalLinks);
+  } else {
+    // DOM already loaded, run immediately
+    enhanceExternalLinks();
+  }
+
   // Table scroll indicator management
   document.addEventListener('DOMContentLoaded', () => {
     const tableWrappers = document.querySelectorAll('.table-wrapper');
@@ -252,6 +337,7 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
       // Insert anchor link into heading
       heading.appendChild(anchor);
     });
+
   });
 </script>
 
@@ -381,7 +467,9 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     left: -1.5rem;
     top: 50%;
     transform: translateY(-50%);
-    opacity: 0;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none;
     transition: opacity var(--transition-fast);
     color: var(--color-text-secondary);
     text-decoration: none;
@@ -392,10 +480,17 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
   }
 
   .post-content h2:hover .heading-anchor,
-  .post-content h3:hover .heading-anchor,
+  .post-content h3:hover .heading-anchor {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto;
+  }
+
   .post-content h2 .heading-anchor:focus,
   .post-content h3 .heading-anchor:focus {
-    opacity: 1;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto;
   }
 
   .post-content h2 .heading-anchor:hover,
@@ -538,6 +633,75 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     color: var(--color-accent);
   }
   
+  /* External link styling */
+  .post-content .external-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .external-link-icon {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.6;
+    transition: opacity var(--transition-fast);
+    flex-shrink: 0;
+    margin-left: 0.125rem;
+  }
+
+  .external-link:hover .external-link-icon {
+    opacity: 1;
+  }
+
+  .external-link-icon svg {
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+  }
+
+  .external-link-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-0.5rem);
+    background: var(--color-text);
+    color: var(--color-background);
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    z-index: 1000;
+    margin-bottom: 0.25rem;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .external-link-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: var(--color-text);
+  }
+
+  .external-link:hover .external-link-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  [data-theme="dark"] .external-link-tooltip,
+  [data-theme="auto"] .external-link-tooltip {
+    background: var(--color-text);
+    color: var(--color-background);
+  }
+  
   @media (max-width: 768px) {
     .post-title {
       font-size: 2rem;
@@ -549,6 +713,11 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     
     .post-content {
       font-size: 1rem;
+    }
+
+    .external-link-tooltip {
+      font-size: 0.6875rem;
+      padding: 0.25rem 0.5rem;
     }
   }
 </style>

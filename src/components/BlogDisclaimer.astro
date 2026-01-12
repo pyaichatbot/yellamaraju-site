@@ -8,7 +8,7 @@ const { type = 'lightweight' } = Astro.props;
 
 {type === 'lightweight' && (
   <p class="disclaimer-lightweight">
-    Views expressed are my own and do not represent my employer.
+    Views expressed are my own and do not represent my employer. External links open in a new tab and are not my responsibility.
   </p>
 )}
 
@@ -16,6 +16,9 @@ const { type = 'lightweight' } = Astro.props;
   <div class="blog-disclaimer-full">
     <p class="disclaimer-text">
       <strong>Disclaimer:</strong> The views and opinions expressed on this site are my own and do not necessarily reflect those of my employer. Content is provided for informational purposes based on my experience building AI systems. Technical implementations and approaches may vary based on specific use cases, organizational requirements, and versions of tools, packages, and software dependencies.
+    </p>
+    <p class="disclaimer-text">
+      <strong>External Links:</strong> This blog may contain links to external websites, resources, and citations. I am not responsible for the content, privacy practices, or security of external sites. External links open in a new tab for your convenience. Please review the privacy policies and terms of service of any external sites you visit.
     </p>
   </div>
 )}
