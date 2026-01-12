@@ -252,44 +252,6 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
       // Insert anchor link into heading
       heading.appendChild(anchor);
     });
-
-    // Image/diagram anchor links functionality
-    const images = document.querySelectorAll('.post-content img[id]');
-    
-    images.forEach(img => {
-      const id = img.getAttribute('id');
-      if (!id) return;
-      
-      // Wrap image in a container if not already wrapped
-      let container = img.parentElement;
-      if (!container || container.tagName !== 'DIV' || !container.classList.contains('image-anchor-wrapper')) {
-        container = document.createElement('div');
-        container.className = 'image-anchor-wrapper';
-        img.parentNode?.insertBefore(container, img);
-        container.appendChild(img);
-      }
-      
-      // Create anchor link element
-      const anchor = document.createElement('a');
-      anchor.href = `#${id}`;
-      anchor.className = 'image-anchor';
-      anchor.setAttribute('aria-label', 'Copy link to this image');
-      anchor.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 13C10.4295 13.5741 10.9774 14.0491 11.6066 14.3929C12.2357 14.7367 12.9315 14.9411 13.6467 14.9923C14.3618 15.0435 15.0796 14.9403 15.7513 14.6897C16.4231 14.4392 17.0331 14.047 17.54 13.54L20.54 10.54C21.4508 9.59695 21.9548 8.33394 21.9434 7.02296C21.932 5.71198 21.4061 4.45791 20.4791 3.53087C19.5521 2.60383 18.298 2.07801 16.987 2.06659C15.676 2.05517 14.413 2.55918 13.47 3.46997L11.75 5.17997" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M14 11C13.5705 10.4259 13.0226 9.9508 12.3934 9.60704C11.7643 9.26328 11.0685 9.05886 10.3533 9.00766C9.63816 8.95645 8.92037 9.05972 8.24865 9.31026C7.57693 9.5608 6.96688 9.95301 6.45997 10.46L3.45997 13.46C2.54918 14.403 2.04517 15.666 2.05659 16.977C2.06801 18.288 2.59383 19.5421 3.52087 20.4691C4.44791 21.3961 5.70198 21.922 7.01296 21.9334C8.32394 21.9448 9.58695 21.4408 10.53 20.53L12.24 18.82" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      `;
-      
-      // Handle click to copy permalink
-      anchor.addEventListener('click', (e) => {
-        e.preventDefault();
-        copyPermalink(id, anchor);
-      });
-      
-      // Insert anchor link into container
-      container.appendChild(anchor);
-    });
   });
 </script>
 
@@ -462,70 +424,6 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
   @keyframes fadeInOut {
     0%, 100% { opacity: 0; transform: translateX(-5px); }
     10%, 90% { opacity: 1; transform: translateX(0); }
-  }
-
-  /* Image anchor links */
-  .post-content .image-anchor-wrapper {
-    position: relative;
-    display: inline-block;
-    max-width: 100%;
-    scroll-margin-top: 2rem;
-  }
-
-  .post-content .image-anchor {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-    color: var(--color-text-secondary);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    padding: 0.5rem;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(4px);
-  }
-
-  [data-theme="dark"] .post-content .image-anchor,
-  [data-theme="auto"] .post-content .image-anchor {
-    background: rgba(0, 0, 0, 0.7);
-    color: var(--color-text);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    [data-theme="auto"] .post-content .image-anchor {
-      background: rgba(0, 0, 0, 0.7);
-      color: var(--color-text);
-    }
-  }
-
-  .post-content .image-anchor-wrapper:hover .image-anchor,
-  .post-content .image-anchor:focus {
-    opacity: 1;
-  }
-
-  .post-content .image-anchor:hover {
-    color: var(--color-accent);
-    background: rgba(255, 255, 255, 1);
-  }
-
-  [data-theme="dark"] .post-content .image-anchor:hover,
-  [data-theme="auto"] .post-content .image-anchor:hover {
-    background: rgba(0, 0, 0, 0.9);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    [data-theme="auto"] .post-content .image-anchor:hover {
-      background: rgba(0, 0, 0, 0.9);
-    }
-  }
-
-  .post-content .image-anchor svg {
-    width: 16px;
-    height: 16px;
-    display: block;
   }
 
   @media (max-width: 768px) {
