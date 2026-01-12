@@ -17,7 +17,7 @@ This is a static site built for **Praveen Srinag Yellamaraju**, an AI Architect 
 - **Framework**: Astro 4.0 (Static Site Generator)
 - **Content**: MDX for blog posts with rich components
 - **Styling**: Custom CSS with editorial typography
-- **Fonts**: Merriweather (serif), Source Sans Pro (sans-serif), JetBrains Mono (code)
+- **Fonts**: Charter (serif body), Source Sans Pro (sans-serif headings), JetBrains Mono (code)
 - **Deployment**: Netlify (recommended) or Vercel
 
 ### Key Features

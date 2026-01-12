@@ -1,7 +1,7 @@
 ---
 title: "AI and Data Quality: The $12.9 Million Problem and How Training Data Poisons Your AI"
 description: "AI doesn't create garbage; it recycles your mess at warp speed. How bad data poisons AI at the training and prompting stages, and what you can do about it."
-date: 2026-01-13
+date: 2026-01-12
 tags: ["AI", "Data Quality", "Production", "Best Practices"]
 series: "Production Operations"
 seriesPart: 1
@@ -19,6 +19,8 @@ The old programmer saying "garbage in, garbage out" has evolved into something f
 
 Let me walk you through why data quality matters more in 2026 than ever before, and how you can stop your AI from becoming another cautionary tale.
 
+<img id="garbage-in-garbage-out-amplified" src="/images/garbage-in-garbage-out-amplified.png" alt="Visual metaphor showing how bad data gets amplified through AI systems"/>
+
 ---
 
 <h2 id="the-12-9-million-problem-nobody-talks-about">The $12.9 Million Problem Nobody Talks About</h2>
@@ -28,6 +30,8 @@ Here's a number that should keep every CTO awake at night: **$12.9 million**. Th
 When IBM spent $62 million on Watson for Oncology at M.D. Anderson, they discovered something terrifying. Watson was giving dangerous cancer treatment advice, like prescribing medications that cause bleeding to patients who were already hemorrhaging. The culprit? The training data contained hypothetical cancer cases instead of real patient data.
 
 Think about that for a second. A $62 million AI system trained on fake data, making life or death decisions. That's not a technology problem. That's a data problem dressed up in expensive algorithms.
+
+<img id="data-quality-cost-impact" src="/images/data-quality-cost-impact.png" alt="Infographic showing $12.9 million annual cost of poor data quality and AI project failure statistics"/>
 
 The statistics paint an even darker picture:
 - **42% of companies** abandoned most of their AI initiatives in 2025, up from just 17% in 2024
@@ -61,6 +65,8 @@ In this first part, we'll cover the foundation layer: training data and promptin
 - Customer records duplicated three times with slightly different names and addresses
 - Missing required fields rendering entire datasets unusable
 - Biased datasets teaching AI to perpetuate systemic discrimination
+
+<img id="training-data-quality-issues" src="/images/training-data-quality-issues.png" alt="Visual diagram showing common training data problems: inconsistent date formats, duplicate records, missing values, and biased data"/>
 
 **Your defense checklist**:
 
@@ -126,6 +132,8 @@ print(f"Data Quality Report: {report}")
 **Your defense strategy**:
 
 The difference between a bad prompt and a good prompt is like the difference between saying "make dinner" and "prepare grilled salmon with roasted vegetables for two people, ready by 7 PM."
+
+<img id="bad-vs-good-prompt-comparison" src="/images/bad-vs-good-prompt-comparison.png" alt="Side-by-side comparison showing vague prompts vs detailed, structured prompts with context and constraints"/>
 
 **Bad prompt example**:
 ```

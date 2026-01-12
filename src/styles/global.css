@@ -57,9 +57,20 @@
 
 :root {
   /* Typography - editorial scale */
-  --font-serif: 'Merriweather', 'Georgia', serif;
-  --font-sans: 'Source Sans Pro', 'Helvetica Neue', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --font-serif: 'Charter', 'Georgia', 'Cambria', serif;
+  --font-sans: 'Source Sans Pro', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  
+  /* Font sizes */
+  --text-base: 19px;
+  --text-lg: 21px;
+  --text-sm: 16px;
+  --text-xs: 14px;
+  
+  /* Line heights */
+  --leading-normal: 1.6;
+  --leading-tight: 1.2;
+  --leading-relaxed: 1.75;
   
   /* Spacing scale */
   --space-xs: 0.5rem;
@@ -93,22 +104,24 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 1.7;
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
   color: var(--color-text);
   background-color: var(--color-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.003em;
 }
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
-  font-weight: 700;
-  line-height: 1.2;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: var(--leading-tight);
   color: var(--color-text);
   margin-bottom: var(--space-sm);
+  letter-spacing: -0.02em;
 }
 
 h1 {
@@ -134,6 +147,21 @@ h4 {
 
 p {
   margin-bottom: var(--space-md);
+}
+
+/* Long-form content - optimized for reading */
+article.prose,
+.prose,
+.post-content,
+.blog-post-content {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+}
+
+/* Navigation and UI elements */
+nav, .navigation, .metadata, .caption, button, .site-header {
+  font-family: var(--font-sans);
 }
 
 a {
@@ -515,8 +543,20 @@ hr {
 
 /* Responsive */
 @media (max-width: 768px) {
+  :root {
+    --text-base: 17px;
+    --text-lg: 19px;
+    --space-lg: 2rem;
+    --space-xl: 3rem;
+    --space-2xl: 4rem;
+  }
+  
   html {
     font-size: 16px;
+  }
+  
+  body {
+    font-size: var(--text-base);
   }
   
   h1 {
@@ -527,10 +567,11 @@ hr {
     font-size: 1.5rem;
   }
   
-  :root {
-    --space-lg: 2rem;
-    --space-xl: 3rem;
-    --space-2xl: 4rem;
+  article.prose,
+  .prose,
+  .post-content,
+  .blog-post-content {
+    font-size: var(--text-base);
   }
 }
 
