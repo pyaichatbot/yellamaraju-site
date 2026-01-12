@@ -15,7 +15,8 @@ export const NAV_ITEMS = [
   { label: 'Templates', href: '/templates' },
   { label: 'About', href: '/about' },
   { label: 'Resume', href: '/resume' },
-  { label: 'Contact', href: '/contact' }
+  { label: 'Contact', href: '/contact' },
+  { label: 'AI Learning Playground', href: 'https://pyaichatbot.github.io/ai-learning-playground/' }
 ];
 
 export const POSTS_PER_PAGE = 10;
