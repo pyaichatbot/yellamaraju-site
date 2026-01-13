@@ -1,0 +1,1070 @@
+---
+/**
+ * Ask Praveen.AI Chat Widget Component
+ * 
+ * Floating chat widget for blog posts that allows users to ask questions
+ * about the content using RAG (Retrieval Augmented Generation).
+ * 
+ * Story 10.2: Chat Widget UI Component
+ */
+
+interface Props {
+  currentUrl?: string;
+  postTitle?: string;
+}
+
+const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : '', postTitle = '' } = Astro.props;
+---
+
+<div id="ask-ai-chatbot" class="ask-ai-chatbot" data-current-url={currentUrl} data-post-title={postTitle}>
+  <!-- Floating Toggle Button -->
+  <button
+    id="chatbot-toggle"
+    class="chatbot-toggle"
+    aria-label="Open Ask Praveen.AI chat"
+    aria-expanded="false"
+    aria-controls="chatbot-panel"
+  >
+    <svg class="chatbot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="chatbot-badge" id="chatbot-badge" aria-hidden="true">1</span>
+  </button>
+
+  <!-- Chat Panel -->
+  <div
+    id="chatbot-panel"
+    class="chatbot-panel"
+    role="dialog"
+    aria-labelledby="chatbot-title"
+    aria-modal="true"
+    hidden
+  >
+    <!-- Header -->
+    <div class="chatbot-header">
+      <div class="chatbot-header-content">
+        <h2 id="chatbot-title" class="chatbot-title">Ask Praveen.AI</h2>
+        <p class="chatbot-subtitle">Ask questions about this post</p>
+      </div>
+      <button
+        id="chatbot-close"
+        class="chatbot-close"
+        aria-label="Close chat"
+        type="button"
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Messages Container -->
+    <div id="chatbot-messages" class="chatbot-messages" role="log" aria-live="polite" aria-atomic="false">
+      <div class="chatbot-welcome">
+        <p>Hi! I'm Praveen.AI. Ask me anything about this post, and I'll help you understand the content better.</p>
+        <div class="chatbot-suggestions">
+          <button class="suggestion-chip" data-suggestion="Summarize this post">Summarize this post</button>
+          <button class="suggestion-chip" data-suggestion="What are the key takeaways?">Key takeaways</button>
+          <button class="suggestion-chip" data-suggestion="Explain the main concepts">Explain concepts</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chatbot-input-area">
+      <div class="chatbot-input-wrapper">
+        <textarea
+          id="chatbot-input"
+          class="chatbot-input"
+          placeholder="Ask a question about this post..."
+          rows="1"
+          aria-label="Type your question"
+          aria-describedby="chatbot-input-help"
+        ></textarea>
+        <button
+          id="chatbot-send"
+          class="chatbot-send"
+          type="button"
+          aria-label="Send message"
+          disabled
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M18 2L9 11M18 2l-7 7M18 2H12M18 2v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <p id="chatbot-input-help" class="chatbot-input-help" aria-live="polite">
+        Press Enter to send, Shift+Enter for new line
+      </p>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="chatbot-loading" class="chatbot-loading" hidden aria-hidden="true">
+      <div class="loading-spinner"></div>
+      <span>Thinking...</span>
+    </div>
+
+    <!-- Error Message -->
+    <div id="chatbot-error" class="chatbot-error" hidden role="alert">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" fill="currentColor"/>
+      </svg>
+      <span id="chatbot-error-message">Something went wrong. Please try again.</span>
+      <button id="chatbot-error-dismiss" class="chatbot-error-dismiss" aria-label="Dismiss error">×</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * Ask Praveen.AI Chatbot Client
+   * Handles UI interactions and API communication
+   * 
+   * Story 10.3: Integrated client-side RAG search
+   */
+
+  interface Message {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+    citations?: string[];
+  }
+
+  class AskAIChatbot {
+    private panel: HTMLElement | null;
+    private toggle: HTMLElement | null;
+    private closeBtn: HTMLElement | null;
+    private messagesContainer: HTMLElement | null;
+    private input: HTMLTextAreaElement | null;
+    private sendBtn: HTMLButtonElement | null;
+    private loadingIndicator: HTMLElement | null;
+    private errorMessage: HTMLElement | null;
+    private messages: Message[] = [];
+    private isOpen = false;
+    private currentUrl: string;
+    private postTitle: string;
+    private searchManager: any = null;
+    private indexLoaded = false;
+
+    constructor() {
+      this.panel = document.getElementById('chatbot-panel');
+      this.toggle = document.getElementById('chatbot-toggle');
+      this.closeBtn = document.getElementById('chatbot-close');
+      this.messagesContainer = document.getElementById('chatbot-messages');
+      this.input = document.getElementById('chatbot-input') as HTMLTextAreaElement;
+      this.sendBtn = document.getElementById('chatbot-send') as HTMLButtonElement;
+      this.loadingIndicator = document.getElementById('chatbot-loading');
+      this.errorMessage = document.getElementById('chatbot-error');
+
+      const container = document.getElementById('ask-ai-chatbot');
+      this.currentUrl = container?.dataset.currentUrl || window.location.pathname;
+      this.postTitle = container?.dataset.postTitle || '';
+
+      this.init();
+    }
+
+    private async loadSearchManager(): Promise<void> {
+      try {
+        // Dynamic import - Astro will bundle this correctly
+        // The path is relative to the component file location
+        const searchModule = await import('../utils/rag-search');
+        
+        if (searchModule && searchModule.getRAGSearchManager) {
+          this.searchManager = searchModule.getRAGSearchManager();
+          console.log('✅ RAG search manager loaded successfully');
+        } else {
+          throw new Error('getRAGSearchManager export not found in rag-search module');
+        }
+      } catch (error) {
+        console.error('❌ Failed to load RAG search manager:', error);
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
+        // Don't throw - allow chat to work without search (will call API directly)
+        this.searchManager = null;
+      }
+    }
+
+    private init(): void {
+      if (!this.panel || !this.toggle || !this.input) return;
+
+      // Toggle button
+      this.toggle.addEventListener('click', () => this.togglePanel());
+      this.closeBtn?.addEventListener('click', () => this.closePanel());
+
+      // Input handling
+      this.input.addEventListener('input', () => this.handleInputChange());
+      this.input.addEventListener('keydown', (e) => this.handleKeyDown(e));
+      this.sendBtn?.addEventListener('click', () => this.sendMessage());
+
+      // Suggestion chips
+      document.querySelectorAll('.suggestion-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => {
+          const suggestion = (e.target as HTMLElement).dataset.suggestion;
+          if (suggestion && this.input) {
+            this.input.value = suggestion;
+            this.input.focus();
+            this.handleInputChange();
+            this.sendMessage();
+          }
+        });
+      });
+
+      // Error dismiss
+      document.getElementById('chatbot-error-dismiss')?.addEventListener('click', () => {
+        this.hideError();
+      });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.isOpen) {
+          this.closePanel();
+        }
+      });
+
+      // Auto-resize textarea
+      this.input.addEventListener('input', () => {
+        this.autoResizeTextarea();
+      });
+    }
+
+    private togglePanel(): void {
+      if (this.isOpen) {
+        this.closePanel();
+      } else {
+        this.openPanel();
+      }
+    }
+
+    private async openPanel(): Promise<void> {
+      if (!this.panel || !this.toggle) return;
+      
+      this.panel.hidden = false;
+      this.toggle.setAttribute('aria-expanded', 'true');
+      this.isOpen = true;
+      
+      // Ensure search manager is loaded
+      if (!this.searchManager) {
+        await this.loadSearchManager();
+      }
+      
+      // Load RAG index if not already loaded
+      if (this.searchManager && !this.indexLoaded) {
+        try {
+          await this.searchManager.loadIndex();
+          this.indexLoaded = true;
+          console.log('✅ RAG index ready for search');
+        } catch (error) {
+          console.warn('⚠️ Failed to load RAG index:', error);
+          // Continue anyway - search will just return empty results
+        }
+      }
+      
+      // Focus input
+      setTimeout(() => {
+        this.input?.focus();
+      }, 100);
+
+      // Update badge
+      this.updateBadge(0);
+    }
+
+    private closePanel(): void {
+      if (!this.panel || !this.toggle) return;
+      
+      this.panel.hidden = true;
+      this.toggle.setAttribute('aria-expanded', 'false');
+      this.isOpen = false;
+    }
+
+    private handleInputChange(): void {
+      if (!this.input || !this.sendBtn) return;
+      
+      const hasText = this.input.value.trim().length > 0;
+      this.sendBtn.disabled = !hasText;
+    }
+
+    private handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (this.input?.value.trim()) {
+          this.sendMessage();
+        }
+      }
+    }
+
+    private autoResizeTextarea(): void {
+      if (!this.input) return;
+      
+      this.input.style.height = 'auto';
+      const maxHeight = 120; // ~6 lines
+      const newHeight = Math.min(this.input.scrollHeight, maxHeight);
+      this.input.style.height = `${newHeight}px`;
+    }
+
+    private async sendMessage(): Promise<void> {
+      if (!this.input || !this.input.value.trim()) return;
+
+      const query = this.input.value.trim();
+      this.input.value = '';
+      this.handleInputChange();
+      this.autoResizeTextarea();
+
+      // Add user message
+      this.addMessage('user', query);
+
+      // Show loading
+      this.showLoading();
+
+        try {
+          // Story 10.3: Search for relevant chunks using client-side Lunr search
+          let chunkResults: any[] = [];
+          let chunkIds: string[] = [];
+          let citations: string[] = [];
+          let searchSuccess = false;
+
+          try {
+            // Ensure search manager is loaded
+            if (!this.searchManager) {
+              await this.loadSearchManager();
+            }
+
+            if (this.searchManager) {
+              try {
+                // Ensure index is loaded (pass current URL for optimized loading)
+                if (!this.indexLoaded) {
+                  await this.searchManager.loadIndex(this.currentUrl);
+                  this.indexLoaded = true;
+                }
+
+                // Search for relevant chunks (smart search: current post first, then all posts)
+                chunkResults = await this.searchManager.searchChunksSmart(
+                  query,
+                  this.currentUrl,
+                  5 // Top 5 chunks
+                );
+
+                // Extract chunk IDs and citations
+                chunkIds = chunkResults.map((chunk: any) => chunk.chunkId);
+                citations = chunkResults.map((chunk: any) => chunk.postUrl);
+                searchSuccess = true;
+
+                console.log(`🔍 Found ${chunkResults.length} relevant chunks for query: "${query}"`);
+                
+                if (chunkResults.length > 0) {
+                  console.log('Top chunks:', chunkResults.map((c: any) => ({
+                    post: c.postTitle,
+                    score: c.score.toFixed(3),
+                  })));
+                }
+              } catch (indexError) {
+                console.warn('⚠️ Index load/search error:', indexError);
+                // Continue without search results
+              }
+            } else {
+              console.warn('⚠️ Search manager not available');
+            }
+          } catch (searchError) {
+            console.warn('⚠️ Search error (continuing anyway):', searchError);
+            // Continue without chunks - show helpful message
+          }
+
+          // Story 10.4: Call API endpoint with chunkIds (even if empty, API can handle it)
+          try {
+            const apiResponse = await fetch('/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query,
+                currentUrl: this.currentUrl,
+                chunkIds: chunkIds.length > 0 ? chunkIds : [], // API can handle empty array
+              }),
+            });
+
+            if (!apiResponse.ok) {
+              const errorData = await apiResponse.json().catch(() => ({ error: 'Unknown error' }));
+              
+              if (apiResponse.status === 429) {
+                // Rate limited
+                const retryAfter = apiResponse.headers.get('Retry-After');
+                throw new Error(`Rate limit exceeded. Please wait ${retryAfter || 'a moment'} before trying again.`);
+              }
+              
+              throw new Error(errorData.error || `HTTP ${apiResponse.status}`);
+            }
+
+            const data = await apiResponse.json();
+            
+            if (!data.success) {
+              throw new Error(data.error || 'Failed to get response from API');
+            }
+
+            // Use API response
+            const answer = data.answer || 'No answer provided';
+            const apiCitations = data.citations || citations;
+            
+            this.addMessage('assistant', answer, apiCitations);
+            this.hideLoading();
+            return;
+          } catch (apiError) {
+            console.error('API call error:', apiError);
+            // Fall through to show search results or error message
+          }
+
+          // Fallback: Show helpful message if API call also failed
+          let response: string;
+          
+          if (!searchSuccess) {
+            // Search failed - provide helpful debugging info
+            response = `I'm having trouble accessing the search index. `;
+            response += `\n\n**Your question:** "${query}"`;
+            response += `\n\n**Status:**`;
+            response += `\n- ✅ API endpoint ready (Story 10.4)`;
+            response += `\n- ⚠️ Client-side search not loading (Story 10.3)`;
+            response += `\n\n**To fix:**`;
+            response += `\n1. Open browser console (F12)`;
+            response += `\n2. Check for import/module errors`;
+            response += `\n3. Verify /rag-index.json is accessible`;
+            response += `\n4. Try refreshing the page`;
+            response += `\n\n*The API can work without search, but it needs chunkIds. `;
+            response += `Once search loads, chunkIds will be sent automatically.*`;
+          } else if (chunkResults.length > 0) {
+            // Found results but API might have failed
+            const topChunk = chunkResults[0];
+            response = `I found ${chunkResults.length} relevant section(s) from the blog. `;
+            response += `The most relevant is from "${topChunk.postTitle}". `;
+            response += `\n\n**Preview:** ${topChunk.text.substring(0, 200)}...`;
+            response += `\n\n*The API endpoint (Story 10.4) is ready. `;
+            response += `LLM processing will be available in Story 10.5.*`;
+          } else {
+            // No results found but search worked
+            response = `I searched the blog posts but couldn't find specific content matching "${query}". `;
+            response += `\n\n*This might be a general question or the content might not be in the indexed posts yet. `;
+            response += `Try rephrasing your question or asking about a specific topic from the blog.*`;
+          }
+          
+          this.addMessage('assistant', response, citations);
+          this.hideLoading();
+        } catch (error) {
+          console.error('❌ Send message error:', error);
+          this.hideLoading();
+          
+          // Provide helpful error message
+          let errorMessage = 'Something went wrong. Please try again.';
+          
+          if (error instanceof Error) {
+            console.error('Error details:', {
+              message: error.message,
+              stack: error.stack,
+              name: error.name
+            });
+            
+            // Provide more specific error messages
+            if (error.message.includes('Failed to load') || error.message.includes('fetch')) {
+              errorMessage = 'Unable to load search index. The RAG index may not be available yet. This is a partial implementation (Story 10.3).';
+            } else if (error.message.includes('import')) {
+              errorMessage = 'Unable to load search module. Please refresh the page and try again.';
+            } else {
+              errorMessage = `Error: ${error.message}. This is a partial implementation. Check browser console (F12) for details.`;
+            }
+          }
+          
+          this.showError(errorMessage);
+        }
+    }
+
+    private addMessage(role: 'user' | 'assistant', content: string, citations?: string[]): void {
+      if (!this.messagesContainer) return;
+
+      const message: Message = {
+        id: `msg-${Date.now()}-${Math.random()}`,
+        role,
+        content,
+        timestamp: new Date(),
+        citations,
+      };
+
+      this.messages.push(message);
+
+      // Remove welcome message if present
+      const welcome = this.messagesContainer.querySelector('.chatbot-welcome');
+      if (welcome) {
+        welcome.remove();
+      }
+
+      // Create message element
+      const messageEl = document.createElement('div');
+      messageEl.className = `chatbot-message chatbot-message-${role}`;
+      messageEl.setAttribute('data-message-id', message.id);
+
+      const contentEl = document.createElement('div');
+      contentEl.className = 'chatbot-message-content';
+      
+      if (role === 'user') {
+        contentEl.textContent = content;
+      } else {
+        // Format assistant response with markdown-like formatting
+        contentEl.innerHTML = this.formatResponse(content);
+        
+        // Add citations if present
+        if (citations && citations.length > 0) {
+          const citationsEl = document.createElement('div');
+          citationsEl.className = 'chatbot-citations';
+          citationsEl.innerHTML = `<strong>Sources:</strong> ${citations.map((c, i) => `<a href="${c}" target="_blank" rel="noopener">[${i + 1}]</a>`).join(' ')}`;
+          contentEl.appendChild(citationsEl);
+        }
+      }
+
+      messageEl.appendChild(contentEl);
+      this.messagesContainer.appendChild(messageEl);
+
+      // Scroll to bottom
+      this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+
+      // Update badge
+      this.updateBadge(0);
+    }
+
+    private formatResponse(text: string): string {
+      // Simple markdown-like formatting
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+    }
+
+    private showLoading(): void {
+      if (this.loadingIndicator) {
+        this.loadingIndicator.hidden = false;
+        this.loadingIndicator.setAttribute('aria-hidden', 'false');
+      }
+      if (this.sendBtn) {
+        this.sendBtn.disabled = true;
+      }
+    }
+
+    private hideLoading(): void {
+      if (this.loadingIndicator) {
+        this.loadingIndicator.hidden = true;
+        this.loadingIndicator.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    private showError(message: string): void {
+      if (!this.errorMessage) return;
+
+      const errorText = this.errorMessage.querySelector('#chatbot-error-message');
+      if (errorText) {
+        errorText.textContent = message;
+      }
+
+      this.errorMessage.hidden = false;
+      this.errorMessage.setAttribute('role', 'alert');
+
+      // Scroll error into view
+      this.errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      // Auto-hide after 8 seconds (longer for debugging)
+      setTimeout(() => {
+        this.hideError();
+      }, 8000);
+    }
+
+    private hideError(): void {
+      if (this.errorMessage) {
+        this.errorMessage.hidden = true;
+        this.errorMessage.removeAttribute('role');
+      }
+    }
+
+    private updateBadge(count: number): void {
+      const badge = document.getElementById('chatbot-badge');
+      if (badge) {
+        if (count > 0) {
+          badge.textContent = count.toString();
+          badge.hidden = false;
+        } else {
+          badge.hidden = true;
+        }
+      }
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      new AskAIChatbot();
+    });
+  } else {
+    new AskAIChatbot();
+  }
+</script>
+
+<style>
+  .ask-ai-chatbot {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 1000;
+    font-family: var(--font-sans);
+  }
+
+  /* Toggle Button */
+  .chatbot-toggle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    transition: all var(--transition-base);
+    position: relative;
+  }
+
+  .chatbot-toggle:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+  }
+
+  .chatbot-toggle:active {
+    transform: translateY(0);
+  }
+
+  .chatbot-toggle:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+
+  .chatbot-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .chatbot-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-surface);
+  }
+
+  .chatbot-badge[hidden] {
+    display: none;
+  }
+
+  /* Chat Panel */
+  .chatbot-panel {
+    position: absolute;
+    bottom: calc(100% + 1rem);
+    right: 0;
+    width: 400px;
+    max-width: calc(100vw - 2rem);
+    height: 600px;
+    max-height: calc(100vh - 8rem);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Header */
+  .chatbot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .chatbot-header-content {
+    flex: 1;
+  }
+
+  .chatbot-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+    color: var(--color-text);
+  }
+
+  .chatbot-subtitle {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .chatbot-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+  }
+
+  .chatbot-close:hover {
+    background: var(--color-code-bg);
+    color: var(--color-text);
+  }
+
+  .chatbot-close:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Messages */
+  .chatbot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    scroll-behavior: smooth;
+  }
+
+  .chatbot-messages::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chatbot-messages::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chatbot-messages::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+  }
+
+  .chatbot-messages::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+  }
+
+  .chatbot-welcome {
+    padding: 1rem;
+    background: var(--color-code-bg);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .chatbot-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .suggestion-chip {
+    padding: 0.5rem 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: var(--font-sans);
+  }
+
+  .suggestion-chip:hover {
+    background: var(--color-code-bg);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .suggestion-chip:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .chatbot-message {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .chatbot-message-user {
+    align-items: flex-end;
+  }
+
+  .chatbot-message-assistant {
+    align-items: flex-start;
+  }
+
+  .chatbot-message-content {
+    max-width: 85%;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    word-wrap: break-word;
+  }
+
+  .chatbot-message-user .chatbot-message-content {
+    background: var(--color-accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .chatbot-message-assistant .chatbot-message-content {
+    background: var(--color-code-bg);
+    color: var(--color-text);
+    border-bottom-left-radius: 4px;
+  }
+
+  .chatbot-message-content code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-size: 0.875em;
+  }
+
+  .chatbot-message-assistant .chatbot-message-content code {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .chatbot-citations {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+  }
+
+  .chatbot-citations a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    margin: 0 0.25rem;
+  }
+
+  /* Input Area */
+  .chatbot-input-area {
+    padding: 1rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .chatbot-input-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.5rem;
+    transition: border-color var(--transition-fast);
+  }
+
+  .chatbot-input-wrapper:focus-within {
+    border-color: var(--color-accent);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+
+  .chatbot-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    resize: none;
+    overflow-y: auto;
+    min-height: 24px;
+    max-height: 120px;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .chatbot-input:focus {
+    outline: none;
+  }
+
+  .chatbot-input::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  .chatbot-send {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--color-accent);
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+  }
+
+  .chatbot-send:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
+
+  .chatbot-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .chatbot-send:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .chatbot-input-help {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    margin: 0.5rem 0 0 0;
+    text-align: center;
+  }
+
+  /* Loading */
+  .chatbot-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Error */
+  .chatbot-error {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fef2f2;
+    border-top: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: 0.875rem;
+  }
+
+  [data-theme="dark"] .chatbot-error {
+    background: #7f1d1d;
+    border-top-color: #991b1b;
+    color: #fecaca;
+  }
+
+  .chatbot-error svg {
+    flex-shrink: 0;
+  }
+
+  .chatbot-error-dismiss {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background var(--transition-fast);
+  }
+
+  .chatbot-error-dismiss:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .ask-ai-chatbot {
+      bottom: 1rem;
+      right: 1rem;
+    }
+
+    .chatbot-panel {
+      width: calc(100vw - 2rem);
+      height: calc(100vh - 4rem);
+      max-height: calc(100vh - 4rem);
+      bottom: calc(100% + 0.5rem);
+    }
+
+    .chatbot-toggle {
+      width: 48px;
+      height: 48px;
+    }
+
+    .chatbot-icon {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .chatbot-panel {
+      width: 100vw;
+      height: 100vh;
+      max-height: 100vh;
+      border-radius: 0;
+      bottom: 0;
+      right: 0;
+    }
+  }
+</style>

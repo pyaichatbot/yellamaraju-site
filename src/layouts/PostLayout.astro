@@ -4,6 +4,7 @@ import ShareLinks from '../components/ShareLinks.astro';
 import TagBadge from '../components/TagBadge.astro';
 import ScrollButtons from '../components/ScrollButtons.astro';
 import Comments from '../components/Comments.astro';
+import AskAIChatbot from '../components/AskAIChatbot.astro';
 import { formatDate } from '../utils/helpers';
 import { generateArticleSchema, generateBreadcrumbSchema } from '../utils/seo';
 import type { CollectionEntry } from 'astro:content';
@@ -136,6 +137,7 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     </div>
   </article>
   <ScrollButtons />
+  <AskAIChatbot currentUrl={Astro.url.pathname} postTitle={title} />
 </BaseLayout>
 
 <script is:inline>

@@ -7,7 +7,12 @@
     "start": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "functions:serve": "netlify functions:serve",
+    "dev:netlify": "netlify dev",
+    "test:function": "node scripts/test-function.js",
+    "test:function:auto": "node scripts/test-function-with-server.js",
+    "test:per-post-indexes": "node scripts/test-per-post-indexes.js"
   },
   "dependencies": {
     "@astrojs/mdx": "^2.0.0",
@@ -20,6 +25,10 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.3.0",
+    "@netlify/functions": "^5.1.2",
+    "@types/lunr": "^2.3.7",
+    "lunr": "^2.3.9",
+    "netlify-cli": "^17.0.0",
     "typescript": "^5.0.0"
   }
 }

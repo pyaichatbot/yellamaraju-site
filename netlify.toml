@@ -7,6 +7,12 @@
   to = "/resume.pdf"
   status = 200
 
+# Redirect /api/chat to function (for local dev and production)
+[[redirects]]
+  from = "/api/chat"
+  to = "/.netlify/functions/chat"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -26,3 +32,16 @@
   for = "/images/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache headers for RAG index files
+[[headers]]
+  for = "/rag-index/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600" # Cache for 1 hour (indexes change on rebuild)
+
+# Netlify Functions configuration
+[functions]
+  node_bundler = "esbuild"
+  # Note: Function timeout is set per-function in Netlify Dashboard
+  # Default: 10s (Free), 30s (Pro). Configure in: Site Settings → Functions
+  # The redirect above handles the /api/chat path mapping to /.netlify/functions/chat

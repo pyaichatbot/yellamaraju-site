@@ -4,6 +4,7 @@
 | Version | Date | Author | Status |
 |---------|------|--------|--------|
 | 1.0 | 2026-01-10 | Product Team | Ready for Implementation |
+| 1.1 | 2026-01-13 | Product Team | Added Epic 10: Ask Praveen.AI Chatbot Feature |
 
 ---
 
@@ -561,6 +562,540 @@ Stories are organized into **Epics** (high-level features) and broken down into 
 5. Document performance targets
 
 **Dependencies**: None
+
+---
+
+## Epic 10: Ask Praveen.AI Chatbot Feature
+
+### Story 10.1: Build-Time RAG Content Preparation
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 5  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a developer, I want blog content automatically chunked and indexed at build time, so the chatbot can retrieve relevant content efficiently.
+
+**Acceptance Criteria**:
+- [ ] Build script parses all MDX blog posts from `src/content/blog/*.mdx`
+- [ ] Extracts frontmatter (title, slug, date, tags, URL)
+- [ ] Chunks body text (300-600 tokens, 100-token overlap)
+- [ ] Builds Lunr search index (JSON) with chunk metadata
+- [ ] Stores chunks + metadata in Netlify Blobs
+- [ ] Index generated on every deployment
+- [ ] Chunks include: text, postUrl, postTitle, chunkId, metadata
+
+**Technical Tasks**:
+1. Create `scripts/generate-rag-index.ts` build script
+2. Install dependencies: `lunr`, `@langchain/text-splitter` (or custom chunker)
+3. Parse blog collection using Astro content API
+4. Implement text chunking (300-600 tokens, 100-token overlap)
+5. Build Lunr index with fields: title, description, body, tags
+6. Store chunks in Netlify Blobs (or static JSON if <10MB)
+7. Add build step to `package.json` scripts
+8. Test with all existing blog posts
+
+**Dependencies**: Story 1.1 (Blog Post Creation)
+
+**Technical Implementation**:
+```typescript
+// scripts/generate-rag-index.ts
+// - Read all blog posts from Astro collection
+// - Chunk each post body (300-600 tokens, 100 overlap)
+// - Build Lunr index with chunk metadata
+// - Export to public/rag-index.json (or Netlify Blobs)
+```
+
+**Testing**:
+- [ ] Verify all published posts are chunked
+- [ ] Verify chunk sizes (300-600 tokens)
+- [ ] Verify overlap (100 tokens)
+- [ ] Verify Lunr index is searchable
+- [ ] Test with posts of various lengths
+- [ ] Verify metadata (postUrl, postTitle, chunkId) included
+
+---
+
+### Story 10.2: Chat Widget UI Component
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 3  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a reader, I want a chat widget on blog posts, so I can ask questions about the content.
+
+**Acceptance Criteria**:
+- [ ] Chat widget appears on blog post pages
+- [ ] Floating button or fixed position (bottom-right)
+- [ ] Opens/closes chat interface
+- [ ] Input field for user queries
+- [ ] Message history display
+- [ ] Loading state during LLM calls
+- [ ] Error handling with user-friendly messages
+- [ ] Responsive design (mobile/desktop)
+- [ ] Accessible (keyboard navigation, ARIA labels)
+
+**Technical Tasks**:
+1. Create `AskAIChatbot.astro` component
+2. Create chat widget styles (matches site theme)
+3. Implement open/close state management
+4. Add message input and send button
+5. Add message history display
+6. Add loading spinner
+7. Add error state UI
+8. Test keyboard shortcuts (Enter to send, Esc to close)
+9. Test on mobile devices
+
+**Dependencies**: Story 10.1
+
+**Technical Implementation**:
+```astro
+<!-- src/components/AskAIChatbot.astro -->
+<!-- Floating chat widget with message history -->
+```
+
+**Testing**:
+- [ ] Widget appears on blog post pages
+- [ ] Opens/closes correctly
+- [ ] Input accepts text
+- [ ] Enter key sends message
+- [ ] Esc key closes widget
+- [ ] Mobile responsive
+- [ ] Keyboard navigation works
+- [ ] Screen reader accessible
+
+---
+
+### Story 10.3: Client-Side Lexical Search (Lunr)
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 3  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a reader, I want relevant blog chunks retrieved client-side, so the chatbot has context before calling the LLM.
+
+**Acceptance Criteria**:
+- [ ] Lunr index loaded from `public/rag-index.json`
+- [ ] Search function retrieves top 5 chunks by lexical match
+- [ ] Search works on current post URL context
+- [ ] Search can find chunks from other posts (for related queries)
+- [ ] Results include chunk text, postUrl, postTitle, chunkId
+- [ ] Search performance <100ms for typical queries
+
+**Technical Tasks**:
+1. Install `lunr` package
+2. Load Lunr index in chat widget
+3. Implement `searchChunks(query, currentUrl, limit=5)` function
+4. Filter by current post URL (for post-specific queries)
+5. Allow cross-post search (for related queries)
+6. Return chunk metadata with results
+7. Test search accuracy with various queries
+
+**Dependencies**: Story 10.1, Story 10.2
+
+**Technical Implementation**:
+```typescript
+// Client-side search function
+function searchChunks(query: string, currentUrl?: string, limit = 5): ChunkResult[]
+```
+
+**Testing**:
+- [ ] Search finds relevant chunks
+- [ ] Top 5 results are most relevant
+- [ ] Current post filtering works
+- [ ] Cross-post search works
+- [ ] Performance <100ms
+- [ ] Handles empty queries gracefully
+- [ ] Handles no results gracefully
+
+---
+
+### Story 10.4: Netlify Function Chat API Endpoint
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 5  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a developer, I want a serverless API endpoint for chat, so API keys are never exposed to the browser.
+
+**Acceptance Criteria**:
+- [ ] Netlify Function at `/api/chat`
+- [ ] Accepts POST requests with: `{query, currentUrl, chunkIds}`
+- [ ] Validates request (origin, IP rate limit, query length)
+- [ ] Fetches chunk text from Netlify Blobs (or static JSON)
+- [ ] Returns JSON response with answer and citations
+- [ ] Handles errors gracefully
+- [ ] CORS configured for site domain only
+- [ ] Function timeout set to 30s (Groq max ~5s)
+
+**Technical Tasks**:
+1. Create `netlify/functions/chat.ts` (or `.js`)
+2. Install Netlify Functions dependencies
+3. Implement request validation (origin check)
+4. Implement chunk retrieval from Blobs/JSON
+5. Add error handling
+6. Configure CORS
+7. Set function timeout
+8. Test with various inputs
+
+**Dependencies**: Story 10.1, Story 10.3
+
+**Technical Implementation**:
+```typescript
+// netlify/functions/chat.ts
+export async function handler(event: HandlerEvent): Promise<Response>
+```
+
+**Testing**:
+- [ ] Endpoint accepts POST requests
+- [ ] Validates origin
+- [ ] Validates query length
+- [ ] Fetches chunks correctly
+- [ ] Returns proper JSON response
+- [ ] Handles errors (404, 500, etc.)
+- [ ] CORS headers correct
+- [ ] Timeout configured
+
+---
+
+### Story 10.5: Groq LLM Integration with Prompt Engineering
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 8  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a developer, I want Groq Llama 3.1 8B integrated with strict prompting, so responses are grounded and cited.
+
+**Acceptance Criteria**:
+- [ ] Groq API client configured (API key from env var)
+- [ ] Core system prompt enforces "answer only from context"
+- [ ] Query type detection (Summarize, Q&A, Generate Questions, Related)
+- [ ] Prompt variants for each query type
+- [ ] Context injection (top 5 chunks + metadata)
+- [ ] Response includes citations with [1], [2] format
+- [ ] Temperature set to 0.7 (reduces hallucination)
+- [ ] Max tokens set to 500
+- [ ] Anti-hallucination prompts enforced
+
+**Technical Tasks**:
+1. Install Groq SDK (`groq-sdk`)
+2. Configure Groq client with API key
+3. Implement core system prompt
+4. Implement query type detection (regex patterns)
+5. Implement prompt variants (Summarize, Q&A, Generate Questions, Related)
+6. Build final prompt (system + context + query)
+7. Call Groq API with proper parameters
+8. Parse response and extract citations
+9. Test all query types
+
+**Dependencies**: Story 10.4
+
+**Technical Implementation**:
+```typescript
+// Query type detection
+const queryType = detectQueryType(query); // 'summarize' | 'qa' | 'generate_questions' | 'related'
+
+// Prompt building
+const prompt = buildPrompt(queryType, chunks, query, currentPost);
+
+// Groq API call
+const response = await groq.chat.completions.create({
+  model: 'llama-3.1-8b-instant',
+  temperature: 0.7,
+  max_tokens: 500,
+  messages: [{ role: 'user', content: prompt }]
+});
+```
+
+**Testing**:
+- [ ] Groq API key from env var (not in code)
+- [ ] All query types detected correctly
+- [ ] Prompts include anti-hallucination instructions
+- [ ] Responses include citations
+- [ ] Temperature and max_tokens configured
+- [ ] Handles API errors gracefully
+- [ ] Response time <5s (Groq requirement)
+
+---
+
+### Story 10.6: Query Type Detection and Routing
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 3  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a developer, I want query types automatically detected, so the correct prompt variant is used.
+
+**Acceptance Criteria**:
+- [ ] Summarize queries detected: `/summar|tldr|overview/i`
+- [ ] Generate Questions detected: `/suggest|question|what.*ask|quiz/i`
+- [ ] Related queries detected: chunks from different posts
+- [ ] Default Q&A for all other queries
+- [ ] Detection happens before prompt building
+- [ ] Appropriate chunks fetched for each type
+
+**Technical Tasks**:
+1. Implement `detectQueryType(query, searchResults)` function
+2. Add regex patterns for summarize and generate questions
+3. Detect related queries (chunks from different posts)
+4. Route to appropriate prompt builder
+5. Fetch appropriate chunks (all for summarize, top 5 for Q&A, etc.)
+6. Test all detection patterns
+
+**Dependencies**: Story 10.3, Story 10.5
+
+**Technical Implementation**:
+```typescript
+function detectQueryType(query: string, searchResults: ChunkResult[]): QueryType {
+  if (/summar|tldr|overview/i.test(query)) return 'summarize';
+  if (/suggest|question|what.*ask|quiz/i.test(query)) return 'generate_questions';
+  if (searchResults.some(r => r.postUrl !== currentUrl)) return 'related';
+  return 'qa';
+}
+```
+
+**Testing**:
+- [ ] Summarize queries detected
+- [ ] Generate questions queries detected
+- [ ] Related queries detected (cross-post chunks)
+- [ ] Default Q&A for normal queries
+- [ ] Edge cases handled (empty query, etc.)
+
+---
+
+### Story 10.7: Rate Limiting and Abuse Prevention
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 5  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a developer, I want rate limiting and abuse prevention, so the API is protected from abuse and costs are controlled.
+
+**Acceptance Criteria**:
+- [ ] Rate limiting: 10 requests per IP per 60 seconds
+- [ ] hCaptcha token verification on backend
+- [ ] Query length validation (max 500 characters)
+- [ ] IP-based rate limit store (in-memory or Redis)
+- [ ] Rate limit headers in response
+- [ ] 429 status code when rate limited
+- [ ] User-friendly error messages
+- [ ] Rate limit reset information
+
+**Technical Tasks**:
+1. Implement IP-based rate limiting (in-memory store or Netlify KV)
+2. Add hCaptcha token verification
+3. Add query length validation
+4. Add rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+5. Return 429 with helpful message
+6. Test rate limiting with multiple requests
+7. Test hCaptcha verification
+
+**Dependencies**: Story 10.4
+
+**Technical Implementation**:
+```typescript
+// Rate limiting
+const rateLimiter = new Map<string, { count: number; resetAt: number }>();
+
+// hCaptcha verification
+const hcaptcha = require('@hcaptcha/verify');
+const isValid = await hcaptcha.verify(secretKey, token);
+```
+
+**Testing**:
+- [ ] Rate limit enforced (10 req/60s)
+- [ ] 429 status returned when exceeded
+- [ ] Rate limit headers present
+- [ ] hCaptcha token verified
+- [ ] Invalid hCaptcha rejected
+- [ ] Query length validated
+- [ ] IP extraction works correctly
+
+---
+
+### Story 10.8: Security Controls (API Key Isolation, CSP)
+**Epic**: Ask AI Chatbot  
+**Priority**: P0  
+**Story Points**: 3  
+**Sprint**: Sprint 3
+
+**User Story**:
+> As a developer, I want API keys isolated and CSP headers configured, so the system is secure.
+
+**Acceptance Criteria**:
+- [ ] Groq API key stored in Netlify env vars (never in code)
+- [ ] API key never exposed to browser
+- [ ] CSP headers configured for chat widget
+- [ ] Origin validation on API endpoint
+- [ ] Input sanitization (prevent XSS)
+- [ ] No secrets in client-side code
+- [ ] Security headers in Netlify config
+
+**Technical Tasks**:
+1. Store Groq API key in Netlify environment variables
+2. Verify API key only accessed in Netlify Function
+3. Configure CSP headers in `netlify.toml`
+4. Add origin validation in chat endpoint
+5. Sanitize user input (prevent XSS)
+6. Review client-side code for secrets
+7. Add security headers (X-Content-Type-Options, etc.)
+
+**Dependencies**: Story 10.4, Story 10.5
+
+**Technical Implementation**:
+```toml
+# netlify.toml
+[build.environment]
+GROQ_API_KEY = "from-netlify-dashboard"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.hcaptcha.com; ..."
+```
+
+**Testing**:
+- [ ] API key not in code repository
+- [ ] API key not exposed in browser network tab
+- [ ] CSP headers present
+- [ ] Origin validation works
+- [ ] XSS attempts blocked
+- [ ] Security headers configured
+
+---
+
+### Story 10.9: Monitoring and Logging (Axiom)
+**Epic**: Ask AI Chatbot  
+**Priority**: P1  
+**Story Points**: 3  
+**Sprint**: Sprint 4
+
+**User Story**:
+> As a developer, I want monitoring and logging configured, so I can track usage, errors, and costs.
+
+**Acceptance Criteria**:
+- [ ] Axiom logging configured (or Netlify Functions logs)
+- [ ] Log all chat requests (query, response time, cost estimate)
+- [ ] Log errors with stack traces
+- [ ] Log rate limit hits
+- [ ] Cost tracking (token usage, estimated cost)
+- [ ] Alerts configured for errors (>5% error rate)
+- [ ] Alerts configured for cost (>$5/day)
+
+**Technical Tasks**:
+1. Set up Axiom integration (or use Netlify Functions logs)
+2. Add logging to chat endpoint (requests, responses, errors)
+3. Calculate token usage and cost estimates
+4. Set up alerts in Axiom (or Netlify dashboard)
+5. Create cost monitoring dashboard
+6. Test logging with various scenarios
+
+**Dependencies**: Story 10.4, Story 10.5
+
+**Technical Implementation**:
+```typescript
+// Logging
+logger.info('chat_request', {
+  query,
+  queryType,
+  responseTime,
+  tokenUsage,
+  estimatedCost,
+  ip: event.headers['x-forwarded-for']
+});
+```
+
+**Testing**:
+- [ ] All requests logged
+- [ ] Errors logged with stack traces
+- [ ] Token usage calculated
+- [ ] Cost estimates accurate
+- [ ] Alerts trigger correctly
+- [ ] Logs queryable in Axiom
+
+---
+
+### Story 10.10: User Feedback and Quality Monitoring
+**Epic**: Ask AI Chatbot  
+**Priority**: P1  
+**Story Points**: 2  
+**Sprint**: Sprint 4
+
+**User Story**:
+> As a developer, I want user feedback collection, so I can monitor answer quality and improve the system.
+
+**Acceptance Criteria**:
+- [ ] "Was this helpful?" button after each response
+- [ ] 5-star rating system
+- [ ] Optional comment field
+- [ ] Feedback stored (Netlify Forms or Axiom)
+- [ ] Negative feedback triggers review
+- [ ] Feedback visible in monitoring dashboard
+- [ ] Privacy-compliant (no PII required)
+
+**Technical Tasks**:
+1. Add feedback UI to chat widget
+2. Create feedback form component
+3. Integrate with Netlify Forms (or Axiom)
+4. Store feedback with query/response context
+5. Create feedback review dashboard
+6. Set up alerts for negative feedback
+
+**Dependencies**: Story 10.2
+
+**Technical Implementation**:
+```astro
+<!-- Feedback component -->
+<FeedbackForm responseId={responseId} />
+```
+
+**Testing**:
+- [ ] Feedback button appears
+- [ ] Rating submission works
+- [ ] Comments saved
+- [ ] Feedback stored correctly
+- [ ] Alerts trigger for negative feedback
+
+---
+
+### Story 10.11: Response Streaming (Optional Enhancement)
+**Epic**: Ask AI Chatbot  
+**Priority**: P2  
+**Story Points**: 5  
+**Sprint**: Sprint 5
+
+**User Story**:
+> As a reader, I want responses to stream in real-time, so I see answers faster.
+
+**Acceptance Criteria**:
+- [ ] Groq streaming API integrated
+- [ ] Server-Sent Events (SSE) or chunked response
+- [ ] Client-side streaming display
+- [ ] Graceful fallback to non-streaming
+- [ ] Streaming works with Netlify Functions
+- [ ] Performance improvement (perceived latency)
+
+**Technical Tasks**:
+1. Enable streaming in Groq API call
+2. Implement SSE or chunked response in Netlify Function
+3. Update client to handle streaming
+4. Display tokens as they arrive
+5. Test streaming performance
+6. Add fallback for non-streaming
+
+**Dependencies**: Story 10.5
+
+**Testing**:
+- [ ] Streaming works end-to-end
+- [ ] Tokens display as they arrive
+- [ ] Fallback works if streaming fails
+- [ ] Performance improved
 
 ---
 
@@ -1876,6 +2411,8 @@ Based on strategic importance and dependencies:
 ---
 
 **Document Status**: IN PROGRESS  
-**Next**: Begin Sprint 1 implementation  
-**Total Stories Defined**: 63+ (25 platform features + 38 content creation)  
-**Estimated Total**: ~45 story points (platform) + ~200 story points (content) = ~245 total
+**Next**: Begin Sprint 3 implementation (Ask Praveen.AI Chatbot)  
+**Total Stories Defined**: 74+ (35 platform features + 38 content creation + 11 chatbot)  
+**Estimated Total**: ~70 story points (platform) + ~200 story points (content) + ~45 story points (chatbot) = ~315 total
+
+**New Feature Added**: Epic 10 - Ask Praveen.AI Chatbot (11 stories, 45 story points)

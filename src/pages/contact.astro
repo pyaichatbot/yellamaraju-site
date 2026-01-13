@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { SITE } from '../config';
+import LinkedInBadge from '../components/LinkedInBadge.astro';
 ---
 
 <BaseLayout title="Contact" description="Get in touch with Praveen Srinag Yellamaraju for collaborations, speaking engagements, or discussions about AI and enterprise architecture.">
@@ -62,17 +63,7 @@ import { SITE } from '../config';
               
               <div class="linkedin-section">
                 <label class="detail-label">Connect</label>
-                <a 
-                  href={`https://${SITE.linkedin}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="linkedin-link"
-                >
-                  LinkedIn Profile
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </a>
+                <LinkedInBadge size="medium" type="HORIZONTAL" />
               </div>
               
             </div>
@@ -306,24 +297,10 @@ import { SITE } from '../config';
     transform: translateY(0);
   }
   
-  .linkedin-link {
-    display: inline-flex;
-    align-items: center;
+  .linkedin-section {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-xs);
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--color-accent);
-    text-decoration: none;
-    transition: color var(--transition-fast);
-  }
-  
-  .linkedin-link:hover {
-    color: var(--color-accent-hover);
-  }
-  
-  .linkedin-link svg {
-    width: 14px;
-    height: 14px;
   }
   
   /* Right Column: Contact Form */

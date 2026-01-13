@@ -1,0 +1,98 @@
+---
+interface Props {
+  size?: 'small' | 'medium' | 'large';
+  type?: 'HORIZONTAL' | 'VERTICAL';
+}
+
+const { size = 'medium', type = 'HORIZONTAL' } = Astro.props;
+---
+
+<div class="linkedin-badge-wrapper">
+  <!-- Light theme badge -->
+  <div 
+    class="badge-base LI-profile-badge linkedin-badge linkedin-badge-light" 
+    data-locale="en_US" 
+    data-size={size} 
+    data-theme="light" 
+    data-type={type} 
+    data-vanity="praveensrinagy" 
+    data-version="v1"
+  >
+    <a 
+      class="badge-base__link LI-simple-link" 
+      href="https://www.linkedin.com/in/praveensrinagy?trk=profile-badge"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+    </a>
+  </div>
+  
+  <!-- Dark theme badge -->
+  <div 
+    class="badge-base LI-profile-badge linkedin-badge linkedin-badge-dark" 
+    data-locale="en_US" 
+    data-size={size} 
+    data-theme="dark" 
+    data-type={type} 
+    data-vanity="praveensrinagy" 
+    data-version="v1"
+  >
+    <a 
+      class="badge-base__link LI-simple-link" 
+      href="https://www.linkedin.com/in/praveensrinagy?trk=profile-badge"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+    </a>
+  </div>
+</div>
+
+<style>
+  .linkedin-badge-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .linkedin-badge {
+    display: inline-block;
+  }
+  
+  /* Show light badge by default and when theme is light */
+  .linkedin-badge-light {
+    display: inline-block;
+  }
+  
+  .linkedin-badge-dark {
+    display: none;
+  }
+  
+  /* Show dark badge when theme is dark */
+  [data-theme="dark"] .linkedin-badge-light {
+    display: none;
+  }
+  
+  [data-theme="dark"] .linkedin-badge-dark {
+    display: inline-block;
+  }
+  
+  /* Handle auto theme - show based on system preference */
+  @media (prefers-color-scheme: dark) {
+    [data-theme="auto"] .linkedin-badge-light {
+      display: none;
+    }
+    
+    [data-theme="auto"] .linkedin-badge-dark {
+      display: inline-block;
+    }
+  }
+  
+  @media (prefers-color-scheme: light) {
+    [data-theme="auto"] .linkedin-badge-light {
+      display: inline-block;
+    }
+    
+    [data-theme="auto"] .linkedin-badge-dark {
+      display: none;
+    }
+  }
+</style>

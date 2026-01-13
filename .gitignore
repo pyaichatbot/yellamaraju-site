@@ -5,6 +5,10 @@ node_modules/
 dist/
 .astro/
 
+# Generated RAG index files (generated during build)
+public/rag-index.json
+public/rag-index/
+
 # Environment variables
 .env
 .env.local
@@ -29,3 +33,7 @@ Thumbs.db
 
 # Temporary files
 *.tmp
+
+# Netlify CLI local state
+.netlify/
+.netlify/state.json

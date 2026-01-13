@@ -522,6 +522,377 @@ Issues Encountered:
 
 ---
 
+## Sprint 3: Ask Praveen.AI Chatbot (Weeks 5-6)
+
+### Story 10.1: Build-Time RAG Content Preparation
+**Status**: 🟡 READY  
+**Assigned**: -  
+**Points**: 5  
+**Dependencies**: Story 1.1
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Create `scripts/generate-rag-index.ts`
+  - [ ] Install dependencies (lunr, text splitter)
+  - [ ] Parse blog collection
+  - [ ] Implement chunking (300-600 tokens, 100 overlap)
+  - [ ] Build Lunr index
+  - [ ] Store in Netlify Blobs or static JSON
+  - [ ] Add to build script
+- [ ] 3. TEST:
+  - [ ] All posts chunked correctly
+  - [ ] Chunk sizes within range
+  - [ ] Overlap correct
+  - [ ] Index searchable
+- [ ] 4. FIX EDGE CASES:
+  - [ ] Test with very short posts
+  - [ ] Test with very long posts
+  - [ ] Test with special characters
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.2: Chat Widget UI Component
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 3  
+**Dependencies**: Story 10.1
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Create AskAIChatbot.astro component
+  - [ ] Add chat widget styles
+  - [ ] Implement open/close state
+  - [ ] Add message input
+  - [ ] Add message history
+  - [ ] Add loading/error states
+  - [ ] Test keyboard shortcuts
+- [ ] 3. TEST:
+  - [ ] Widget appears on blog posts
+  - [ ] Opens/closes correctly
+  - [ ] Input works
+  - [ ] Mobile responsive
+  - [ ] Accessible
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.3: Client-Side Lexical Search (Lunr)
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 3  
+**Dependencies**: Story 10.1, Story 10.2
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Install lunr package
+  - [ ] Load index in chat widget
+  - [ ] Implement searchChunks function
+  - [ ] Add current post filtering
+  - [ ] Add cross-post search
+- [ ] 3. TEST:
+  - [ ] Search finds relevant chunks
+  - [ ] Top 5 results correct
+  - [ ] Performance <100ms
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.4: Netlify Function Chat API Endpoint
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 5  
+**Dependencies**: Story 10.1, Story 10.3
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Create netlify/functions/chat.ts
+  - [ ] Add request validation
+  - [ ] Add chunk retrieval
+  - [ ] Add error handling
+  - [ ] Configure CORS
+  - [ ] Set timeout
+- [ ] 3. TEST:
+  - [ ] Endpoint accepts POST
+  - [ ] Validates origin
+  - [ ] Fetches chunks
+  - [ ] Returns JSON
+  - [ ] Handles errors
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.5: Groq LLM Integration with Prompt Engineering
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 8  
+**Dependencies**: Story 10.4
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Install groq-sdk
+  - [ ] Configure Groq client
+  - [ ] Implement core system prompt
+  - [ ] Implement query type detection
+  - [ ] Implement prompt variants
+  - [ ] Build final prompts
+  - [ ] Call Groq API
+  - [ ] Parse citations
+- [ ] 3. TEST:
+  - [ ] All query types work
+  - [ ] Prompts include anti-hallucination
+  - [ ] Citations included
+  - [ ] Response time <5s
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.6: Query Type Detection and Routing
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 3  
+**Dependencies**: Story 10.3, Story 10.5
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Implement detectQueryType function
+  - [ ] Add regex patterns
+  - [ ] Add related query detection
+  - [ ] Route to prompt builders
+- [ ] 3. TEST:
+  - [ ] All types detected correctly
+  - [ ] Edge cases handled
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.7: Rate Limiting and Abuse Prevention
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 5  
+**Dependencies**: Story 10.4
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Implement IP-based rate limiting
+  - [ ] Add hCaptcha verification
+  - [ ] Add query length validation
+  - [ ] Add rate limit headers
+  - [ ] Return 429 status
+- [ ] 3. TEST:
+  - [ ] Rate limit enforced
+  - [ ] hCaptcha verified
+  - [ ] Headers present
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.8: Security Controls (API Key Isolation, CSP)
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 3  
+**Dependencies**: Story 10.4, Story 10.5
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Store API key in Netlify env vars
+  - [ ] Verify no browser exposure
+  - [ ] Configure CSP headers
+  - [ ] Add origin validation
+  - [ ] Sanitize input
+- [ ] 3. TEST:
+  - [ ] API key not in code
+  - [ ] CSP headers present
+  - [ ] Origin validation works
+  - [ ] XSS blocked
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.9: Monitoring and Logging (Axiom)
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 3  
+**Dependencies**: Story 10.4, Story 10.5
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Set up Axiom integration
+  - [ ] Add request/response logging
+  - [ ] Calculate token usage
+  - [ ] Set up alerts
+- [ ] 3. TEST:
+  - [ ] All requests logged
+  - [ ] Token usage calculated
+  - [ ] Alerts trigger
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.10: User Feedback and Quality Monitoring
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 2  
+**Dependencies**: Story 10.2
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT:
+  - [ ] Add feedback UI
+  - [ ] Create feedback form
+  - [ ] Integrate with Netlify Forms
+  - [ ] Set up alerts
+- [ ] 3. TEST:
+  - [ ] Feedback button works
+  - [ ] Ratings saved
+  - [ ] Alerts trigger
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
+### Story 10.11: Response Streaming (Optional Enhancement)
+**Status**: 🔴 BLOCKED  
+**Assigned**: -  
+**Points**: 5  
+**Dependencies**: Story 10.5
+
+**Progress Checklist**:
+- [ ] 1. SELECT: Review acceptance criteria
+- [ ] 2. IMPLEMENT: [Details in USER-STORIES.md]
+- [ ] 3. TEST: [Test scenarios in USER-STORIES.md]
+- [ ] 4. FIX EDGE CASES
+- [ ] 5. LOG LEARNINGS
+- [ ] 6. CODE REVIEW
+- [ ] 7. MARK COMPLETE
+
+**Notes**:
+```
+Start Date: 
+End Date: 
+Actual Points: 
+Issues Encountered: 
+```
+
+---
+
 ## Testing Strategy Per Story
 
 ### Unit Tests (Required for ALL stories)
@@ -659,12 +1030,14 @@ For full content story tracking, see `docs/product/USER-STORIES.md`.
 **CURRENT**: Story 1.1 - Blog Post Creation Workflow (COMPLETE)
 
 **NEXT UP**: 
-1. Review Story 1.3 (Reading Time Calculation) acceptance criteria in USER-STORIES.md
+1. Review Story 10.1 (Build-Time RAG Content Preparation) acceptance criteria in USER-STORIES.md
 2. Follow the 7-step Story Loop above
 3. Update this tracker as you progress
 4. Log any learnings in LEARNING-LOG.md
 
 **Ready to begin implementation?** Review USER-STORIES.md for next priority story.
+
+**Note**: Ask Praveen.AI Chatbot feature (Epic 10) is ready for Sprint 3 implementation. Start with Story 10.1 (Build-Time RAG Content Preparation).
 
 ---
 

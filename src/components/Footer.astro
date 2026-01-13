@@ -1,5 +1,6 @@
 ---
 import { SITE } from '../config';
+import LinkedInBadge from '../components/LinkedInBadge.astro';
 const currentYear = new Date().getFullYear();
 ---
 
@@ -17,10 +18,8 @@ const currentYear = new Date().getFullYear();
         <div class="link-group">
           <h4>Connect</h4>
           <ul>
-            <li>
-              <a href={`https://${SITE.linkedin}`} target="_blank" rel="noopener noreferrer">
-                LinkedIn
-              </a>
+            <li class="linkedin-badge-item">
+              <LinkedInBadge size="medium" type="HORIZONTAL" />
             </li>
             <li>
               <a href="/contact">Email</a>
@@ -91,6 +90,10 @@ const currentYear = new Date().getFullYear();
   
   .link-group li {
     margin-bottom: 0.5rem;
+  }
+  
+  .linkedin-badge-item {
+    margin-bottom: 0.75rem;
   }
   
   .link-group a {
