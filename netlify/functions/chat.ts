@@ -415,12 +415,38 @@ export const handler = async (
 
     const { query, chunkIds } = validation.data!;
 
-    // Load RAG index
+    // If no chunkIds provided, return helpful message without loading index
+    // This allows the function to work even when client-side search hasn't found chunks yet
+    if (chunkIds.length === 0) {
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...createCORSHeaders(origin),
+        },
+        body: JSON.stringify({
+          success: true,
+          answer: `I received your query: "${query}". However, no specific content chunks were provided. ` +
+            `This might happen if the client-side search hasn't loaded yet, or if the query doesn't match any indexed content. ` +
+            `\n\n*Note: Full RAG search and LLM processing will be available once Story 10.3 (client-side search) and Story 10.5 (LLM integration) are complete.*`,
+          citations: [],
+          chunks: [],
+          rateLimit: {
+            remaining: rateLimit.remaining,
+            resetAt: rateLimit.resetAt,
+          },
+        }),
+      };
+    }
+
+    // Load RAG index only when we have chunkIds to process
     let ragIndex: RAGIndex;
     try {
       ragIndex = await loadRAGIndex();
     } catch (error) {
       console.error('Failed to load RAG index:', error);
+      // Return a helpful error message instead of generic 500
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         statusCode: 500,
         headers: {
@@ -429,7 +455,7 @@ export const handler = async (
         },
         body: JSON.stringify({
           success: false,
-          error: 'Failed to load content index. Please try again later.',
+          error: `Failed to load content index: ${errorMessage}. Please try again later.`,
         }),
       };
     }
@@ -437,8 +463,7 @@ export const handler = async (
     // Get chunks by IDs
     const chunks = getChunksByIds(ragIndex, chunkIds);
 
-    // If no chunks provided or found, return a helpful message instead of error
-    // This allows the function to work even when client-side search hasn't found chunks yet
+    // If no chunks found (even though IDs were provided), return helpful message
     if (chunks.length === 0) {
       return {
         statusCode: 200,

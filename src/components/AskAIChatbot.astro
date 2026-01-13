@@ -46,16 +46,29 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         <h2 id="chatbot-title" class="chatbot-title">Ask Praveen.AI</h2>
         <p class="chatbot-subtitle">Ask questions about this post</p>
       </div>
-      <button
-        id="chatbot-close"
-        class="chatbot-close"
-        aria-label="Close chat"
-        type="button"
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
+      <div class="chatbot-header-actions">
+        <button
+          id="chatbot-refresh"
+          class="chatbot-refresh"
+          aria-label="Clear chat"
+          type="button"
+          title="Clear chat"
+        >
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M3 6h14M6 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v10a2 2 0 01-2 2H5a2 2 0 01-2-2V6h14zM8 9v6M12 9v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button
+          id="chatbot-close"
+          class="chatbot-close"
+          aria-label="Close chat"
+          type="button"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Messages Container -->
@@ -98,20 +111,6 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
       </p>
     </div>
 
-    <!-- Loading Indicator -->
-    <div id="chatbot-loading" class="chatbot-loading" hidden aria-hidden="true">
-      <div class="loading-spinner"></div>
-      <span>Thinking...</span>
-    </div>
-
-    <!-- Error Message -->
-    <div id="chatbot-error" class="chatbot-error" hidden role="alert">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" fill="currentColor"/>
-      </svg>
-      <span id="chatbot-error-message">Something went wrong. Please try again.</span>
-      <button id="chatbot-error-dismiss" class="chatbot-error-dismiss" aria-label="Dismiss error">×</button>
-    </div>
   </div>
 </div>
 
@@ -135,31 +134,37 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     private panel: HTMLElement | null;
     private toggle: HTMLElement | null;
     private closeBtn: HTMLElement | null;
+    private refreshBtn: HTMLElement | null;
     private messagesContainer: HTMLElement | null;
     private input: HTMLTextAreaElement | null;
     private sendBtn: HTMLButtonElement | null;
-    private loadingIndicator: HTMLElement | null;
-    private errorMessage: HTMLElement | null;
     private messages: Message[] = [];
     private isOpen = false;
     private currentUrl: string;
     private postTitle: string;
     private searchManager: any = null;
     private indexLoaded = false;
+    private thinkingMessageId: string | null = null;
+    private originalWelcomeElement: HTMLElement | null = null;
 
     constructor() {
       this.panel = document.getElementById('chatbot-panel');
       this.toggle = document.getElementById('chatbot-toggle');
       this.closeBtn = document.getElementById('chatbot-close');
+      this.refreshBtn = document.getElementById('chatbot-refresh');
       this.messagesContainer = document.getElementById('chatbot-messages');
       this.input = document.getElementById('chatbot-input') as HTMLTextAreaElement;
       this.sendBtn = document.getElementById('chatbot-send') as HTMLButtonElement;
-      this.loadingIndicator = document.getElementById('chatbot-loading');
-      this.errorMessage = document.getElementById('chatbot-error');
 
       const container = document.getElementById('ask-ai-chatbot');
       this.currentUrl = container?.dataset.currentUrl || window.location.pathname;
       this.postTitle = container?.dataset.postTitle || '';
+
+      // Store reference to original welcome element to preserve scoped styles
+      const originalWelcome = this.messagesContainer?.querySelector('.chatbot-welcome');
+      if (originalWelcome) {
+        this.originalWelcomeElement = originalWelcome.cloneNode(true) as HTMLElement;
+      }
 
       this.init();
     }
@@ -250,10 +255,12 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         });
       });
 
-      // Error dismiss
-      document.getElementById('chatbot-error-dismiss')?.addEventListener('click', () => {
-        this.hideError();
-      });
+      // Refresh button
+      if (this.refreshBtn) {
+        this.refreshBtn.addEventListener('click', () => {
+          this.clearChat();
+        });
+      }
 
       // Close on Escape
       document.addEventListener('keydown', (e) => {
@@ -279,9 +286,8 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     private async openPanel(): Promise<void> {
       if (!this.panel || !this.toggle) return;
       
-      // Clear any previous error or loading state
+      // Clear any previous loading state immediately
       this.hideLoading();
-      this.hideError();
       
       this.panel.hidden = false;
       this.panel.style.display = ''; // Remove inline display style
@@ -289,31 +295,37 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
       this.isOpen = true;
       
       // Ensure search manager is loaded (don't show loading for this)
-      if (!this.searchManager) {
-        try {
-          await this.loadSearchManager();
-        } catch (error) {
-          console.warn('⚠️ Search manager load failed, continuing without search:', error);
-          // Don't show error - chat can work without search
-        }
-      }
-      
-      // Load RAG index if not already loaded (don't show loading for this)
-      if (this.searchManager && !this.indexLoaded) {
-        try {
-          await this.searchManager.loadIndex(this.currentUrl);
-          this.indexLoaded = true;
-          console.log('✅ RAG index ready for search');
-        } catch (error) {
-          // Silently handle index load failures - chat can work without client-side search
-          console.warn('⚠️ Failed to load RAG index (chat will work without client-side search):', error);
-          if (error instanceof Error) {
-            console.warn('Index load error details:', error.message);
+      // Use try-finally to ensure loading state is always cleared
+      try {
+        if (!this.searchManager) {
+          try {
+            await this.loadSearchManager();
+          } catch (error) {
+            console.warn('⚠️ Search manager load failed, continuing without search:', error);
+            // Don't show error - chat can work without search
           }
-          // Mark as "loaded" (even though it failed) to prevent retry attempts
-          // This prevents the error from propagating and showing user-facing errors
-          this.indexLoaded = true;
         }
+        
+        // Load RAG index if not already loaded (don't show loading for this)
+        if (this.searchManager && !this.indexLoaded) {
+          try {
+            await this.searchManager.loadIndex(this.currentUrl);
+            this.indexLoaded = true;
+            console.log('✅ RAG index ready for search');
+          } catch (error) {
+            // Silently handle index load failures - chat can work without client-side search
+            console.warn('⚠️ Failed to load RAG index (chat will work without client-side search):', error);
+            if (error instanceof Error) {
+              console.warn('Index load error details:', error.message);
+            }
+            // Mark as "loaded" (even though it failed) to prevent retry attempts
+            // This prevents the error from propagating and showing user-facing errors
+            this.indexLoaded = true;
+          }
+        }
+      } finally {
+        // Always ensure loading is cleared after async operations
+        this.hideLoading();
       }
       
       // Focus input
@@ -333,9 +345,8 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         return;
       }
       
-      // Clear loading and error states when closing
+      // Clear loading state when closing
       this.hideLoading();
-      this.hideError();
       
       // Set hidden attribute
       this.panel.hidden = true;
@@ -454,7 +465,15 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
           // Story 10.4: Call API endpoint with chunkIds (even if empty, API can handle it)
           let apiCallSuccess = false;
           try {
-            const apiResponse = await fetch('/api/chat', {
+            // Detect if we're in local dev without Netlify dev server
+            const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const port = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+            const isNetlifyDev = port === '8888' || port === '9999';
+            const apiUrl = isLocalDev && !isNetlifyDev
+              ? 'http://localhost:8888/api/chat' // Try Netlify dev default port
+              : '/api/chat';
+            
+            const apiResponse = await fetch(apiUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -477,14 +496,17 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
                 errorMessage = apiResponse.statusText || errorMessage;
               }
               
-              if (apiResponse.status === 429) {
+              if (apiResponse.status === 404) {
+                // API endpoint not found - likely running astro dev without netlify dev
+                errorMessage = `API endpoint not found. Please run \`netlify dev\` instead of \`astro dev\` to enable the chat API, or use the production site.`;
+              } else if (apiResponse.status === 429) {
                 // Rate limited
                 const retryAfter = apiResponse.headers.get('Retry-After');
                 errorMessage = `Rate limit exceeded. Please wait ${retryAfter || 'a moment'} before trying again.`;
               }
               
               // Show API error message directly
-              this.addMessage('assistant', `**API Error:** ${errorMessage}\n\nThe API endpoint is available but returned an error. This might be a temporary issue. Please try again.`, []);
+              this.addMessage('assistant', `**API Error:** ${errorMessage}\n\nThe API endpoint is not available. ${apiResponse.status === 404 ? 'Make sure to run `netlify dev` for local development.' : 'This might be a temporary issue. Please try again.'}`, []);
               this.hideLoading();
               return;
             }
@@ -611,47 +633,125 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     }
 
     private showLoading(): void {
-      if (this.loadingIndicator) {
-        this.loadingIndicator.hidden = false;
-        this.loadingIndicator.setAttribute('aria-hidden', 'false');
-      }
+      // Show thinking message in chat window
+      if (!this.messagesContainer) return;
+      
+      // Remove any existing thinking message
+      this.hideLoading();
+      
+      // Create thinking message
+      const thinkingId = `thinking-${Date.now()}`;
+      this.thinkingMessageId = thinkingId;
+      
+      const messageEl = document.createElement('div');
+      messageEl.className = 'chatbot-message chatbot-message-assistant chatbot-message-thinking';
+      messageEl.setAttribute('data-message-id', thinkingId);
+      
+      const contentEl = document.createElement('div');
+      contentEl.className = 'chatbot-message-content';
+      contentEl.innerHTML = '<div class="loading-spinner-inline"></div><span>Thinking...</span>';
+      
+      messageEl.appendChild(contentEl);
+      this.messagesContainer.appendChild(messageEl);
+      
+      // Scroll to bottom
+      this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+      
+      // Disable send button
       if (this.sendBtn) {
         this.sendBtn.disabled = true;
       }
     }
 
     private hideLoading(): void {
-      if (this.loadingIndicator) {
-        this.loadingIndicator.hidden = true;
-        this.loadingIndicator.setAttribute('aria-hidden', 'true');
+      // Remove thinking message from chat
+      if (this.thinkingMessageId && this.messagesContainer) {
+        const thinkingEl = this.messagesContainer.querySelector(`[data-message-id="${this.thinkingMessageId}"]`);
+        if (thinkingEl) {
+          thinkingEl.remove();
+        }
+        this.thinkingMessageId = null;
+      }
+      
+      // Re-enable send button
+      if (this.sendBtn && this.input) {
+        this.sendBtn.disabled = !this.input.value.trim();
       }
     }
 
     private showError(message: string): void {
-      if (!this.errorMessage) return;
-
-      const errorText = this.errorMessage.querySelector('#chatbot-error-message');
-      if (errorText) {
-        errorText.textContent = message;
-      }
-
-      this.errorMessage.hidden = false;
-      this.errorMessage.setAttribute('role', 'alert');
-
-      // Scroll error into view
-      this.errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-      // Auto-hide after 8 seconds (longer for debugging)
-      setTimeout(() => {
-        this.hideError();
-      }, 8000);
+      // Show error as a message in chat window
+      this.addMessage('assistant', `**Error:** ${message}`, []);
     }
 
-    private hideError(): void {
-      if (this.errorMessage) {
-        this.errorMessage.hidden = true;
-        this.errorMessage.removeAttribute('role');
+    private clearChat(): void {
+      // Clear all messages including welcome
+      if (!this.messagesContainer) return;
+      
+      // Remove thinking message if present
+      this.hideLoading();
+      
+      // Remove all messages (but keep welcome structure if it exists)
+      const messages = this.messagesContainer.querySelectorAll('.chatbot-message');
+      messages.forEach(msg => msg.remove());
+      
+      // Clear messages array
+      this.messages = [];
+      this.thinkingMessageId = null;
+      
+      // Always remove and recreate welcome to ensure clean state
+      const existingWelcome = this.messagesContainer.querySelector('.chatbot-welcome');
+      if (existingWelcome) {
+        existingWelcome.remove();
       }
+      
+      // Clone the original welcome element to preserve all scoped styles and class names
+      let welcome: HTMLElement | null = null;
+      
+      if (this.originalWelcomeElement) {
+        // Clone the stored original welcome element (preserves all Astro scoped styles)
+        welcome = this.originalWelcomeElement.cloneNode(true) as HTMLElement;
+        this.messagesContainer.appendChild(welcome);
+      } else {
+        // Fallback: if original wasn't stored, create it (shouldn't happen, but safety)
+        const welcomeHTML = `
+          <div class="chatbot-welcome">
+            <p>Hi! I'm Praveen.AI. Ask me anything about this post, and I'll help you understand the content better.</p>
+            <div class="chatbot-suggestions">
+              <button class="suggestion-chip" data-suggestion="Summarize this post">Summarize this post</button>
+              <button class="suggestion-chip" data-suggestion="What are the key takeaways?">Key takeaways</button>
+              <button class="suggestion-chip" data-suggestion="Explain the main concepts">Explain concepts</button>
+            </div>
+          </div>
+        `;
+        this.messagesContainer.insertAdjacentHTML('beforeend', welcomeHTML);
+        welcome = this.messagesContainer.querySelector('.chatbot-welcome');
+      }
+      
+      // Re-attach suggestion chip listeners to the cloned/created welcome element
+      if (welcome) {
+        welcome.querySelectorAll('.suggestion-chip').forEach(chip => {
+          chip.addEventListener('click', (e) => {
+            e.preventDefault();
+            const suggestion = (e.target as HTMLElement).getAttribute('data-suggestion');
+            if (suggestion && this.input) {
+              this.input.value = suggestion;
+              this.input.focus();
+              this.handleInputChange();
+              this.sendMessage();
+            }
+          });
+        });
+      }
+      
+      // Clear input
+      if (this.input) {
+        this.input.value = '';
+        this.handleInputChange();
+      }
+      
+      // Update badge
+      this.updateBadge(0);
     }
 
     private updateBadge(count: number): void {
@@ -752,8 +852,8 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     right: 0;
     width: 400px;
     max-width: calc(100vw - 2rem);
-    height: 600px;
-    max-height: calc(100vh - 8rem);
+    height: 700px;
+    max-height: calc(100vh - 6rem);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 12px;
@@ -793,6 +893,12 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     flex: 1;
   }
 
+  .chatbot-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .chatbot-title {
     font-size: 1.125rem;
     font-weight: 600;
@@ -806,6 +912,7 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     margin: 0;
   }
 
+  .chatbot-refresh,
   .chatbot-close {
     width: 32px;
     height: 32px;
@@ -825,11 +932,13 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     -webkit-tap-highlight-color: transparent;
   }
 
+  .chatbot-refresh:hover,
   .chatbot-close:hover {
     background: var(--color-code-bg);
     color: var(--color-text);
   }
 
+  .chatbot-refresh:focus-visible,
   .chatbot-close:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
@@ -936,6 +1045,23 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     background: var(--color-code-bg);
     color: var(--color-text);
     border-bottom-left-radius: 4px;
+  }
+
+  .chatbot-message-thinking .chatbot-message-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .loading-spinner-inline {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
   }
 
   .chatbot-message-content code {
@@ -1046,71 +1172,8 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     text-align: center;
   }
 
-  /* Loading */
-  .chatbot-loading {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    color: var(--color-text-secondary);
-    font-size: 0.875rem;
-  }
-
-  .loading-spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--color-border);
-    border-top-color: var(--color-accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
   @keyframes spin {
     to { transform: rotate(360deg); }
-  }
-
-  /* Error */
-  .chatbot-error {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    background: #fef2f2;
-    border-top: 1px solid #fecaca;
-    color: #991b1b;
-    font-size: 0.875rem;
-  }
-
-  [data-theme="dark"] .chatbot-error {
-    background: #7f1d1d;
-    border-top-color: #991b1b;
-    color: #fecaca;
-  }
-
-  .chatbot-error svg {
-    flex-shrink: 0;
-  }
-
-  .chatbot-error-dismiss {
-    margin-left: auto;
-    background: transparent;
-    border: none;
-    color: inherit;
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: background var(--transition-fast);
-  }
-
-  .chatbot-error-dismiss:hover {
-    background: rgba(0, 0, 0, 0.1);
   }
 
   /* Responsive */

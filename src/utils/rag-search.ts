@@ -79,11 +79,29 @@ export class RAGSearchManager {
 
   /**
    * Extract post slug from URL
+   * Handles various URL formats:
+   * - /blog/{slug}/
+   * - /blog/{slug}
+   * - https://domain.com/blog/{slug}/
+   * - https://domain.com/blog/{slug}
    */
   private getPostSlugFromUrl(url: string): string | null {
     try {
-      // URL format: /blog/{slug}/
-      const match = url.match(/\/blog\/([^\/]+)\//);
+      // Remove protocol and domain if present
+      let path = url;
+      if (url.includes('://')) {
+        try {
+          const urlObj = new URL(url);
+          path = urlObj.pathname;
+        } catch {
+          // If URL parsing fails, try regex
+          const match = url.match(/\/blog\/([^\/\?]+)/);
+          return match ? match[1] : null;
+        }
+      }
+      
+      // Extract slug from path: /blog/{slug}/ or /blog/{slug}
+      const match = path.match(/\/blog\/([^\/\?]+)/);
       return match ? match[1] : null;
     } catch {
       return null;
@@ -320,7 +338,7 @@ export class RAGSearchManager {
 
   /**
    * Search with smart filtering:
-   * - First tries current post only
+   * - First tries current post only (ensures current post index is loaded)
    * - Falls back to all posts if no results
    * 
    * @param query - Search query
@@ -335,15 +353,28 @@ export class RAGSearchManager {
   ): Promise<ChunkResult[]> {
     // First, try searching only current post
     if (currentUrl) {
-      const currentPostResults = await this.searchChunks(query, {
-        currentUrl,
-        limit,
-        filterCurrentPost: true,
-      });
-
-      // If we found results in current post, return them
-      if (currentPostResults.length > 0) {
-        return currentPostResults;
+      // Extract post slug and ensure current post index is loaded
+      const postSlug = this.getPostSlugFromUrl(currentUrl);
+      
+      if (postSlug) {
+        // Ensure current post's index is loaded
+        if (!this.loadedPosts.has(postSlug)) {
+          try {
+            await this.loadPostIndex(postSlug);
+          } catch (error) {
+            console.warn(`⚠️ Failed to load current post index (${postSlug}), will search all posts:`, error);
+          }
+        }
+        
+        // Search only in current post's index
+        if (this.indexes.has(postSlug)) {
+          const currentPostResults = await this.searchChunksInPost(postSlug, query, limit);
+          
+          // If we found results in current post, return them
+          if (currentPostResults.length > 0) {
+            return currentPostResults;
+          }
+        }
       }
     }
 
@@ -353,6 +384,50 @@ export class RAGSearchManager {
       limit,
       filterCurrentPost: false,
     });
+  }
+
+  /**
+   * Search chunks within a specific post's index
+   */
+  private async searchChunksInPost(
+    postSlug: string,
+    query: string,
+    limit: number
+  ): Promise<ChunkResult[]> {
+    const index = this.indexes.get(postSlug);
+    if (!index) {
+      return [];
+    }
+
+    try {
+      const searchResults = index.search(query);
+      
+      // Convert to ChunkResult objects
+      const results: ChunkResult[] = [];
+      for (const result of searchResults.slice(0, limit)) {
+        const chunkId = result.ref;
+        const chunk = this.chunks.get(chunkId);
+        
+        if (chunk) {
+          results.push({
+            chunkId: chunk.metadata.chunkId,
+            text: chunk.text,
+            postUrl: chunk.metadata.postUrl,
+            postTitle: chunk.metadata.postTitle,
+            postSlug: chunk.metadata.postSlug,
+            postDate: chunk.metadata.postDate,
+            postTags: chunk.metadata.postTags,
+            score: result.score || 0,
+            metadata: chunk.metadata,
+          });
+        }
+      }
+      
+      return results;
+    } catch (error) {
+      console.error(`Error searching in post ${postSlug}:`, error);
+      return [];
+    }
   }
 
   /**
