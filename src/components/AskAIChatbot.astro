@@ -305,12 +305,14 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
           this.indexLoaded = true;
           console.log('✅ RAG index ready for search');
         } catch (error) {
-          console.warn('⚠️ Failed to load RAG index:', error);
+          // Silently handle index load failures - chat can work without client-side search
+          console.warn('⚠️ Failed to load RAG index (chat will work without client-side search):', error);
           if (error instanceof Error) {
             console.warn('Index load error details:', error.message);
           }
-          // Continue anyway - search will just return empty results
-          // API can still work without client-side search
+          // Mark as "loaded" (even though it failed) to prevent retry attempts
+          // This prevents the error from propagating and showing user-facing errors
+          this.indexLoaded = true;
         }
       }
       
@@ -401,36 +403,48 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
               try {
                 // Ensure index is loaded (pass current URL for optimized loading)
                 if (!this.indexLoaded) {
-                  await this.searchManager.loadIndex(this.currentUrl);
-                  this.indexLoaded = true;
+                  try {
+                    await this.searchManager.loadIndex(this.currentUrl);
+                    this.indexLoaded = true;
+                  } catch (loadError) {
+                    // Silently handle load failures - don't retry or show errors
+                    console.warn('⚠️ Index load failed during search (continuing without search):', loadError);
+                    this.indexLoaded = true; // Mark as "loaded" to prevent retries
+                  }
                 }
 
-                // Search for relevant chunks (smart search: current post first, then all posts)
-                chunkResults = await this.searchManager.searchChunksSmart(
-                  query,
-                  this.currentUrl,
-                  5 // Top 5 chunks
-                );
+                // Only search if index is actually loaded
+                if (this.indexLoaded && this.searchManager.isLoaded()) {
+                  // Search for relevant chunks (smart search: current post first, then all posts)
+                  chunkResults = await this.searchManager.searchChunksSmart(
+                    query,
+                    this.currentUrl,
+                    5 // Top 5 chunks
+                  );
 
-                // Extract chunk IDs and citations
-                chunkIds = chunkResults.map((chunk: any) => chunk.chunkId);
-                citations = chunkResults.map((chunk: any) => chunk.postUrl);
-                searchSuccess = true;
+                  // Extract chunk IDs and citations
+                  chunkIds = chunkResults.map((chunk: any) => chunk.chunkId);
+                  citations = chunkResults.map((chunk: any) => chunk.postUrl);
+                  searchSuccess = true;
 
-                console.log(`🔍 Found ${chunkResults.length} relevant chunks for query: "${query}"`);
-                
-                if (chunkResults.length > 0) {
-                  console.log('Top chunks:', chunkResults.map((c: any) => ({
-                    post: c.postTitle,
-                    score: c.score.toFixed(3),
-                  })));
+                  console.log(`🔍 Found ${chunkResults.length} relevant chunks for query: "${query}"`);
+                  
+                  if (chunkResults.length > 0) {
+                    console.log('Top chunks:', chunkResults.map((c: any) => ({
+                      post: c.postTitle,
+                      score: c.score.toFixed(3),
+                    })));
+                  }
+                } else {
+                  console.log('ℹ️ Index not loaded, skipping client-side search (API will handle it)');
                 }
               } catch (indexError) {
-                console.warn('⚠️ Index load/search error:', indexError);
-                // Continue without search results
+                // Silently handle search errors - API can still work
+                console.warn('⚠️ Search error (continuing without search results):', indexError);
+                // Continue without search results - API will handle the query
               }
             } else {
-              console.warn('⚠️ Search manager not available');
+              console.log('ℹ️ Search manager not available, API will handle the query');
             }
           } catch (searchError) {
             console.warn('⚠️ Search error (continuing anyway):', searchError);

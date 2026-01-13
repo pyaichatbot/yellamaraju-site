@@ -11,7 +11,10 @@ import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import type { RAGIndex, Chunk } from '../../src/utils/generate-rag-index';
 
 // Site configuration
-const SITE_URL = 'https://www.yellamaraju.com';
+const SITE_URL = process.env.URL || 'https://yellamaraju.com';
+const PRODUCTION_URL = 'https://yellamaraju.com';
+// Detect environment: NETLIFY_DEV is set in local dev, undefined in production
+const IS_PRODUCTION = !process.env.NETLIFY_DEV;
 const ALLOWED_ORIGINS = [
   'https://www.yellamaraju.com',
   'https://yellamaraju.com',
@@ -192,33 +195,77 @@ async function loadRAGIndex(): Promise<RAGIndex> {
     }
     
     // Fall back to HTTP fetch (for production or when file system not available)
-    const possibleUrls = [
-      'http://localhost:9999/rag-index.json', // Netlify dev (custom port)
-      'http://localhost:8888/rag-index.json', // Netlify dev (default port)
-      'http://localhost:4321/rag-index.json', // Astro dev
-      `${SITE_URL}/rag-index.json`,
-      'https://yellamaraju.com/rag-index.json',
-    ];
+    // In production, try production URLs first; in development, try localhost first
+    const possibleUrls = IS_PRODUCTION
+      ? [
+          // Production URLs first
+          `${PRODUCTION_URL}/rag-index.json`,
+          'https://www.yellamaraju.com/rag-index.json',
+          // Fallback to SITE_URL if different
+          ...(SITE_URL !== PRODUCTION_URL ? [`${SITE_URL}/rag-index.json`] : []),
+        ]
+      : [
+          // Development URLs first
+          'http://localhost:9999/rag-index.json', // Netlify dev (custom port)
+          'http://localhost:8888/rag-index.json', // Netlify dev (default port)
+          'http://localhost:4321/rag-index.json', // Astro dev
+          // Fallback to production URLs in case we're testing against production
+          `${PRODUCTION_URL}/rag-index.json`,
+          'https://www.yellamaraju.com/rag-index.json',
+        ];
     
     let ragIndex: RAGIndex | null = null;
     let lastError: Error | null = null;
     
+    // Log environment detection for debugging
+    console.log(`🔍 Attempting to load RAG index (production: ${IS_PRODUCTION}, NETLIFY_DEV: ${process.env.NETLIFY_DEV}, URL: ${SITE_URL})...`);
+    
+    // Safety check: Never try localhost URLs in production
+    if (IS_PRODUCTION) {
+      const hasLocalhost = possibleUrls.some(url => url.includes('localhost') || url.includes('127.0.0.1'));
+      if (hasLocalhost) {
+        console.error('❌ ERROR: Localhost URLs detected in production mode! This should never happen.');
+        throw new Error('Configuration error: localhost URLs in production');
+      }
+    }
+    
     for (const url of possibleUrls) {
+      let timeoutId: NodeJS.Timeout | null = null;
       try {
+        console.log(`  Trying: ${url}`);
+        
+        // Create abort controller for timeout
+        const timeoutMs = IS_PRODUCTION ? 10000 : 5000; // 10s in prod, 5s in dev
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
         const response = await fetch(url, {
           headers: {
             'Accept': 'application/json',
           },
+          signal: controller.signal,
         });
+        
+        if (timeoutId) clearTimeout(timeoutId);
         
         if (response.ok) {
           ragIndex = await response.json();
           if (ragIndex && ragIndex.chunks && ragIndex.index) {
             console.log(`✅ Loaded RAG index from HTTP: ${url}`);
             return ragIndex;
+          } else {
+            console.warn(`⚠️ Invalid RAG index format from ${url}`);
           }
+        } else {
+          console.warn(`⚠️ HTTP ${response.status} from ${url}`);
         }
       } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        // Only log non-timeout/connection errors to avoid spam
+        if (!errorMsg.includes('timeout') && !errorMsg.includes('ECONNREFUSED') && !errorMsg.includes('aborted')) {
+          console.warn(`⚠️ Error fetching ${url}: ${errorMsg}`);
+        }
         lastError = error instanceof Error ? error : new Error(String(error));
         continue;
       }
