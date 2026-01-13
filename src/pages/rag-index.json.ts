@@ -3,9 +3,15 @@
  * 
  * Generates RAG index at build time
  * Story 10.1: Build-Time RAG Content Preparation
+ * 
+ * This endpoint is prerendered during build to ensure RAG index files
+ * are generated before the build completes.
  */
 
 import { generateRAGIndex } from '../utils/generate-rag-index';
+
+// Prerender this endpoint to ensure it runs during build
+export const prerender = true;
 
 export async function GET() {
   // Generate the index

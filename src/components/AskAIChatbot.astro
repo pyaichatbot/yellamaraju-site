@@ -666,7 +666,8 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 <style>
   .ask-ai-chatbot {
     position: fixed;
-    bottom: 1.5rem;
+    /* Position above scroll buttons: scroll buttons are 2 buttons (44px each) + gap (0.5rem) + bottom margin (1.5rem) = ~116px */
+    bottom: calc(44px + 0.5rem + 44px + 1.5rem + 1rem); /* Above scroll buttons with 1rem margin */
     right: 1.5rem;
     z-index: 1000;
     font-family: var(--font-sans);
@@ -1101,22 +1102,23 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
   /* Responsive */
   @media (max-width: 768px) {
     .ask-ai-chatbot {
-      bottom: 1rem;
+      /* On mobile, scroll buttons are smaller (40px each) and positioned at var(--space-sm) */
+      bottom: calc(40px + 0.5rem + 40px + 1rem + 0.75rem); /* Above scroll buttons with margin */
       right: 1rem;
     }
-
+    
     .chatbot-panel {
       width: calc(100vw - 2rem);
       height: calc(100vh - 4rem);
       max-height: calc(100vh - 4rem);
       bottom: calc(100% + 0.5rem);
     }
-
+    
     .chatbot-toggle {
       width: 48px;
       height: 48px;
     }
-
+    
     .chatbot-icon {
       width: 20px;
       height: 20px;

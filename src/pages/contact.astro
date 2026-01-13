@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { SITE } from '../config';
-import LinkedInBadge from '../components/LinkedInBadge.astro';
 ---
 
 <BaseLayout title="Contact" description="Get in touch with Praveen Srinag Yellamaraju for collaborations, speaking engagements, or discussions about AI and enterprise architecture.">
@@ -63,7 +62,9 @@ import LinkedInBadge from '../components/LinkedInBadge.astro';
               
               <div class="linkedin-section">
                 <label class="detail-label">Connect</label>
-                <LinkedInBadge size="medium" type="HORIZONTAL" />
+                <a href="https://www.linkedin.com/in/praveensrinagy" target="_blank" rel="noopener noreferrer" class="linkedin-link">
+                  LinkedIn Profile
+                </a>
               </div>
               
             </div>
@@ -301,6 +302,18 @@ import LinkedInBadge from '../components/LinkedInBadge.astro';
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
+  }
+  
+  .linkedin-link {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+  }
+  
+  .linkedin-link:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
   }
   
   /* Right Column: Contact Form */
