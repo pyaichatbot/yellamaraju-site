@@ -165,15 +165,18 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     }
 
     private async loadSearchManager(): Promise<void> {
+      if (this.searchManager) return; // Already loaded
+      
       try {
         // Dynamic import - Astro will bundle this correctly
-        // The path is relative to the component file location
+        // Use relative path from component location
         const searchModule = await import('../utils/rag-search');
         
         if (searchModule && searchModule.getRAGSearchManager) {
           this.searchManager = searchModule.getRAGSearchManager();
           console.log('✅ RAG search manager loaded successfully');
         } else {
+          console.warn('⚠️ getRAGSearchManager export not found, available exports:', Object.keys(searchModule || {}));
           throw new Error('getRAGSearchManager export not found in rag-search module');
         }
       } catch (error) {
@@ -181,6 +184,10 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         if (error instanceof Error) {
           console.error('Error message:', error.message);
           console.error('Error stack:', error.stack);
+          // Check if it's a module resolution error
+          if (error.message.includes('Failed to fetch') || error.message.includes('Cannot find module')) {
+            console.error('💡 This might be a module bundling issue. The search will be disabled, but the API will still work.');
+          }
         }
         // Don't throw - allow chat to work without search (will call API directly)
         this.searchManager = null;
@@ -192,7 +199,38 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 
       // Toggle button
       this.toggle.addEventListener('click', () => this.togglePanel());
-      this.closeBtn?.addEventListener('click', () => this.closePanel());
+      
+      // Close button - use event delegation for maximum reliability
+      // This works even if the button isn't found initially
+      if (this.panel) {
+        this.panel.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          // Check if click is on close button or its children (SVG)
+          if (target && (target.id === 'chatbot-close' || target.closest('#chatbot-close'))) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Close button clicked');
+            this.closePanel();
+            return false;
+          }
+        });
+        console.log('✅ Close button event delegation attached');
+      }
+      
+      // Also attach direct listener if button exists
+      if (!this.closeBtn) {
+        this.closeBtn = document.getElementById('chatbot-close');
+      }
+      
+      if (this.closeBtn) {
+        this.closeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Close button clicked (direct)');
+          this.closePanel();
+        });
+        console.log('✅ Close button direct listener attached');
+      }
 
       // Input handling
       this.input.addEventListener('input', () => this.handleInputChange());
@@ -241,24 +279,38 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     private async openPanel(): Promise<void> {
       if (!this.panel || !this.toggle) return;
       
+      // Clear any previous error or loading state
+      this.hideLoading();
+      this.hideError();
+      
       this.panel.hidden = false;
+      this.panel.style.display = ''; // Remove inline display style
       this.toggle.setAttribute('aria-expanded', 'true');
       this.isOpen = true;
       
-      // Ensure search manager is loaded
+      // Ensure search manager is loaded (don't show loading for this)
       if (!this.searchManager) {
-        await this.loadSearchManager();
+        try {
+          await this.loadSearchManager();
+        } catch (error) {
+          console.warn('⚠️ Search manager load failed, continuing without search:', error);
+          // Don't show error - chat can work without search
+        }
       }
       
-      // Load RAG index if not already loaded
+      // Load RAG index if not already loaded (don't show loading for this)
       if (this.searchManager && !this.indexLoaded) {
         try {
-          await this.searchManager.loadIndex();
+          await this.searchManager.loadIndex(this.currentUrl);
           this.indexLoaded = true;
           console.log('✅ RAG index ready for search');
         } catch (error) {
           console.warn('⚠️ Failed to load RAG index:', error);
+          if (error instanceof Error) {
+            console.warn('Index load error details:', error.message);
+          }
           // Continue anyway - search will just return empty results
+          // API can still work without client-side search
         }
       }
       
@@ -272,11 +324,25 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     }
 
     private closePanel(): void {
-      if (!this.panel || !this.toggle) return;
+      console.log('closePanel called', { panel: !!this.panel, toggle: !!this.toggle, isOpen: this.isOpen });
       
+      if (!this.panel || !this.toggle) {
+        console.error('Cannot close: missing panel or toggle', { panel: !!this.panel, toggle: !!this.toggle });
+        return;
+      }
+      
+      // Clear loading and error states when closing
+      this.hideLoading();
+      this.hideError();
+      
+      // Set hidden attribute
       this.panel.hidden = true;
+      // Also set display none via style to ensure it's hidden
+      this.panel.style.display = 'none';
       this.toggle.setAttribute('aria-expanded', 'false');
       this.isOpen = false;
+      
+      console.log('Panel closed successfully', { hidden: this.panel.hidden, display: this.panel.style.display });
     }
 
     private handleInputChange(): void {
@@ -419,19 +485,41 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
           let response: string;
           
           if (!searchSuccess) {
-            // Search failed - provide helpful debugging info
+            // Search failed - try API anyway with empty chunkIds (API can handle it)
+            // The API will return a helpful message
+            try {
+              const fallbackResponse = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  query,
+                  currentUrl: this.currentUrl,
+                  chunkIds: [], // Empty - API will handle gracefully
+                }),
+              });
+
+              if (fallbackResponse.ok) {
+                const fallbackData = await fallbackResponse.json();
+                if (fallbackData.success && fallbackData.answer) {
+                  this.addMessage('assistant', fallbackData.answer, fallbackData.citations || []);
+                  this.hideLoading();
+                  return;
+                }
+              }
+            } catch (fallbackError) {
+              console.warn('Fallback API call also failed:', fallbackError);
+            }
+            
+            // If API also failed, show helpful message
             response = `I'm having trouble accessing the search index. `;
             response += `\n\n**Your question:** "${query}"`;
             response += `\n\n**Status:**`;
             response += `\n- ✅ API endpoint ready (Story 10.4)`;
             response += `\n- ⚠️ Client-side search not loading (Story 10.3)`;
-            response += `\n\n**To fix:**`;
-            response += `\n1. Open browser console (F12)`;
-            response += `\n2. Check for import/module errors`;
-            response += `\n3. Verify /rag-index.json is accessible`;
-            response += `\n4. Try refreshing the page`;
-            response += `\n\n*The API can work without search, but it needs chunkIds. `;
-            response += `Once search loads, chunkIds will be sent automatically.*`;
+            response += `\n\n**Note:** The chat widget is working, but search indexing needs to be fixed. `;
+            response += `Please check the browser console (F12) for error details.`;
           } else if (chunkResults.length > 0) {
             // Found results but API might have failed
             const topChunk = chunkResults[0];
@@ -691,6 +779,10 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     animation: slideUp 0.3s ease-out;
   }
 
+  .chatbot-panel[hidden] {
+    display: none !important;
+  }
+
   @keyframes slideUp {
     from {
       opacity: 0;
@@ -742,6 +834,10 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     border-radius: 6px;
     transition: all var(--transition-fast);
     flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .chatbot-close:hover {
