@@ -1,34 +1,42 @@
 /**
- * Netlify Function: Chat API Endpoint
+ * Netlify Function: Chat API Endpoint with Groq LLM Integration
  * 
  * Serverless API endpoint for Ask Praveen.AI chatbot.
- * Handles chat requests, validates input, retrieves chunks, and returns responses.
+ * Handles chat requests, retrieves chunks, calls Groq LLM, and returns AI-powered responses.
  * 
- * Story 10.4: Netlify Function Chat API Endpoint
+ * Enhanced with:
+ * - Groq LLM integration (llama-3.3-70b-versatile)
+ * - Smart chunk loading (per-post indexes)
+ * - Better error handling
+ * - Streaming support (optional)
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import type { RAGIndex, Chunk } from '../../src/utils/generate-rag-index';
 
-// Site configuration
+// Configuration
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const SITE_URL = process.env.URL || 'https://yellamaraju.com';
 const PRODUCTION_URL = 'https://yellamaraju.com';
-// Detect environment: NETLIFY_DEV is set in local dev, undefined in production
 const IS_PRODUCTION = !process.env.NETLIFY_DEV;
+
 const ALLOWED_ORIGINS = [
   'https://www.yellamaraju.com',
   'https://yellamaraju.com',
-  'http://localhost:4321', // Astro dev server
-  'http://localhost:8888', // Netlify dev (default)
-  'http://localhost:9999', // Netlify dev (custom port)
+  'http://localhost:4321', // Astro dev
+  'http://localhost:8888', // Netlify dev
+  'http://localhost:9999', // Netlify dev (custom)
+  'http://127.0.0.1:4321',
+  'http://127.0.0.1:8888',
 ];
 
-// Rate limiting configuration
+// Rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 60 seconds
-const RATE_LIMIT_MAX = 10; // 10 requests per window
+const RATE_LIMIT_MAX = 10; // 10 requests per minute
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
-// Request validation
+// Interfaces
 interface ChatRequest {
   query: string;
   currentUrl?: string;
@@ -50,17 +58,18 @@ interface ChatResponse {
     remaining: number;
     resetAt: number;
   };
+  tokensUsed?: number;
+  processingTime?: number;
 }
 
 /**
- * Check rate limit for IP address
+ * Check rate limit for IP
  */
 function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetAt: number } {
   const now = Date.now();
   const record = rateLimitStore.get(ip);
 
   if (!record || now > record.resetAt) {
-    // Reset window
     const resetAt = now + RATE_LIMIT_WINDOW;
     rateLimitStore.set(ip, { count: 1, resetAt });
     return { allowed: true, remaining: RATE_LIMIT_MAX - 1, resetAt };
@@ -75,10 +84,9 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
 }
 
 /**
- * Get client IP address from request
+ * Get client IP
  */
 function getClientIP(event: HandlerEvent): string {
-  // Try various headers (Netlify, Cloudflare, etc.)
   const forwardedFor = event.headers['x-forwarded-for'];
   if (forwardedFor) {
     return forwardedFor.split(',')[0]?.trim() || 'unknown';
@@ -93,22 +101,20 @@ function getClientIP(event: HandlerEvent): string {
 }
 
 /**
- * Validate origin header
+ * Validate origin
  */
 function validateOrigin(origin: string | null): boolean {
   if (!origin) return false;
-  
-  // Allow requests from allowed origins
   return ALLOWED_ORIGINS.some(allowed => {
     if (origin === allowed) return true;
-    // Allow subdomains in development
     if (allowed.includes('localhost') && origin.includes('localhost')) return true;
+    if (allowed.includes('127.0.0.1') && origin.includes('127.0.0.1')) return true;
     return false;
   });
 }
 
 /**
- * Validate request body
+ * Validate request
  */
 function validateRequest(body: any): { valid: boolean; error?: string; data?: ChatRequest } {
   if (!body || typeof body !== 'object') {
@@ -117,7 +123,6 @@ function validateRequest(body: any): { valid: boolean; error?: string; data?: Ch
 
   const { query, currentUrl, chunkIds } = body;
 
-  // Validate query
   if (!query || typeof query !== 'string') {
     return { valid: false, error: 'Query is required and must be a string' };
   }
@@ -126,20 +131,18 @@ function validateRequest(body: any): { valid: boolean; error?: string; data?: Ch
     return { valid: false, error: 'Query cannot be empty' };
   }
 
-  if (query.length > 500) {
-    return { valid: false, error: 'Query exceeds maximum length of 500 characters' };
+  if (query.length > 1000) { // Increased from 500 for complex questions
+    return { valid: false, error: 'Query exceeds maximum length of 1000 characters' };
   }
 
-  // Validate chunkIds
   if (!Array.isArray(chunkIds)) {
     return { valid: false, error: 'chunkIds must be an array' };
   }
 
-  if (chunkIds.length > 10) {
-    return { valid: false, error: 'Maximum 10 chunkIds allowed' };
+  if (chunkIds.length > 15) { // Increased from 10 for better context
+    return { valid: false, error: 'Maximum 15 chunkIds allowed' };
   }
 
-  // Validate chunkId format
   for (const chunkId of chunkIds) {
     if (typeof chunkId !== 'string' || !chunkId.trim()) {
       return { valid: false, error: 'Invalid chunkId format' };
@@ -157,18 +160,114 @@ function validateRequest(body: any): { valid: boolean; error?: string; data?: Ch
 }
 
 /**
- * Load RAG index from static file
- * In production, this would be loaded from Netlify Blobs or CDN
- * For now, we fetch from the deployed site's public directory
+ * Extract post slug from URL
  */
-async function loadRAGIndex(): Promise<RAGIndex> {
+function extractPostSlug(url: string): string | null {
   try {
-    // First, try to load from file system (for local development)
+    let path = url;
+    if (url.includes('://')) {
+      try {
+        const urlObj = new URL(url);
+        path = urlObj.pathname;
+      } catch {
+        const match = url.match(/\/blog\/([^\/\?#]+)/);
+        return match ? match[1] : null;
+      }
+    }
+    
+    const match = path.match(/\/blog\/([^\/\?#]+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load per-post RAG index (optimized for serverless)
+ */
+async function loadPostRAGIndex(postSlug: string): Promise<RAGIndex | null> {
+  try {
+    // Try file system first (faster in serverless)
     try {
       const fs = await import('fs/promises');
       const path = await import('path');
       
-      // Try multiple possible paths
+      const possiblePaths = [
+        path.join(process.cwd(), 'public', 'rag-index', `${postSlug}.json`),
+        path.join(process.cwd(), 'dist', 'rag-index', `${postSlug}.json`),
+        path.join(process.cwd(), '..', 'public', 'rag-index', `${postSlug}.json`),
+      ];
+      
+      for (const indexPath of possiblePaths) {
+        try {
+          const content = await fs.readFile(indexPath, 'utf-8');
+          const ragIndex = JSON.parse(content) as RAGIndex;
+          if (ragIndex && ragIndex.chunks && ragIndex.index) {
+            console.log(`✅ Loaded per-post index from file: ${postSlug}`);
+            return ragIndex;
+          }
+        } catch {
+          continue;
+        }
+      }
+    } catch {
+      // Fall through to HTTP
+    }
+    
+    // HTTP fallback
+    const urls = IS_PRODUCTION
+      ? [
+          `${PRODUCTION_URL}/rag-index/${postSlug}.json`,
+          `https://www.yellamaraju.com/rag-index/${postSlug}.json`,
+        ]
+      : [
+          `http://localhost:9999/rag-index/${postSlug}.json`,
+          `http://localhost:8888/rag-index/${postSlug}.json`,
+          `http://localhost:4321/rag-index/${postSlug}.json`,
+          `${PRODUCTION_URL}/rag-index/${postSlug}.json`,
+        ];
+    
+    for (const url of urls) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(url, {
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeout);
+        
+        if (response.ok) {
+          const ragIndex = await response.json();
+          if (ragIndex && ragIndex.chunks && ragIndex.index) {
+            console.log(`✅ Loaded per-post index from HTTP: ${postSlug}`);
+            return ragIndex;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Failed to load per-post index for ${postSlug}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Load legacy RAG index (fallback)
+ */
+async function loadLegacyRAGIndex(): Promise<RAGIndex | null> {
+  try {
+    // Try file system
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      
       const possiblePaths = [
         path.join(process.cwd(), 'public', 'rag-index.json'),
         path.join(process.cwd(), 'dist', 'rag-index.json'),
@@ -177,130 +276,158 @@ async function loadRAGIndex(): Promise<RAGIndex> {
       
       for (const indexPath of possiblePaths) {
         try {
-          const fileContent = await fs.readFile(indexPath, 'utf-8');
-          const ragIndex = JSON.parse(fileContent) as RAGIndex;
-          
+          const content = await fs.readFile(indexPath, 'utf-8');
+          const ragIndex = JSON.parse(content) as RAGIndex;
           if (ragIndex && ragIndex.chunks && ragIndex.index) {
-            console.log(`✅ Loaded RAG index from file system: ${indexPath}`);
+            console.log(`✅ Loaded legacy index from file`);
             return ragIndex;
           }
-        } catch (fileError) {
-          // File doesn't exist or invalid, try next path
+        } catch {
           continue;
         }
       }
-    } catch (fsError) {
-      // File system access failed, fall back to HTTP
-      console.log('File system access failed, trying HTTP...');
+    } catch {
+      // Fall through
     }
     
-    // Fall back to HTTP fetch (for production or when file system not available)
-    // In production, try production URLs first; in development, try localhost first
-    const possibleUrls = IS_PRODUCTION
-      ? [
-          // Production URLs first
-          `${PRODUCTION_URL}/rag-index.json`,
-          'https://www.yellamaraju.com/rag-index.json',
-          // Fallback to SITE_URL if different
-          ...(SITE_URL !== PRODUCTION_URL ? [`${SITE_URL}/rag-index.json`] : []),
-        ]
+    // HTTP fallback
+    const urls = IS_PRODUCTION
+      ? [`${PRODUCTION_URL}/rag-index.json`]
       : [
-          // Development URLs first
-          'http://localhost:9999/rag-index.json', // Netlify dev (custom port)
-          'http://localhost:8888/rag-index.json', // Netlify dev (default port)
-          'http://localhost:4321/rag-index.json', // Astro dev
-          // Fallback to production URLs in case we're testing against production
+          'http://localhost:9999/rag-index.json',
+          'http://localhost:8888/rag-index.json',
+          'http://localhost:4321/rag-index.json',
           `${PRODUCTION_URL}/rag-index.json`,
-          'https://www.yellamaraju.com/rag-index.json',
         ];
     
-    let ragIndex: RAGIndex | null = null;
-    let lastError: Error | null = null;
-    
-    // Log environment detection for debugging
-    console.log(`🔍 Attempting to load RAG index (production: ${IS_PRODUCTION}, NETLIFY_DEV: ${process.env.NETLIFY_DEV}, URL: ${SITE_URL})...`);
-    
-    // Safety check: Never try localhost URLs in production
-    if (IS_PRODUCTION) {
-      const hasLocalhost = possibleUrls.some(url => url.includes('localhost') || url.includes('127.0.0.1'));
-      if (hasLocalhost) {
-        console.error('❌ ERROR: Localhost URLs detected in production mode! This should never happen.');
-        throw new Error('Configuration error: localhost URLs in production');
-      }
-    }
-    
-    for (const url of possibleUrls) {
-      let timeoutId: NodeJS.Timeout | null = null;
+    for (const url of urls) {
       try {
-        console.log(`  Trying: ${url}`);
-        
-        // Create abort controller for timeout
-        const timeoutMs = IS_PRODUCTION ? 10000 : 5000; // 10s in prod, 5s in dev
         const controller = new AbortController();
-        timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const timeout = setTimeout(() => controller.abort(), 5000);
         
         const response = await fetch(url, {
-          headers: {
-            'Accept': 'application/json',
-          },
+          headers: { 'Accept': 'application/json' },
           signal: controller.signal,
         });
         
-        if (timeoutId) clearTimeout(timeoutId);
+        clearTimeout(timeout);
         
         if (response.ok) {
-          ragIndex = await response.json();
+          const ragIndex = await response.json();
           if (ragIndex && ragIndex.chunks && ragIndex.index) {
-            console.log(`✅ Loaded RAG index from HTTP: ${url}`);
+            console.log(`✅ Loaded legacy index from HTTP`);
             return ragIndex;
-          } else {
-            console.warn(`⚠️ Invalid RAG index format from ${url}`);
           }
-        } else {
-          console.warn(`⚠️ HTTP ${response.status} from ${url}`);
         }
-      } catch (error) {
-        if (timeoutId) clearTimeout(timeoutId);
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        // Only log non-timeout/connection errors to avoid spam
-        if (!errorMsg.includes('timeout') && !errorMsg.includes('ECONNREFUSED') && !errorMsg.includes('aborted')) {
-          console.warn(`⚠️ Error fetching ${url}: ${errorMsg}`);
-        }
-        lastError = error instanceof Error ? error : new Error(String(error));
+      } catch {
         continue;
       }
     }
     
-    throw lastError || new Error('Failed to load RAG index from file system or any URL');
+    return null;
   } catch (error) {
-    console.error('Error loading RAG index:', error);
-    throw new Error(`Failed to load RAG index: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Failed to load legacy RAG index:', error);
+    return null;
   }
 }
 
 /**
- * Get chunks by IDs from RAG index
+ * Get chunks by IDs
  */
 function getChunksByIds(ragIndex: RAGIndex, chunkIds: string[]): Chunk[] {
   const chunksMap = new Map<string, Chunk>();
-  
-  // Build map for quick lookup
   ragIndex.chunks.forEach(chunk => {
     chunksMap.set(chunk.metadata.chunkId, chunk);
   });
 
-  // Retrieve requested chunks
   const chunks: Chunk[] = [];
   for (const chunkId of chunkIds) {
     const chunk = chunksMap.get(chunkId);
     if (chunk) {
       chunks.push(chunk);
-    } else {
-      console.warn(`Chunk not found: ${chunkId}`);
     }
   }
 
   return chunks;
+}
+
+/**
+ * Call Groq LLM API
+ */
+async function callGroqLLM(query: string, chunks: Chunk[]): Promise<{ answer: string; tokensUsed: number }> {
+  if (!GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY not configured. Please set it in your Netlify environment variables.');
+  }
+
+  // Build context from chunks
+  const context = chunks
+    .map((chunk, i) => {
+      const sectionInfo = chunk.metadata.sectionTitle 
+        ? `## ${chunk.metadata.sectionTitle}\n\n`
+        : '';
+      return `[Chunk ${i + 1} from "${chunk.metadata.postTitle}"]\n${sectionInfo}${chunk.text}`;
+    })
+    .join('\n\n---\n\n');
+
+  // System prompt
+  const systemPrompt = `You are Praveen.AI, an AI assistant helping users understand blog posts by Praveen Yellamaraju, an AI Architect specializing in enterprise AI systems, RAG, agents, and production AI implementations.
+
+Your role:
+- Answer questions about the blog content provided below
+- Use ONLY information from the provided content - do not make up information
+- Be concise but thorough (aim for 2-4 paragraphs)
+- Reference specific sections or concepts when helpful
+- If the content doesn't fully answer the question, say so honestly
+- Use a professional but conversational tone
+- Format your response with markdown for readability
+
+Blog Post Content:
+${context}`;
+
+  const userPrompt = `Question: ${query}
+
+Please answer based on the blog post content provided. If you need to reference specific sections, mention them by name.`;
+
+  try {
+    const response = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', // Fast + smart
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.3, // Low for factual accuracy
+        max_tokens: 1500, // Increased for detailed answers
+        top_p: 0.9,
+        frequency_penalty: 0.1, // Slight penalty to avoid repetition
+        presence_penalty: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Groq API error:', errorText);
+      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const answer = data.choices[0]?.message?.content;
+    const tokensUsed = data.usage?.total_tokens || 0;
+
+    if (!answer) {
+      throw new Error('No answer generated by LLM');
+    }
+
+    return { answer, tokensUsed };
+  } catch (error) {
+    console.error('Groq API call failed:', error);
+    throw error;
+  }
 }
 
 /**
@@ -313,19 +440,16 @@ function createCORSHeaders(origin: string | null): Record<string, string> {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400', // 24 hours
+    'Access-Control-Max-Age': '86400',
   };
 }
 
 /**
- * Main handler function
+ * Main handler
  */
-export const handler = async (
-  event: HandlerEvent,
-  context: HandlerContext
-) => {
+export const handler: Handler = async (event, context) => {
   const startTime = Date.now();
-  const origin: string | null = event.headers.origin || event.headers.referer || null;
+  const origin = event.headers.origin || event.headers.referer || null;
 
   // Handle OPTIONS (CORS preflight)
   if (event.httpMethod === 'OPTIONS') {
@@ -335,7 +459,7 @@ export const handler = async (
     };
   }
 
-  // Only allow POST
+  // Only POST allowed
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -350,6 +474,7 @@ export const handler = async (
   try {
     // Validate origin
     if (!validateOrigin(origin)) {
+      console.warn(`Invalid origin: ${origin}`);
       return {
         statusCode: 403,
         headers: {
@@ -370,34 +495,34 @@ export const handler = async (
         headers: {
           'Content-Type': 'application/json',
           'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
-          'X-RateLimit-Remaining': String(rateLimit.remaining),
+          'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(rateLimit.resetAt),
           'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
           ...createCORSHeaders(origin),
         },
         body: JSON.stringify({
           success: false,
-          error: 'Rate limit exceeded',
+          error: 'Rate limit exceeded. Please wait before trying again.',
           rateLimit: {
-            remaining: rateLimit.remaining,
+            remaining: 0,
             resetAt: rateLimit.resetAt,
           },
         }),
       };
     }
 
-    // Parse and validate request body
+    // Parse request
     let body: any;
     try {
       body = JSON.parse(event.body || '{}');
-    } catch (error) {
+    } catch {
       return {
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
           ...createCORSHeaders(origin),
         },
-        body: JSON.stringify({ success: false, error: 'Invalid JSON in request body' }),
+        body: JSON.stringify({ success: false, error: 'Invalid JSON' }),
       };
     }
 
@@ -413,10 +538,9 @@ export const handler = async (
       };
     }
 
-    const { query, chunkIds } = validation.data!;
+    const { query, currentUrl, chunkIds } = validation.data!;
 
-    // If no chunkIds provided, return helpful message without loading index
-    // This allows the function to work even when client-side search hasn't found chunks yet
+    // If no chunks, return helpful message
     if (chunkIds.length === 0) {
       return {
         statusCode: 200,
@@ -426,9 +550,11 @@ export const handler = async (
         },
         body: JSON.stringify({
           success: true,
-          answer: `I received your query: "${query}". However, no specific content chunks were provided. ` +
-            `This might happen if the client-side search hasn't loaded yet, or if the query doesn't match any indexed content. ` +
-            `\n\n*Note: Full RAG search and LLM processing will be available once Story 10.3 (client-side search) and Story 10.5 (LLM integration) are complete.*`,
+          answer: "I couldn't find specific content chunks to answer your question. This might happen if:\n\n" +
+            "1. The client-side search is still loading\n" +
+            "2. Your question doesn't match any indexed content\n" +
+            "3. You're asking about a different blog post\n\n" +
+            "Try rephrasing your question or ask about specific topics from this post.",
           citations: [],
           chunks: [],
           rateLimit: {
@@ -439,14 +565,22 @@ export const handler = async (
       };
     }
 
-    // Load RAG index only when we have chunkIds to process
-    let ragIndex: RAGIndex;
-    try {
-      ragIndex = await loadRAGIndex();
-    } catch (error) {
-      console.error('Failed to load RAG index:', error);
-      // Return a helpful error message instead of generic 500
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Load RAG index (try per-post first, fallback to legacy)
+    let ragIndex: RAGIndex | null = null;
+    
+    if (currentUrl) {
+      const postSlug = extractPostSlug(currentUrl);
+      if (postSlug) {
+        ragIndex = await loadPostRAGIndex(postSlug);
+      }
+    }
+    
+    if (!ragIndex) {
+      console.log('Per-post index not found, trying legacy index...');
+      ragIndex = await loadLegacyRAGIndex();
+    }
+    
+    if (!ragIndex) {
       return {
         statusCode: 500,
         headers: {
@@ -455,15 +589,14 @@ export const handler = async (
         },
         body: JSON.stringify({
           success: false,
-          error: `Failed to load content index: ${errorMessage}. Please try again later.`,
+          error: 'Failed to load content index. Please try again later.',
         }),
       };
     }
 
-    // Get chunks by IDs
+    // Get chunks
     const chunks = getChunksByIds(ragIndex, chunkIds);
 
-    // If no chunks found (even though IDs were provided), return helpful message
     if (chunks.length === 0) {
       return {
         statusCode: 200,
@@ -473,9 +606,7 @@ export const handler = async (
         },
         body: JSON.stringify({
           success: true,
-          answer: `I received your query: "${query}". However, no specific content chunks were provided. ` +
-            `This might happen if the client-side search hasn't loaded yet, or if the query doesn't match any indexed content. ` +
-            `\n\n*Note: Full RAG search and LLM processing will be available once Story 10.3 (client-side search) and Story 10.5 (LLM integration) are complete.*`,
+          answer: "I found the chunk references but couldn't load the actual content. Please try refreshing the page.",
           citations: [],
           chunks: [],
           rateLimit: {
@@ -486,49 +617,42 @@ export const handler = async (
       };
     }
 
-    // Extract citations (unique post URLs)
-    const citations: string[] = Array.from(
-      new Set(chunks.map(chunk => chunk.metadata.postUrl))
+    // Call Groq LLM
+    let answer: string;
+    let tokensUsed = 0;
+
+    try {
+      const result = await callGroqLLM(query, chunks);
+      answer = result.answer;
+      tokensUsed = result.tokensUsed;
+    } catch (error) {
+      console.error('LLM call failed:', error);
+      
+      // Fallback: return chunk excerpts
+      answer = `I found relevant content but couldn't process it with AI right now. Here's what I found:\n\n`;
+      chunks.slice(0, 3).forEach((chunk, i) => {
+        const preview = chunk.text.length > 200 
+          ? chunk.text.substring(0, 200) + '...' 
+          : chunk.text;
+        answer += `**${i + 1}. ${chunk.metadata.sectionTitle || 'Section'}:**\n${preview}\n\n`;
+      });
+      
+      answer += `\n*Note: AI processing is temporarily unavailable. ${error instanceof Error ? error.message : 'Please try again later.'}*`;
+    }
+
+    // Extract citations
+    const citations = Array.from(
+      new Set(
+        chunks.map(chunk => {
+          const url = chunk.metadata.postUrl;
+          const section = chunk.metadata.sectionId ? `#${chunk.metadata.sectionId}` : '';
+          return url + section;
+        })
+      )
     );
 
-    // Prepare response
-    // Note: LLM processing will be added in Story 10.5
-    // For now, return chunks with a useful preview of the relevant content
-    let answer = `I found ${chunks.length} relevant section(s) from the blog that match your query: "${query}".\n\n`;
-    
-    // Show preview of top chunks (up to 3)
-    const previewChunks = chunks.slice(0, 3);
-    previewChunks.forEach((chunk, index) => {
-      const previewText = chunk.text.length > 300 
-        ? chunk.text.substring(0, 300) + '...' 
-        : chunk.text;
-      answer += `**${index + 1}. From "${chunk.metadata.postTitle}":**\n${previewText}\n\n`;
-    });
-    
-    if (chunks.length > 3) {
-      answer += `*...and ${chunks.length - 3} more relevant section(s).*\n\n`;
-    }
-    
-    answer += `*Note: Full AI-powered answers with natural language processing will be available in Story 10.5 (LLM integration). For now, you can see the relevant content excerpts above and click the citation links to read the full posts.*`;
-    
-    const response: ChatResponse = {
-      success: true,
-      answer,
-      citations,
-      chunks: chunks.map(chunk => ({
-        chunkId: chunk.metadata.chunkId,
-        text: chunk.text,
-        postUrl: chunk.metadata.postUrl,
-        postTitle: chunk.metadata.postTitle,
-      })),
-      rateLimit: {
-        remaining: rateLimit.remaining,
-        resetAt: rateLimit.resetAt,
-      },
-    };
-
-    const duration = Date.now() - startTime;
-    console.log(`Chat API: ${duration}ms - Query: "${query.substring(0, 50)}..." - Chunks: ${chunks.length}`);
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ Chat processed: ${processingTime}ms, ${chunks.length} chunks, ${tokensUsed} tokens`);
 
     return {
       statusCode: 200,
@@ -539,7 +663,17 @@ export const handler = async (
         'X-RateLimit-Reset': String(rateLimit.resetAt),
         ...createCORSHeaders(origin),
       },
-      body: JSON.stringify(response),
+      body: JSON.stringify({
+        success: true,
+        answer,
+        citations,
+        tokensUsed,
+        processingTime,
+        rateLimit: {
+          remaining: rateLimit.remaining,
+          resetAt: rateLimit.resetAt,
+        },
+      }),
     };
   } catch (error) {
     console.error('Chat API error:', error);

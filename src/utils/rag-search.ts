@@ -20,12 +20,15 @@ export interface ChunkResult {
   postTags: string[];
   score: number;
   metadata: ChunkMetadata;
+  sectionId?: string;
+  sectionTitle?: string;
 }
 
 export interface SearchOptions {
   currentUrl?: string;
   limit?: number;
   filterCurrentPost?: boolean;
+  sectionId?: string; // Optional: filter by section/heading ID
 }
 
 /**
@@ -270,7 +273,9 @@ export class RAGSearchManager {
       const allSearchResults: Array<{ ref: string; score: number }> = [];
       
       for (const [postSlug, index] of this.indexes.entries()) {
-        const searchResults = index.search(query);
+        // Escape colons and other special characters that Lunr interprets as field separators
+        const escapedQuery = query.replace(/:/g, ' ').trim();
+        const searchResults = index.search(escapedQuery);
         // Add results with post context
         searchResults.forEach(result => {
           allSearchResults.push({
@@ -307,6 +312,11 @@ export class RAGSearchManager {
             continue;
           }
         }
+        
+        // Filter by section ID if provided
+        if (options.sectionId && chunk.metadata.sectionId !== options.sectionId) {
+          continue;
+        }
 
         results.push({
           chunkId: chunk.metadata.chunkId,
@@ -318,6 +328,8 @@ export class RAGSearchManager {
           postTags: chunk.metadata.postTags,
           score: result.score || 0,
           metadata: chunk.metadata,
+          sectionId: chunk.metadata.sectionId,
+          sectionTitle: chunk.metadata.sectionTitle,
         });
 
         // Stop when we have enough results
@@ -340,17 +352,44 @@ export class RAGSearchManager {
    * Search with smart filtering:
    * - First tries current post only (ensures current post index is loaded)
    * - Falls back to all posts if no results
+   * - Supports section-based filtering via sectionId
    * 
    * @param query - Search query
    * @param currentUrl - Current post URL
    * @param limit - Maximum number of results
+   * @param sectionId - Optional section/heading ID to filter by
    * @returns Array of chunk results
    */
   async searchChunksSmart(
     query: string,
     currentUrl?: string,
-    limit: number = 5
+    limit: number = 5,
+    sectionId?: string
   ): Promise<ChunkResult[]> {
+    // If sectionId is provided, prioritize chunks from that section
+    if (sectionId && currentUrl) {
+      const postSlug = this.getPostSlugFromUrl(currentUrl);
+      if (postSlug) {
+        // Ensure current post's index is loaded
+        if (!this.loadedPosts.has(postSlug)) {
+          try {
+            await this.loadPostIndex(postSlug);
+          } catch (error) {
+            console.warn(`⚠️ Failed to load current post index (${postSlug}):`, error);
+          }
+        }
+        
+        // Search within the specific section first
+        if (this.indexes.has(postSlug)) {
+          const sectionResults = await this.searchChunksInPost(postSlug, query, limit, sectionId);
+          if (sectionResults.length > 0) {
+            console.log(`✅ Found ${sectionResults.length} results in section ${sectionId}`);
+            return sectionResults;
+          }
+        }
+      }
+    }
+    
     // First, try searching only current post
     if (currentUrl) {
       // Extract post slug and ensure current post index is loaded
@@ -369,10 +408,10 @@ export class RAGSearchManager {
         // Search only in current post's index
         if (this.indexes.has(postSlug)) {
           const currentPostResults = await this.searchChunksInPost(postSlug, query, limit);
-          
-          // If we found results in current post, return them
-          if (currentPostResults.length > 0) {
-            return currentPostResults;
+
+      // If we found results in current post, return them
+      if (currentPostResults.length > 0) {
+        return currentPostResults;
           }
         }
       }
@@ -383,6 +422,7 @@ export class RAGSearchManager {
       currentUrl,
       limit,
       filterCurrentPost: false,
+      sectionId,
     });
   }
 
@@ -392,7 +432,8 @@ export class RAGSearchManager {
   private async searchChunksInPost(
     postSlug: string,
     query: string,
-    limit: number
+    limit: number,
+    sectionId?: string
   ): Promise<ChunkResult[]> {
     const index = this.indexes.get(postSlug);
     if (!index) {
@@ -400,27 +441,152 @@ export class RAGSearchManager {
     }
 
     try {
-      const searchResults = index.search(query);
+      // First, try exact section title match (for heading text queries)
+      // Normalize query: lowercase, trim, and handle colons
+      const normalizedQuery = query.toLowerCase().trim();
+      // Also create a version without colons for matching
+      const normalizedQueryNoColon = normalizedQuery.replace(/:/g, '').replace(/\s+/g, ' ').trim();
+      let results: ChunkResult[] = [];
+      
+      // Check if query matches any section title exactly or closely
+      let checkedChunks = 0;
+      for (const chunk of this.chunks.values()) {
+        if (chunk.metadata.postSlug !== postSlug) continue;
+        if (sectionId && chunk.metadata.sectionId !== sectionId) continue;
+        
+        checkedChunks++;
+        const sectionTitle = chunk.metadata.sectionTitle?.toLowerCase().trim();
+        if (sectionTitle) {
+          // Normalize section title for comparison (remove extra spaces)
+          const normalizedSectionTitle = sectionTitle.replace(/\s+/g, ' ').trim();
+          const normalizedSectionTitleNoColon = normalizedSectionTitle.replace(/:/g, '').replace(/\s+/g, ' ').trim();
+          
+          // Exact match (with or without colon)
+          if (normalizedSectionTitle === normalizedQuery || 
+              normalizedSectionTitleNoColon === normalizedQueryNoColon) {
+            results.push({
+              chunkId: chunk.metadata.chunkId,
+              text: chunk.text,
+              postUrl: chunk.metadata.postUrl,
+              postTitle: chunk.metadata.postTitle,
+              postSlug: chunk.metadata.postSlug,
+              postDate: chunk.metadata.postDate,
+              postTags: chunk.metadata.postTags,
+              score: 10.0, // High score for exact section title match
+              metadata: chunk.metadata,
+              sectionId: chunk.metadata.sectionId,
+              sectionTitle: chunk.metadata.sectionTitle,
+            });
+          }
+          // Partial match (query contains section title or vice versa)
+          else if (normalizedSectionTitle.includes(normalizedQuery) || 
+                   normalizedQuery.includes(normalizedSectionTitle) ||
+                   normalizedSectionTitleNoColon.includes(normalizedQueryNoColon) ||
+                   normalizedQueryNoColon.includes(normalizedSectionTitleNoColon)) {
+            results.push({
+              chunkId: chunk.metadata.chunkId,
+              text: chunk.text,
+              postUrl: chunk.metadata.postUrl,
+              postTitle: chunk.metadata.postTitle,
+              postSlug: chunk.metadata.postSlug,
+              postDate: chunk.metadata.postDate,
+              postTags: chunk.metadata.postTags,
+              score: 8.0, // High score for partial section title match
+              metadata: chunk.metadata,
+              sectionId: chunk.metadata.sectionId,
+              sectionTitle: chunk.metadata.sectionTitle,
+            });
+          }
+        }
+      }
+      
+      if (checkedChunks === 0) {
+        console.warn(`⚠️ No chunks found for post ${postSlug} (chunks might not be loaded yet)`);
+      }
+      
+      // If we found exact/partial section matches, return them (sorted by score, then by chunk index)
+      if (results.length > 0) {
+        // Remove duplicates (same chunkId)
+        const uniqueResults = new Map<string, ChunkResult>();
+        for (const result of results) {
+          if (!uniqueResults.has(result.chunkId) || uniqueResults.get(result.chunkId)!.score < result.score) {
+            uniqueResults.set(result.chunkId, result);
+          }
+        }
+        results = Array.from(uniqueResults.values())
+          .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return a.metadata.chunkIndex - b.metadata.chunkIndex;
+          })
+          .slice(0, limit);
+        
+        if (results.length > 0) {
+          console.log(`✅ Found ${results.length} chunks matching section title: "${query}"`);
+          return results;
+        }
+      }
+      
+      // Fall back to Lunr search
+      // Escape colons and other special characters that Lunr interprets as field separators
+      // Replace colons with spaces to prevent field parsing errors
+      // Also escape other Lunr special characters: +, -, *, ~, ^, :, "
+      const escapedQuery = query
+        .replace(/:/g, ' ') // Replace colons with spaces
+        .replace(/\+/g, ' ') // Replace + with space
+        .replace(/\*/g, ' ') // Replace * with space
+        .replace(/~/g, ' ') // Replace ~ with space
+        .replace(/\^/g, ' ') // Replace ^ with space
+        .replace(/"/g, ' ') // Replace " with space
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+      
+      let searchResults: lunr.Index.Result[] = [];
+      try {
+        searchResults = index.search(escapedQuery);
+      } catch (searchError) {
+        // If search fails (e.g., query parsing error), try a simpler query
+        console.warn(`⚠️ Lunr search failed for query "${query}", trying simplified query:`, searchError);
+        // Try searching just the words without special characters
+        const simpleQuery = query.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (simpleQuery) {
+          try {
+            searchResults = index.search(simpleQuery);
+          } catch (simpleError) {
+            console.error(`⚠️ Even simplified search failed:`, simpleError);
+            // Return empty results - section title matching already tried
+            return [];
+          }
+        }
+      }
       
       // Convert to ChunkResult objects
-      const results: ChunkResult[] = [];
-      for (const result of searchResults.slice(0, limit)) {
+      results = [];
+      for (const result of searchResults) {
         const chunkId = result.ref;
         const chunk = this.chunks.get(chunkId);
         
-        if (chunk) {
-          results.push({
-            chunkId: chunk.metadata.chunkId,
-            text: chunk.text,
-            postUrl: chunk.metadata.postUrl,
-            postTitle: chunk.metadata.postTitle,
-            postSlug: chunk.metadata.postSlug,
-            postDate: chunk.metadata.postDate,
-            postTags: chunk.metadata.postTags,
-            score: result.score || 0,
-            metadata: chunk.metadata,
-          });
+        if (!chunk) continue;
+        
+        // Filter by section ID if provided
+        if (sectionId && chunk.metadata.sectionId !== sectionId) {
+          continue;
         }
+        
+        results.push({
+          chunkId: chunk.metadata.chunkId,
+          text: chunk.text,
+          postUrl: chunk.metadata.postUrl,
+          postTitle: chunk.metadata.postTitle,
+          postSlug: chunk.metadata.postSlug,
+          postDate: chunk.metadata.postDate,
+          postTags: chunk.metadata.postTags,
+          score: result.score || 0,
+          metadata: chunk.metadata,
+          sectionId: chunk.metadata.sectionId,
+          sectionTitle: chunk.metadata.sectionTitle,
+        });
+        
+        if (results.length >= limit) break;
       }
       
       return results;
@@ -428,6 +594,57 @@ export class RAGSearchManager {
       console.error(`Error searching in post ${postSlug}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Search chunks by section ID (heading anchor)
+   * Returns all chunks that belong to a specific section
+   */
+  async searchChunksBySection(
+    sectionId: string,
+    currentUrl?: string,
+    limit: number = 10
+  ): Promise<ChunkResult[]> {
+    const postSlug = currentUrl ? this.getPostSlugFromUrl(currentUrl) : null;
+    
+    if (!postSlug) {
+      console.warn('⚠️ Could not extract post slug from URL for section search');
+      return [];
+    }
+    
+    // Ensure post index is loaded
+    if (!this.loadedPosts.has(postSlug)) {
+      try {
+        await this.loadPostIndex(postSlug);
+      } catch (error) {
+        console.error(`❌ Failed to load index for ${postSlug}:`, error);
+        return [];
+      }
+    }
+    
+    // Get all chunks for this post and filter by section
+    const results: ChunkResult[] = [];
+    for (const chunk of this.chunks.values()) {
+      if (chunk.metadata.postSlug === postSlug && chunk.metadata.sectionId === sectionId) {
+        results.push({
+          chunkId: chunk.metadata.chunkId,
+          text: chunk.text,
+          postUrl: chunk.metadata.postUrl,
+          postTitle: chunk.metadata.postTitle,
+          postSlug: chunk.metadata.postSlug,
+          postDate: chunk.metadata.postDate,
+          postTags: chunk.metadata.postTags,
+          score: 1.0, // Full match for section-based search
+          metadata: chunk.metadata,
+          sectionId: chunk.metadata.sectionId,
+          sectionTitle: chunk.metadata.sectionTitle,
+        });
+        
+        if (results.length >= limit) break;
+      }
+    }
+    
+    return results;
   }
 
   /**

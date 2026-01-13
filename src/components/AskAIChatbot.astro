@@ -1,11 +1,14 @@
 ---
 /**
- * Ask Praveen.AI Chat Widget Component
+ * Ask Praveen.AI Chat Widget Component - Chat Interface Edition
  * 
- * Floating chat widget for blog posts that allows users to ask questions
- * about the content using RAG (Retrieval Augmented Generation).
- * 
- * Story 10.2: Chat Widget UI Component
+ * Modern, elegant floating chat widget with:
+ * - Chat-style message bubbles with avatars
+ * - Clear user (right) vs AI (left) alignment
+ * - Avatar icons for visual differentiation
+ * - Glassmorphism design
+ * - Smooth animations
+ * - FIXED: Proper light/dark theme colors
  */
 
 interface Props {
@@ -17,7 +20,7 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 ---
 
 <div id="ask-ai-chatbot" class="ask-ai-chatbot" data-current-url={currentUrl} data-post-title={postTitle}>
-  <!-- Floating Toggle Button -->
+  <!-- Floating Toggle Button with Pulse Effect -->
   <button
     id="chatbot-toggle"
     class="chatbot-toggle"
@@ -25,13 +28,17 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     aria-expanded="false"
     aria-controls="chatbot-panel"
   >
-    <svg class="chatbot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <div class="chatbot-toggle-ring"></div>
+    <svg class="chatbot-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="9" cy="10" r="1" fill="currentColor"/>
+      <circle cx="15" cy="10" r="1" fill="currentColor"/>
+      <path d="M9 14c1 1 2 1 3 1s2 0 3-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
     <span class="chatbot-badge" id="chatbot-badge" aria-hidden="true">1</span>
   </button>
 
-  <!-- Chat Panel -->
+  <!-- Enhanced Chat Panel with Glassmorphism -->
   <div
     id="chatbot-panel"
     class="chatbot-panel"
@@ -40,50 +47,70 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     aria-modal="true"
     hidden
   >
-    <!-- Header -->
+    <!-- Gradient Header -->
     <div class="chatbot-header">
       <div class="chatbot-header-content">
-        <h2 id="chatbot-title" class="chatbot-title">Ask Praveen.AI</h2>
-        <p class="chatbot-subtitle">Ask questions about this post</p>
+        <div class="chatbot-avatar">
+          <img src="/images/py_chatbot_avatar.jpg" alt="Praveen.AI" width="32" height="32" />
+        </div>
+        <div class="chatbot-header-text">
+          <h2 id="chatbot-title" class="chatbot-title">
+            Ask Praveen.AI            
+          </h2>
+          <p class="chatbot-subtitle">AI-powered insights about this post</p>
+        </div>
       </div>
       <div class="chatbot-header-actions">
         <button
           id="chatbot-refresh"
-          class="chatbot-refresh"
+          class="chatbot-action-btn"
           aria-label="Clear chat"
           type="button"
           title="Clear chat"
         >
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M3 6h14M6 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v10a2 2 0 01-2 2H5a2 2 0 01-2-2V6h14zM8 9v6M12 9v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
         <button
           id="chatbot-close"
-          class="chatbot-close"
+          class="chatbot-action-btn"
           aria-label="Close chat"
           type="button"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
     </div>
 
-    <!-- Messages Container -->
+    <!-- Messages Container with Custom Scrollbar -->
     <div id="chatbot-messages" class="chatbot-messages" role="log" aria-live="polite" aria-atomic="false">
       <div class="chatbot-welcome">
-        <p>Hi! I'm Praveen.AI. Ask me anything about this post, and I'll help you understand the content better.</p>
+        <div class="welcome-icon">
+          <img src="/images/py_chatbot_avatar.jpg" alt="Praveen.AI" width="48" height="48" />
+        </div>
+        <h3 class="welcome-title">Hi! I'm Praveen.AI 👋</h3>
+        <p class="welcome-text">Ask me anything about this post, and I'll help you understand the content better with AI-powered insights.</p>
         <div class="chatbot-suggestions">
-          <button class="suggestion-chip" data-suggestion="Summarize this post">Summarize this post</button>
-          <button class="suggestion-chip" data-suggestion="What are the key takeaways?">Key takeaways</button>
-          <button class="suggestion-chip" data-suggestion="Explain the main concepts">Explain concepts</button>
+          <button class="suggestion-chip" data-suggestion="What are the key takeaways?">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Key takeaways
+          </button>
+          <button class="suggestion-chip" data-suggestion="Explain the main concepts">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Explain concepts
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Input Area -->
+    <!-- Enhanced Input Area -->
     <div class="chatbot-input-area">
       <div class="chatbot-input-wrapper">
         <textarea
@@ -101,13 +128,13 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
           aria-label="Send message"
           disabled
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M18 2L9 11M18 2l-7 7M18 2H12M18 2v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M22 2L11 13M22 2l-7 16-4-7-7-4 16-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="currentColor" fill-opacity="0.1"/>
           </svg>
         </button>
       </div>
-      <p id="chatbot-input-help" class="chatbot-input-help" aria-live="polite">
-        Press Enter to send, Shift+Enter for new line
+      <p id="chatbot-input-help" class="chatbot-input-help">
+        <kbd>↵</kbd> Send • <kbd>⇧</kbd>+<kbd>↵</kbd> New line
       </p>
     </div>
 
@@ -115,13 +142,6 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 </div>
 
 <script>
-  /**
-   * Ask Praveen.AI Chatbot Client
-   * Handles UI interactions and API communication
-   * 
-   * Story 10.3: Integrated client-side RAG search
-   */
-
   interface Message {
     id: string;
     role: 'user' | 'assistant';
@@ -160,7 +180,6 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
       this.currentUrl = container?.dataset.currentUrl || window.location.pathname;
       this.postTitle = container?.dataset.postTitle || '';
 
-      // Store reference to original welcome element to preserve scoped styles
       const originalWelcome = this.messagesContainer?.querySelector('.chatbot-welcome');
       if (originalWelcome) {
         this.originalWelcomeElement = originalWelcome.cloneNode(true) as HTMLElement;
@@ -170,31 +189,20 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     }
 
     private async loadSearchManager(): Promise<void> {
-      if (this.searchManager) return; // Already loaded
+      if (this.searchManager) return;
       
       try {
-        // Dynamic import - Astro will bundle this correctly
-        // Use relative path from component location
         const searchModule = await import('../utils/rag-search');
         
         if (searchModule && searchModule.getRAGSearchManager) {
           this.searchManager = searchModule.getRAGSearchManager();
           console.log('✅ RAG search manager loaded successfully');
         } else {
-          console.warn('⚠️ getRAGSearchManager export not found, available exports:', Object.keys(searchModule || {}));
+          console.warn('⚠️ getRAGSearchManager export not found');
           throw new Error('getRAGSearchManager export not found in rag-search module');
         }
       } catch (error) {
         console.error('❌ Failed to load RAG search manager:', error);
-        if (error instanceof Error) {
-          console.error('Error message:', error.message);
-          console.error('Error stack:', error.stack);
-          // Check if it's a module resolution error
-          if (error.message.includes('Failed to fetch') || error.message.includes('Cannot find module')) {
-            console.error('💡 This might be a module bundling issue. The search will be disabled, but the API will still work.');
-          }
-        }
-        // Don't throw - allow chat to work without search (will call API directly)
         this.searchManager = null;
       }
     }
@@ -202,27 +210,20 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     private init(): void {
       if (!this.panel || !this.toggle || !this.input) return;
 
-      // Toggle button
       this.toggle.addEventListener('click', () => this.togglePanel());
       
-      // Close button - use event delegation for maximum reliability
-      // This works even if the button isn't found initially
       if (this.panel) {
         this.panel.addEventListener('click', (e) => {
           const target = e.target as HTMLElement;
-          // Check if click is on close button or its children (SVG)
           if (target && (target.id === 'chatbot-close' || target.closest('#chatbot-close'))) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Close button clicked');
             this.closePanel();
             return false;
           }
         });
-        console.log('✅ Close button event delegation attached');
       }
       
-      // Also attach direct listener if button exists
       if (!this.closeBtn) {
         this.closeBtn = document.getElementById('chatbot-close');
       }
@@ -231,18 +232,14 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         this.closeBtn.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Close button clicked (direct)');
           this.closePanel();
         });
-        console.log('✅ Close button direct listener attached');
       }
 
-      // Input handling
       this.input.addEventListener('input', () => this.handleInputChange());
       this.input.addEventListener('keydown', (e) => this.handleKeyDown(e));
       this.sendBtn?.addEventListener('click', () => this.sendMessage());
 
-      // Suggestion chips
       document.querySelectorAll('.suggestion-chip').forEach(chip => {
         chip.addEventListener('click', (e) => {
           const suggestion = (e.target as HTMLElement).dataset.suggestion;
@@ -255,21 +252,26 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         });
       });
 
-      // Refresh button
       if (this.refreshBtn) {
         this.refreshBtn.addEventListener('click', () => {
           this.clearChat();
         });
       }
 
-      // Close on Escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && this.isOpen) {
           this.closePanel();
         }
       });
 
-      // Auto-resize textarea
+      document.addEventListener('click', (e) => {
+        if (!this.isOpen || !this.panel || !this.toggle) return;
+        const target = e.target as Node | null;
+        if (!target) return;
+        if (this.panel.contains(target) || this.toggle.contains(target)) return;
+        this.closePanel();
+      });
+
       this.input.addEventListener('input', () => {
         this.autoResizeTextarea();
       });
@@ -286,76 +288,50 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     private async openPanel(): Promise<void> {
       if (!this.panel || !this.toggle) return;
       
-      // Clear any previous loading state immediately
       this.hideLoading();
       
       this.panel.hidden = false;
-      this.panel.style.display = ''; // Remove inline display style
+      this.panel.style.display = '';
       this.toggle.setAttribute('aria-expanded', 'true');
       this.isOpen = true;
       
-      // Ensure search manager is loaded (don't show loading for this)
-      // Use try-finally to ensure loading state is always cleared
       try {
         if (!this.searchManager) {
           try {
             await this.loadSearchManager();
           } catch (error) {
-            console.warn('⚠️ Search manager load failed, continuing without search:', error);
-            // Don't show error - chat can work without search
+            console.warn('⚠️ Search manager load failed:', error);
           }
         }
         
-        // Load RAG index if not already loaded (don't show loading for this)
         if (this.searchManager && !this.indexLoaded) {
           try {
             await this.searchManager.loadIndex(this.currentUrl);
             this.indexLoaded = true;
-            console.log('✅ RAG index ready for search');
           } catch (error) {
-            // Silently handle index load failures - chat can work without client-side search
-            console.warn('⚠️ Failed to load RAG index (chat will work without client-side search):', error);
-            if (error instanceof Error) {
-              console.warn('Index load error details:', error.message);
-            }
-            // Mark as "loaded" (even though it failed) to prevent retry attempts
-            // This prevents the error from propagating and showing user-facing errors
+            console.warn('⚠️ Failed to load RAG index:', error);
             this.indexLoaded = true;
           }
         }
       } finally {
-        // Always ensure loading is cleared after async operations
         this.hideLoading();
       }
       
-      // Focus input
       setTimeout(() => {
         this.input?.focus();
       }, 100);
 
-      // Update badge
       this.updateBadge(0);
     }
 
     private closePanel(): void {
-      console.log('closePanel called', { panel: !!this.panel, toggle: !!this.toggle, isOpen: this.isOpen });
+      if (!this.panel || !this.toggle) return;
       
-      if (!this.panel || !this.toggle) {
-        console.error('Cannot close: missing panel or toggle', { panel: !!this.panel, toggle: !!this.toggle });
-        return;
-      }
-      
-      // Clear loading state when closing
       this.hideLoading();
-      
-      // Set hidden attribute
       this.panel.hidden = true;
-      // Also set display none via style to ensure it's hidden
       this.panel.style.display = 'none';
       this.toggle.setAttribute('aria-expanded', 'false');
       this.isOpen = false;
-      
-      console.log('Panel closed successfully', { hidden: this.panel.hidden, display: this.panel.style.display });
     }
 
     private handleInputChange(): void {
@@ -378,197 +354,239 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
       if (!this.input) return;
       
       this.input.style.height = 'auto';
-      const maxHeight = 120; // ~6 lines
+      const maxHeight = 120;
       const newHeight = Math.min(this.input.scrollHeight, maxHeight);
       this.input.style.height = `${newHeight}px`;
+    }
+
+    private extractSectionIdFromQuery(query: string, currentUrl: string): string | null {
+      const urlRegex = /(https?:\/\/[^\s]+#[\w-]+)|(#[\w-]+)/;
+      const urlMatch = query.match(urlRegex);
+      
+      if (urlMatch) {
+        let hashFragment = urlMatch[0];
+        
+        if (hashFragment.includes('://')) {
+          try {
+            const url = new URL(hashFragment);
+            hashFragment = url.hash;
+          } catch {
+            const hashIndex = hashFragment.indexOf('#');
+            if (hashIndex >= 0) {
+              hashFragment = hashFragment.substring(hashIndex);
+            }
+          }
+        }
+        
+        if (hashFragment.startsWith('#')) {
+          const sectionId = hashFragment.substring(1);
+          
+          if (urlMatch[0].includes('://')) {
+            try {
+              const url = new URL(urlMatch[0]);
+              const currentPostSlug = this.getPostSlugFromUrl(currentUrl);
+              const urlPostSlug = this.getPostSlugFromUrl(url.pathname);
+              
+              if (currentPostSlug && urlPostSlug && currentPostSlug === urlPostSlug) {
+                return sectionId;
+              }
+            } catch {
+              // Continue
+            }
+          } else {
+            return sectionId;
+          }
+        }
+      }
+      
+      return null;
+    }
+
+    private getPostSlugFromUrl(url: string): string | null {
+      try {
+        let path = url;
+        if (url.includes('://')) {
+          try {
+            const urlObj = new URL(url);
+            path = urlObj.pathname;
+          } catch {
+            const match = url.match(/\/blog\/([^\/\?]+)/);
+            return match ? match[1] : null;
+          }
+        }
+        const match = path.match(/\/blog\/([^\/\?]+)/);
+        return match ? match[1] : null;
+      } catch {
+        return null;
+      }
     }
 
     private async sendMessage(): Promise<void> {
       if (!this.input || !this.input.value.trim()) return;
 
-      const query = this.input.value.trim();
+      const originalQuery = this.input.value.trim();
+      let query = originalQuery;
+      
+      const sectionId = this.extractSectionIdFromQuery(query, this.currentUrl);
+      
+      if (sectionId) {
+        query = query
+          .replace(/(https?:\/\/[^\s]+#[\w-]+)/g, '')
+          .replace(/#[\w-]+/g, '')
+          .trim();
+        
+        if (!query) {
+          query = 'Explain this section';
+        }
+      }
+      
       this.input.value = '';
       this.handleInputChange();
       this.autoResizeTextarea();
 
-      // Add user message
-      this.addMessage('user', query);
-
-      // Show loading
+      this.addMessage('user', originalQuery);
       this.showLoading();
 
+      try {
+        let chunkResults: any[] = [];
+        let chunkIds: string[] = [];
+        let citations: string[] = [];
+
         try {
-          // Story 10.3: Search for relevant chunks using client-side Lunr search
-          let chunkResults: any[] = [];
-          let chunkIds: string[] = [];
-          let citations: string[] = [];
-          let searchSuccess = false;
+          if (!this.searchManager) {
+            await this.loadSearchManager();
+          }
 
-          try {
-            // Ensure search manager is loaded
-            if (!this.searchManager) {
-              await this.loadSearchManager();
-            }
-
-            if (this.searchManager) {
-              try {
-                // Ensure index is loaded (pass current URL for optimized loading)
-                if (!this.indexLoaded) {
-                  try {
-                    await this.searchManager.loadIndex(this.currentUrl);
-                    this.indexLoaded = true;
-                  } catch (loadError) {
-                    // Silently handle load failures - don't retry or show errors
-                    console.warn('⚠️ Index load failed during search (continuing without search):', loadError);
-                    this.indexLoaded = true; // Mark as "loaded" to prevent retries
-                  }
+          if (this.searchManager) {
+            try {
+              if (!this.indexLoaded) {
+                try {
+                  await this.searchManager.loadIndex(this.currentUrl);
+                  this.indexLoaded = true;
+                } catch (loadError) {
+                  console.warn('⚠️ Index load failed:', loadError);
+                  this.indexLoaded = true;
                 }
+              }
 
-                // Only search if index is actually loaded
-                if (this.indexLoaded && this.searchManager.isLoaded()) {
-                  // Search for relevant chunks (smart search: current post first, then all posts)
+              if (this.indexLoaded && this.searchManager.isLoaded()) {
+                if (sectionId) {
+                  const sectionChunks = await this.searchManager.searchChunksBySection(
+                    sectionId,
+                    this.currentUrl,
+                    10
+                  );
+                  
+                  if (sectionChunks.length > 0) {
+                    chunkResults = sectionChunks;
+                  } else {
+                    chunkResults = await this.searchManager.searchChunksSmart(
+                      query,
+                      this.currentUrl,
+                      10,
+                      sectionId
+                    );
+                  }
+                } else {
                   chunkResults = await this.searchManager.searchChunksSmart(
                     query,
                     this.currentUrl,
-                    5 // Top 5 chunks
+                    10
                   );
-
-                  // Extract chunk IDs and citations
-                  chunkIds = chunkResults.map((chunk: any) => chunk.chunkId);
-                  citations = chunkResults.map((chunk: any) => chunk.postUrl);
-                  searchSuccess = true;
-
-                  console.log(`🔍 Found ${chunkResults.length} relevant chunks for query: "${query}"`);
-                  
-                  if (chunkResults.length > 0) {
-                    console.log('Top chunks:', chunkResults.map((c: any) => ({
-                      post: c.postTitle,
-                      score: c.score.toFixed(3),
-                    })));
-                  }
-                } else {
-                  console.log('ℹ️ Index not loaded, skipping client-side search (API will handle it)');
                 }
-              } catch (indexError) {
-                // Silently handle search errors - API can still work
-                console.warn('⚠️ Search error (continuing without search results):', indexError);
-                // Continue without search results - API will handle the query
+
+                chunkIds = chunkResults.map((chunk: any) => chunk.chunkId);
+                citations = chunkResults.map((chunk: any) => chunk.postUrl);
               }
-            } else {
-              console.log('ℹ️ Search manager not available, API will handle the query');
-            }
-          } catch (searchError) {
-            console.warn('⚠️ Search error (continuing anyway):', searchError);
-            // Continue without chunks - show helpful message
-          }
-
-          // Story 10.4: Call API endpoint with chunkIds (even if empty, API can handle it)
-          let apiCallSuccess = false;
-          try {
-            // Detect if we're in local dev without Netlify dev server
-            const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const port = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
-            const isNetlifyDev = port === '8888' || port === '9999';
-            const apiUrl = isLocalDev && !isNetlifyDev
-              ? 'http://localhost:8888/api/chat' // Try Netlify dev default port
-              : '/api/chat';
-            
-            const apiResponse = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                query,
-                currentUrl: this.currentUrl,
-                chunkIds: chunkIds.length > 0 ? chunkIds : [], // API can handle empty array
-              }),
-            });
-
-            if (!apiResponse.ok) {
-              // Try to get error message from response
-              let errorMessage = `HTTP ${apiResponse.status}`;
-              try {
-                const errorData = await apiResponse.json();
-                errorMessage = errorData.error || errorMessage;
-              } catch (e) {
-                // Response is not JSON, use status text
-                errorMessage = apiResponse.statusText || errorMessage;
-              }
-              
-              if (apiResponse.status === 404) {
-                // API endpoint not found - likely running astro dev without netlify dev
-                errorMessage = `API endpoint not found. Please run \`netlify dev\` instead of \`astro dev\` to enable the chat API, or use the production site.`;
-              } else if (apiResponse.status === 429) {
-                // Rate limited
-                const retryAfter = apiResponse.headers.get('Retry-After');
-                errorMessage = `Rate limit exceeded. Please wait ${retryAfter || 'a moment'} before trying again.`;
-              }
-              
-              // Show API error message directly
-              this.addMessage('assistant', `**API Error:** ${errorMessage}\n\nThe API endpoint is not available. ${apiResponse.status === 404 ? 'Make sure to run `netlify dev` for local development.' : 'This might be a temporary issue. Please try again.'}`, []);
-              this.hideLoading();
-              return;
-            }
-
-            const data = await apiResponse.json();
-            
-            if (!data.success) {
-              // API returned success: false
-              const errorMsg = data.error || 'The API returned an error response';
-              this.addMessage('assistant', `**API Response:** ${errorMsg}\n\nPlease check the browser console (F12) for more details.`, []);
-              this.hideLoading();
-              return;
-            }
-
-            // Use API response - success!
-            const answer = data.answer || 'No answer provided';
-            const apiCitations = data.citations || citations;
-            
-            this.addMessage('assistant', answer, apiCitations);
-            this.hideLoading();
-            apiCallSuccess = true;
-            return;
-          } catch (apiError) {
-            console.error('API call error:', apiError);
-            // Network error or other exception
-            const errorMsg = apiError instanceof Error ? apiError.message : 'Network error';
-            this.addMessage('assistant', `**Connection Error:** ${errorMsg}\n\nUnable to reach the API endpoint. Please check your connection and try again.`, []);
-            this.hideLoading();
-            return;
-          }
-          
-          // This code should never be reached - API call always returns above
-          // But keep as safety net
-          console.error('⚠️ Unexpected: API call did not return');
-          this.addMessage('assistant', 'Unexpected error: API call did not complete. Please check the browser console (F12) for details.', []);
-          this.hideLoading();
-        } catch (error) {
-          console.error('❌ Send message error:', error);
-          this.hideLoading();
-          
-          // Provide helpful error message
-          let errorMessage = 'Something went wrong. Please try again.';
-          
-          if (error instanceof Error) {
-            console.error('Error details:', {
-              message: error.message,
-              stack: error.stack,
-              name: error.name
-            });
-            
-            // Provide more specific error messages
-            if (error.message.includes('Failed to load') || error.message.includes('fetch')) {
-              errorMessage = 'Unable to load search index. The RAG index may not be available yet. This is a partial implementation (Story 10.3).';
-            } else if (error.message.includes('import')) {
-              errorMessage = 'Unable to load search module. Please refresh the page and try again.';
-            } else {
-              errorMessage = `Error: ${error.message}. This is a partial implementation. Check browser console (F12) for details.`;
+            } catch (indexError) {
+              console.warn('⚠️ Search error:', indexError);
             }
           }
-          
-          this.showError(errorMessage);
+        } catch (searchError) {
+          console.warn('⚠️ Search error:', searchError);
         }
+
+        try {
+          const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const port = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+          const isNetlifyDev = port === '8888' || port === '9999';
+          const apiUrl = isLocalDev && !isNetlifyDev
+            ? 'http://localhost:8888/api/chat'
+            : '/api/chat';
+          
+          const apiResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query,
+              currentUrl: this.currentUrl,
+              chunkIds: chunkIds.length > 0 ? chunkIds : [],
+            }),
+          });
+
+          if (!apiResponse.ok) {
+            let errorMessage = `HTTP ${apiResponse.status}`;
+            try {
+              const errorData = await apiResponse.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+              errorMessage = apiResponse.statusText || errorMessage;
+            }
+            
+            if (apiResponse.status === 404) {
+              errorMessage = `API endpoint not found. Please run \`netlify dev\` instead of \`astro dev\`.`;
+            } else if (apiResponse.status === 429) {
+              const retryAfter = apiResponse.headers.get('Retry-After');
+              errorMessage = `Rate limit exceeded. Please wait ${retryAfter || 'a moment'}.`;
+            }
+            
+            this.addMessage('assistant', `**API Error:** ${errorMessage}`, []);
+            this.hideLoading();
+            return;
+          }
+
+          const data = await apiResponse.json();
+          
+          if (!data.success) {
+            const errorMsg = data.error || 'The API returned an error';
+            this.addMessage('assistant', `**API Response:** ${errorMsg}`, []);
+            this.hideLoading();
+            return;
+          }
+
+          const answer = data.answer || 'No answer provided';
+          const apiCitations = data.citations || citations;
+          
+          this.addMessage('assistant', answer, apiCitations);
+          this.hideLoading();
+          return;
+        } catch (apiError) {
+          console.error('API call error:', apiError);
+          const errorMsg = apiError instanceof Error ? apiError.message : 'Network error';
+          this.addMessage('assistant', `**Connection Error:** ${errorMsg}`, []);
+          this.hideLoading();
+          return;
+        }
+      } catch (error) {
+        console.error('❌ Send message error:', error);
+        this.hideLoading();
+        
+        let errorMessage = 'Something went wrong. Please try again.';
+        
+        if (error instanceof Error) {
+          if (error.message.includes('Failed to load') || error.message.includes('fetch')) {
+            errorMessage = 'Unable to load search index.';
+          } else if (error.message.includes('import')) {
+            errorMessage = 'Unable to load search module.';
+          } else {
+            errorMessage = `Error: ${error.message}`;
+          }
+        }
+        
+        this.showError(errorMessage);
+      }
     }
 
     private addMessage(role: 'user' | 'assistant', content: string, citations?: string[]): void {
@@ -584,16 +602,30 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 
       this.messages.push(message);
 
-      // Remove welcome message if present
       const welcome = this.messagesContainer.querySelector('.chatbot-welcome');
       if (welcome) {
         welcome.remove();
       }
 
-      // Create message element
       const messageEl = document.createElement('div');
       messageEl.className = `chatbot-message chatbot-message-${role}`;
       messageEl.setAttribute('data-message-id', message.id);
+
+      // Create avatar for messages
+      const avatarEl = document.createElement('div');
+      avatarEl.className = 'message-avatar';
+      
+      if (role === 'assistant') {
+        avatarEl.innerHTML = '<img src="/images/py_chatbot_avatar.jpg" alt="AI" width="32" height="32" />';
+      } else {
+        // User avatar - using initials or icon
+        avatarEl.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        `;
+      }
 
       const contentEl = document.createElement('div');
       contentEl.className = 'chatbot-message-content';
@@ -601,30 +633,29 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
       if (role === 'user') {
         contentEl.textContent = content;
       } else {
-        // Format assistant response with markdown-like formatting
         contentEl.innerHTML = this.formatResponse(content);
         
-        // Add citations if present
         if (citations && citations.length > 0) {
           const citationsEl = document.createElement('div');
           citationsEl.className = 'chatbot-citations';
-          citationsEl.innerHTML = `<strong>Sources:</strong> ${citations.map((c, i) => `<a href="${c}" target="_blank" rel="noopener">[${i + 1}]</a>`).join(' ')}`;
+          citationsEl.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Sources:</span> ${citations.map((c, i) => `<a href="${c}" target="_blank" rel="noopener">[${i + 1}]</a>`).join(' ')}
+          `;
           contentEl.appendChild(citationsEl);
         }
       }
 
+      messageEl.appendChild(avatarEl);
       messageEl.appendChild(contentEl);
       this.messagesContainer.appendChild(messageEl);
-
-      // Scroll to bottom
       this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-
-      // Update badge
       this.updateBadge(0);
     }
 
     private formatResponse(text: string): string {
-      // Simple markdown-like formatting
       return text
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -633,13 +664,10 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     }
 
     private showLoading(): void {
-      // Show thinking message in chat window
       if (!this.messagesContainer) return;
       
-      // Remove any existing thinking message
       this.hideLoading();
       
-      // Create thinking message
       const thinkingId = `thinking-${Date.now()}`;
       this.thinkingMessageId = thinkingId;
       
@@ -647,24 +675,32 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
       messageEl.className = 'chatbot-message chatbot-message-assistant chatbot-message-thinking';
       messageEl.setAttribute('data-message-id', thinkingId);
       
+      const avatarEl = document.createElement('div');
+      avatarEl.className = 'message-avatar';
+      avatarEl.innerHTML = '<img src="/images/py_chatbot_avatar.jpg" alt="AI" width="32" height="32" />';
+      
       const contentEl = document.createElement('div');
       contentEl.className = 'chatbot-message-content';
-      contentEl.innerHTML = '<div class="loading-spinner-inline"></div><span>Thinking...</span>';
+      contentEl.innerHTML = `
+        <div class="thinking-animation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span>Thinking...</span>
+      `;
       
+      messageEl.appendChild(avatarEl);
       messageEl.appendChild(contentEl);
       this.messagesContainer.appendChild(messageEl);
-      
-      // Scroll to bottom
       this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
       
-      // Disable send button
       if (this.sendBtn) {
         this.sendBtn.disabled = true;
       }
     }
 
     private hideLoading(): void {
-      // Remove thinking message from chat
       if (this.thinkingMessageId && this.messagesContainer) {
         const thinkingEl = this.messagesContainer.querySelector(`[data-message-id="${this.thinkingMessageId}"]`);
         if (thinkingEl) {
@@ -673,62 +709,38 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         this.thinkingMessageId = null;
       }
       
-      // Re-enable send button
       if (this.sendBtn && this.input) {
         this.sendBtn.disabled = !this.input.value.trim();
       }
     }
 
     private showError(message: string): void {
-      // Show error as a message in chat window
       this.addMessage('assistant', `**Error:** ${message}`, []);
     }
 
     private clearChat(): void {
-      // Clear all messages including welcome
       if (!this.messagesContainer) return;
       
-      // Remove thinking message if present
       this.hideLoading();
       
-      // Remove all messages (but keep welcome structure if it exists)
       const messages = this.messagesContainer.querySelectorAll('.chatbot-message');
       messages.forEach(msg => msg.remove());
       
-      // Clear messages array
       this.messages = [];
       this.thinkingMessageId = null;
       
-      // Always remove and recreate welcome to ensure clean state
       const existingWelcome = this.messagesContainer.querySelector('.chatbot-welcome');
       if (existingWelcome) {
         existingWelcome.remove();
       }
       
-      // Clone the original welcome element to preserve all scoped styles and class names
       let welcome: HTMLElement | null = null;
       
       if (this.originalWelcomeElement) {
-        // Clone the stored original welcome element (preserves all Astro scoped styles)
         welcome = this.originalWelcomeElement.cloneNode(true) as HTMLElement;
         this.messagesContainer.appendChild(welcome);
-      } else {
-        // Fallback: if original wasn't stored, create it (shouldn't happen, but safety)
-        const welcomeHTML = `
-          <div class="chatbot-welcome">
-            <p>Hi! I'm Praveen.AI. Ask me anything about this post, and I'll help you understand the content better.</p>
-            <div class="chatbot-suggestions">
-              <button class="suggestion-chip" data-suggestion="Summarize this post">Summarize this post</button>
-              <button class="suggestion-chip" data-suggestion="What are the key takeaways?">Key takeaways</button>
-              <button class="suggestion-chip" data-suggestion="Explain the main concepts">Explain concepts</button>
-            </div>
-          </div>
-        `;
-        this.messagesContainer.insertAdjacentHTML('beforeend', welcomeHTML);
-        welcome = this.messagesContainer.querySelector('.chatbot-welcome');
       }
       
-      // Re-attach suggestion chip listeners to the cloned/created welcome element
       if (welcome) {
         welcome.querySelectorAll('.suggestion-chip').forEach(chip => {
           chip.addEventListener('click', (e) => {
@@ -744,13 +756,11 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         });
       }
       
-      // Clear input
       if (this.input) {
         this.input.value = '';
         this.handleInputChange();
       }
       
-      // Update badge
       this.updateBadge(0);
     }
 
@@ -767,7 +777,6 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     }
   }
 
-  // Initialize when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       new AskAIChatbot();
@@ -778,185 +787,391 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 </script>
 
 <style>
+  /* Modern Design System with FIXED Light/Dark Theme Colors + Chat-Style Avatars */
   .ask-ai-chatbot {
+    /* Light mode colors */
+    --chat-primary: #1e40af;
+    --chat-primary-hover: #1e3a8a;
+    --chat-gradient: linear-gradient(180deg, #1e40af 0%, #06b6d4 100%);
+    --chat-shadow-sm: 0 2px 8px rgba(30, 64, 175, 0.15);
+    --chat-shadow-md: 0 4px 20px rgba(30, 64, 175, 0.2);
+    --chat-shadow-lg: 0 8px 32px rgba(30, 64, 175, 0.25);
+    --chat-blur: blur(12px);
+    --chat-radius: 16px;
+    --chat-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* FIXED: Light theme text and background colors */
+    --chat-text-primary: #1a1a1a;
+    --chat-text-secondary: #4a4a4a;
+    --chat-text-tertiary: #737373;
+    --chat-bg-panel: rgba(255, 255, 255, 0.98);
+    --chat-bg-message-assistant: #ffffff;
+    --chat-bg-message-user: var(--chat-gradient);
+    --chat-bg-input: #ffffff;
+    --chat-border: rgba(0, 0, 0, 0.1);
+    
     position: fixed;
-    /* Position above scroll buttons: scroll buttons are 2 buttons (44px each) + gap (0.5rem) + bottom margin (1.5rem) = ~116px */
-    bottom: calc(44px + 0.5rem + 44px + 1.5rem + 1rem); /* Above scroll buttons with 1rem margin */
+    bottom: calc(44px + 0.5rem + 44px + 1.5rem + 1rem);
     right: 1.5rem;
     z-index: 1000;
     font-family: var(--font-sans);
   }
 
-  /* Toggle Button */
+  /* Dark mode colors */
+  :global([data-theme="dark"]) .ask-ai-chatbot {
+    --chat-primary: #3b82f6;
+    --chat-primary-hover: #60a5fa;
+    --chat-gradient: linear-gradient(180deg, #3b82f6 0%, #22d3ee 100%);
+    --chat-shadow-sm: 0 2px 8px rgba(59, 130, 246, 0.3);
+    --chat-shadow-md: 0 4px 20px rgba(59, 130, 246, 0.4);
+    --chat-shadow-lg: 0 8px 32px rgba(59, 130, 246, 0.5);
+    
+    /* FIXED: Dark theme text and background colors */
+    --chat-text-primary: #f8fafc;
+    --chat-text-secondary: #e2e8f0;
+    --chat-text-tertiary: #cbd5e1;
+    --chat-bg-panel: rgba(15, 15, 25, 0.98);
+    --chat-bg-message-assistant: rgba(30, 30, 40, 0.95);
+    --chat-bg-message-user: var(--chat-gradient);
+    --chat-bg-input: rgba(40, 40, 50, 0.8);
+    --chat-border: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Auto theme - respects system preference */
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .ask-ai-chatbot {
+      --chat-primary: #3b82f6;
+      --chat-primary-hover: #60a5fa;
+      --chat-gradient: linear-gradient(180deg, #3b82f6 0%, #22d3ee 100%);
+      --chat-shadow-sm: 0 2px 8px rgba(59, 130, 246, 0.3);
+      --chat-shadow-md: 0 4px 20px rgba(59, 130, 246, 0.4);
+      --chat-shadow-lg: 0 8px 32px rgba(59, 130, 246, 0.5);
+      
+      --chat-text-primary: #f8fafc;
+      --chat-text-secondary: #e2e8f0;
+      --chat-text-tertiary: #cbd5e1;
+      --chat-bg-panel: rgba(15, 15, 25, 0.98);
+      --chat-bg-message-assistant: rgba(30, 30, 40, 0.95);
+      --chat-bg-input: rgba(40, 40, 50, 0.8);
+      --chat-border: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  @media (prefers-color-scheme: light) {
+    :global([data-theme="auto"]) .ask-ai-chatbot {
+      --chat-primary: #1e40af;
+      --chat-primary-hover: #1e3a8a;
+      --chat-gradient: linear-gradient(180deg, #1e40af 0%, #06b6d4 100%);
+      --chat-shadow-sm: 0 2px 8px rgba(30, 64, 175, 0.15);
+      --chat-shadow-md: 0 4px 20px rgba(30, 64, 175, 0.2);
+      --chat-shadow-lg: 0 8px 32px rgba(30, 64, 175, 0.25);
+      
+      --chat-text-primary: #1a1a1a;
+      --chat-text-secondary: #4a4a4a;
+      --chat-text-tertiary: #737373;
+      --chat-bg-panel: rgba(255, 255, 255, 0.98);
+      --chat-bg-message-assistant: #ffffff;
+      --chat-bg-input: #ffffff;
+      --chat-border: rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  /* Enhanced Toggle Button with Pulse Ring */
   .chatbot-toggle {
-    width: 56px;
-    height: 56px;
+    position: relative;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: var(--color-accent);
+    background: var(--chat-gradient);
     color: white;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-    transition: all var(--transition-base);
-    position: relative;
+    box-shadow: var(--chat-shadow-lg);
+    transition: var(--chat-transition);
+    z-index: 2;
+  }
+
+  .chatbot-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: var(--chat-gradient);
+    opacity: 0.3;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.1;
+      transform: scale(1.1);
+    }
+  }
+
+  .chatbot-toggle-ring {
+    position: absolute;
+    inset: -8px;
+    border: 2px solid var(--chat-primary);
+    border-radius: 50%;
+    opacity: 0;
+    animation: ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes ring {
+    0% {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    50% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.3);
+    }
   }
 
   .chatbot-toggle:hover {
-    background: var(--color-accent-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 12px 40px rgba(30, 64, 175, 0.3);
+  }
+
+  :global([data-theme="dark"]) .chatbot-toggle:hover {
+    box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-toggle:hover {
+      box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
+    }
   }
 
   .chatbot-toggle:active {
-    transform: translateY(0);
+    transform: translateY(-2px) scale(1.02);
   }
 
   .chatbot-toggle:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 3px solid var(--chat-primary);
     outline-offset: 4px;
   }
 
   .chatbot-icon {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
   }
 
   .chatbot-badge {
     position: absolute;
     top: -4px;
     right: -4px;
-    background: #ef4444;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
     font-size: 0.75rem;
-    font-weight: 600;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+    font-weight: 700;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--color-surface);
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    animation: badgeBounce 0.5s ease-out;
+  }
+
+  :global([data-theme="dark"]) .chatbot-badge {
+    border-color: rgba(15, 15, 25, 0.98);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-badge {
+      border-color: rgba(15, 15, 25, 0.98);
+    }
+  }
+
+  @keyframes badgeBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
   }
 
   .chatbot-badge[hidden] {
     display: none;
   }
 
-  /* Chat Panel */
+  /* Glassmorphic Chat Panel - FIXED BACKGROUND */
   .chatbot-panel {
     position: absolute;
-    bottom: calc(100% + 1rem);
+    bottom: calc(100% + 1.5rem);
     right: 0;
-    width: 400px;
+    width: 440px;
     max-width: calc(100vw - 2rem);
-    height: 700px;
-    max-height: calc(100vh - 6rem);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    height: 720px;
+    max-height: calc(100vh - 8rem);
+    background: var(--chat-bg-panel);
+    backdrop-filter: var(--chat-blur);
+    -webkit-backdrop-filter: var(--chat-blur);
+    border: 1px solid var(--chat-border);
+    border-radius: var(--chat-radius);
+    box-shadow: 
+      var(--chat-shadow-lg),
+      0 0 0 1px rgba(255, 255, 255, 0.1) inset;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: slideUp 0.3s ease-out;
+    animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .chatbot-panel[hidden] {
     display: none !important;
   }
 
-  @keyframes slideUp {
+  @keyframes slideUpFade {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(20px) scale(0.96);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 
-  /* Header */
+  /* Gradient Header */
   .chatbot-header {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-surface);
+    padding: 1.25rem 1.5rem;
+    background: var(--chat-gradient);
+    color: white;
+    overflow: hidden;
+  }
+
+  .chatbot-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+    pointer-events: none;
   }
 
   .chatbot-header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .chatbot-avatar {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  .chatbot-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  .chatbot-header-text {
+    flex: 1;
+  }
+
+  .chatbot-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    letter-spacing: -0.01em;
+    color: white;
+  }
+
+  .chatbot-subtitle {
+    font-size: 0.875rem;
+    opacity: 0.95;
+    margin: 0;
+    font-weight: 400;
+    color: white;
   }
 
   .chatbot-header-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    position: relative;
+    z-index: 1;
   }
 
-  .chatbot-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0 0 0.25rem 0;
-    color: var(--color-text);
-  }
-
-  .chatbot-subtitle {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-
-  .chatbot-refresh,
-  .chatbot-close {
-    width: 32px;
-    height: 32px;
+  .chatbot-action-btn {
+    width: 36px;
+    height: 36px;
     border: none;
-    background: transparent;
-    color: var(--color-text-secondary);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    color: white;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
-    transition: all var(--transition-fast);
+    border-radius: 10px;
+    transition: var(--chat-transition);
     flex-shrink: 0;
-    position: relative;
-    z-index: 10;
-    pointer-events: auto;
-    -webkit-tap-highlight-color: transparent;
   }
 
-  .chatbot-refresh:hover,
-  .chatbot-close:hover {
-    background: var(--color-code-bg);
-    color: var(--color-text);
+  .chatbot-action-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
   }
 
-  .chatbot-refresh:focus-visible,
-  .chatbot-close:focus-visible {
-    outline: 2px solid var(--color-accent);
+  .chatbot-action-btn:active {
+    transform: scale(0.95);
+  }
+
+  .chatbot-action-btn:focus-visible {
+    outline: 2px solid white;
     outline-offset: 2px;
   }
 
-  /* Messages */
+  /* Enhanced Messages */
   .chatbot-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
     scroll-behavior: smooth;
+    background: transparent;
   }
 
   .chatbot-messages::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   .chatbot-messages::-webkit-scrollbar-track {
@@ -964,86 +1179,229 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
   }
 
   .chatbot-messages::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: 3px;
+    background: var(--chat-gradient);
+    border-radius: 4px;
   }
 
   .chatbot-messages::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-tertiary);
+    background: linear-gradient(135deg, var(--chat-primary-hover) 0%, var(--chat-primary) 100%);
   }
 
+  /* Enhanced Welcome - FIXED COLORS */
   .chatbot-welcome {
-    padding: 1rem;
-    background: var(--color-code-bg);
-    border-radius: 8px;
-    color: var(--color-text-secondary);
+    padding: 2rem 1.5rem;
+    background: linear-gradient(180deg, rgba(30, 64, 175, 0.08), rgba(6, 182, 212, 0.08));
+    border: 1px solid rgba(30, 64, 175, 0.15);
+    border-radius: 16px;
+    text-align: center;
+  }
+
+  :global([data-theme="dark"]) .chatbot-welcome {
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(34, 211, 238, 0.12));
+    border-color: rgba(59, 130, 246, 0.2);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-welcome {
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(34, 211, 238, 0.12));
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+  }
+
+  .welcome-icon {
+    margin: 0 auto 1.25rem;
+    animation: welcomeFloat 3s ease-in-out infinite;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(30, 64, 175, 0.2);
+  }
+
+  :global([data-theme="dark"]) .welcome-icon {
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .welcome-icon {
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+    }
+  }
+
+  .welcome-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  @keyframes welcomeFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .welcome-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 0.75rem 0;
+    background: var(--chat-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .welcome-text {
+    color: var(--chat-text-secondary);
     font-size: 0.9375rem;
     line-height: 1.6;
+    margin: 0 0 1.25rem 0;
   }
 
   .chatbot-suggestions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
+  /* FIXED: Suggestion chips with proper contrast */
   .suggestion-chip {
-    padding: 0.5rem 0.75rem;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    font-size: 0.875rem;
-    color: var(--color-text);
+    padding: 0.875rem 1.25rem;
+    background: var(--chat-bg-input);
+    border: 1.5px solid var(--chat-border);
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    color: var(--chat-text-primary);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: var(--chat-transition);
     font-family: var(--font-sans);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+    text-align: left;
+  }
+
+  .suggestion-chip svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+    stroke: var(--chat-text-secondary);
   }
 
   .suggestion-chip:hover {
-    background: var(--color-code-bg);
-    border-color: var(--color-accent);
-    color: var(--color-accent);
+    background: var(--chat-gradient);
+    border-color: transparent;
+    color: white;
+    transform: translateX(4px);
+    box-shadow: var(--chat-shadow-sm);
+  }
+
+  .suggestion-chip:hover svg {
+    opacity: 1;
+    stroke: white;
   }
 
   .suggestion-chip:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--chat-primary);
     outline-offset: 2px;
   }
 
+  /* CHAT-STYLE MESSAGE BUBBLES WITH AVATARS */
   .chatbot-message {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    animation: fadeIn 0.3s ease-out;
+    gap: 0.75rem;
+    animation: messageSlide 0.3s ease-out;
   }
 
+  @keyframes messageSlide {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* USER MESSAGES - Right aligned with avatar on right */
   .chatbot-message-user {
-    align-items: flex-end;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
   }
 
+  /* ASSISTANT MESSAGES - Left aligned with avatar on left */
   .chatbot-message-assistant {
-    align-items: flex-start;
+    flex-direction: row;
+    justify-content: flex-start;
   }
 
+  /* Message Avatar Styling */
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: var(--chat-shadow-sm);
+    align-self: flex-end;
+  }
+
+  .chatbot-message-assistant .message-avatar {
+    background: rgba(30, 64, 175, 0.1);
+    border: 2px solid rgba(30, 64, 175, 0.2);
+  }
+
+  :global([data-theme="dark"]) .chatbot-message-assistant .message-avatar {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-message-assistant .message-avatar {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+  }
+
+  .chatbot-message-assistant .message-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .chatbot-message-user .message-avatar {
+    background: var(--chat-gradient);
+    border: 2px solid transparent;
+  }
+
+  .chatbot-message-user .message-avatar svg {
+    stroke: white;
+  }
+
+  /* Message Content Styling */
   .chatbot-message-content {
-    max-width: 85%;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
+    max-width: 75%;
+    padding: 0.875rem 1.125rem;
+    border-radius: 16px;
     font-size: 0.9375rem;
-    line-height: 1.6;
+    line-height: 1.65;
     word-wrap: break-word;
+    box-shadow: var(--chat-shadow-sm);
   }
 
   .chatbot-message-user .chatbot-message-content {
-    background: var(--color-accent);
+    background: var(--chat-bg-message-user);
     color: white;
     border-bottom-right-radius: 4px;
   }
 
   .chatbot-message-assistant .chatbot-message-content {
-    background: var(--color-code-bg);
-    color: var(--color-text);
+    background: var(--chat-bg-message-assistant);
+    color: var(--chat-text-primary);
+    border: 1px solid var(--chat-border);
     border-bottom-left-radius: 4px;
   }
 
@@ -1051,73 +1409,150 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    color: var(--color-text-secondary);
+    color: var(--chat-text-secondary);
   }
 
-  .loading-spinner-inline {
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--color-border);
-    border-top-color: var(--color-accent);
+  .thinking-animation {
+    display: flex;
+    gap: 4px;
+  }
+
+  .thinking-animation span {
+    width: 8px;
+    height: 8px;
+    background: var(--chat-primary);
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
+    animation: thinkingBounce 1.4s ease-in-out infinite;
+  }
+
+  .thinking-animation span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .thinking-animation span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  @keyframes thinkingBounce {
+    0%, 80%, 100% {
+      transform: scale(0);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   .chatbot-message-content code {
-    background: rgba(0, 0, 0, 0.1);
-    padding: 0.125rem 0.25rem;
-    border-radius: 3px;
+    background: rgba(30, 64, 175, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
     font-size: 0.875em;
+    font-family: 'Monaco', 'Courier New', monospace;
+    border: 1px solid rgba(30, 64, 175, 0.2);
+    color: var(--chat-text-primary);
   }
 
-  .chatbot-message-assistant .chatbot-message-content code {
-    background: rgba(0, 0, 0, 0.1);
+  .chatbot-message-user .chatbot-message-content code {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+  }
+
+  :global([data-theme="dark"]) .chatbot-message-content code {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-message-content code {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
   }
 
   .chatbot-citations {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--color-border);
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--chat-border);
     font-size: 0.8125rem;
-    color: var(--color-text-secondary);
+    color: var(--chat-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .chatbot-citations svg {
+    flex-shrink: 0;
+    stroke: var(--chat-text-tertiary);
   }
 
   .chatbot-citations a {
-    color: var(--color-accent);
-    text-decoration: underline;
-    margin: 0 0.25rem;
+    color: var(--chat-primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--chat-transition);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
   }
 
-  /* Input Area */
+  .chatbot-citations a:hover {
+    background: rgba(30, 64, 175, 0.1);
+  }
+
+  :global([data-theme="dark"]) .chatbot-citations a:hover {
+    background: rgba(59, 130, 246, 0.15);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-citations a:hover {
+      background: rgba(59, 130, 246, 0.15);
+    }
+  }
+
+  /* Enhanced Input Area */
   .chatbot-input-area {
-    padding: 1rem;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
+    padding: 1.25rem;
+    border-top: 1px solid var(--chat-border);
+    background: transparent;
+    backdrop-filter: blur(8px);
   }
 
+  /* FIXED: Input wrapper with proper background */
   .chatbot-input-wrapper {
     display: flex;
     align-items: flex-end;
-    gap: 0.5rem;
-    background: var(--color-code-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 0.5rem;
-    transition: border-color var(--transition-fast);
+    gap: 0.75rem;
+    background: var(--chat-bg-input);
+    border: 2px solid var(--chat-border);
+    border-radius: 14px;
+    padding: 0.75rem;
+    transition: var(--chat-transition);
+    box-shadow: var(--chat-shadow-sm);
   }
 
   .chatbot-input-wrapper:focus-within {
-    border-color: var(--color-accent);
-    outline: 2px solid transparent;
-    outline-offset: 2px;
+    border-color: var(--chat-primary);
+    box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
   }
 
+  :global([data-theme="dark"]) .chatbot-input-wrapper:focus-within {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-input-wrapper:focus-within {
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+  }
+
+  /* FIXED: Input field with proper text color */
   .chatbot-input {
     flex: 1;
     border: none;
     background: transparent;
-    color: var(--color-text);
+    color: var(--chat-text-primary);
     font-family: var(--font-sans);
     font-size: 0.9375rem;
     line-height: 1.5;
@@ -1133,72 +1568,110 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
   }
 
   .chatbot-input::placeholder {
-    color: var(--color-text-tertiary);
+    color: var(--chat-text-tertiary);
   }
 
   .chatbot-send {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     border: none;
-    background: var(--color-accent);
+    background: var(--chat-gradient);
     color: white;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--transition-fast);
+    transition: var(--chat-transition);
     flex-shrink: 0;
+    box-shadow: var(--chat-shadow-sm);
   }
 
   .chatbot-send:hover:not(:disabled) {
-    background: var(--color-accent-hover);
+    transform: scale(1.05);
+    box-shadow: var(--chat-shadow-md);
+  }
+
+  .chatbot-send:active:not(:disabled) {
+    transform: scale(0.95);
   }
 
   .chatbot-send:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
+    transform: none;
   }
 
   .chatbot-send:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--chat-primary);
     outline-offset: 2px;
   }
 
   .chatbot-input-help {
     font-size: 0.75rem;
-    color: var(--color-text-tertiary);
-    margin: 0.5rem 0 0 0;
+    color: var(--chat-text-tertiary);
+    margin: 0.75rem 0 0 0;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
   }
 
-  @keyframes spin {
-    to { transform: rotate(360deg); }
+  .chatbot-input-help kbd {
+    padding: 0.125rem 0.375rem;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--chat-text-secondary);
+  }
+
+  :global([data-theme="dark"]) .chatbot-input-help kbd {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global([data-theme="auto"]) .chatbot-input-help kbd {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
   }
 
   /* Responsive */
   @media (max-width: 768px) {
     .ask-ai-chatbot {
-      /* On mobile, scroll buttons are smaller (40px each) and positioned at var(--space-sm) */
-      bottom: calc(40px + 0.5rem + 40px + 1rem + 0.75rem); /* Above scroll buttons with margin */
+      bottom: calc(40px + 0.5rem + 40px + 1rem + 0.75rem);
       right: 1rem;
     }
     
     .chatbot-panel {
       width: calc(100vw - 2rem);
-      height: calc(100vh - 4rem);
-      max-height: calc(100vh - 4rem);
-      bottom: calc(100% + 0.5rem);
+      height: calc(100vh - 6rem);
+      max-height: calc(100vh - 6rem);
+      bottom: calc(100% + 1rem);
     }
     
     .chatbot-toggle {
-      width: 48px;
-      height: 48px;
+      width: 56px;
+      height: 56px;
     }
     
     .chatbot-icon {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
+    }
+    
+    .chatbot-message-content {
+      max-width: 80%;
+    }
+    
+    .message-avatar {
+      width: 28px;
+      height: 28px;
     }
   }
 
@@ -1210,6 +1683,40 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
       border-radius: 0;
       bottom: 0;
       right: 0;
+      border: none;
+    }
+
+    .chatbot-header {
+      border-radius: 0;
+    }
+    
+    .chatbot-message-content {
+      max-width: 85%;
+    }
+  }
+
+  /* Accessibility - Reduced Motion */
+  @media (prefers-reduced-motion: reduce) {
+    .chatbot-toggle::before,
+    .chatbot-toggle-ring,
+    .welcome-icon,
+    .thinking-animation span {
+      animation: none;
+    }
+
+    .chatbot-panel {
+      animation: none;
+    }
+
+    .chatbot-message {
+      animation: none;
+    }
+  }
+
+  /* Print Styles */
+  @media print {
+    .ask-ai-chatbot {
+      display: none;
     }
   }
 </style>
