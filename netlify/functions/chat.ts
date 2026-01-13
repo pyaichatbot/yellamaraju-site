@@ -421,10 +421,27 @@ export const handler = async (
 
     // Prepare response
     // Note: LLM processing will be added in Story 10.5
-    // For now, return chunks with a placeholder message
+    // For now, return chunks with a useful preview of the relevant content
+    let answer = `I found ${chunks.length} relevant section(s) from the blog that match your query: "${query}".\n\n`;
+    
+    // Show preview of top chunks (up to 3)
+    const previewChunks = chunks.slice(0, 3);
+    previewChunks.forEach((chunk, index) => {
+      const previewText = chunk.text.length > 300 
+        ? chunk.text.substring(0, 300) + '...' 
+        : chunk.text;
+      answer += `**${index + 1}. From "${chunk.metadata.postTitle}":**\n${previewText}\n\n`;
+    });
+    
+    if (chunks.length > 3) {
+      answer += `*...and ${chunks.length - 3} more relevant section(s).*\n\n`;
+    }
+    
+    answer += `*Note: Full AI-powered answers with natural language processing will be available in Story 10.5 (LLM integration). For now, you can see the relevant content excerpts above and click the citation links to read the full posts.*`;
+    
     const response: ChatResponse = {
       success: true,
-      answer: `I found ${chunks.length} relevant section(s) for your query: "${query}". The LLM processing will be implemented in Story 10.5.`,
+      answer,
       citations,
       chunks: chunks.map(chunk => ({
         chunkId: chunk.metadata.chunkId,
