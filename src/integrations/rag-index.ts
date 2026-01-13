@@ -11,7 +11,7 @@ export default function ragIndexIntegration(): AstroIntegration {
   return {
     name: 'rag-index-generator',
     hooks: {
-      'astro:build:done': async ({ logger }) => {
+      'astro:build:start': async ({ logger }) => {
         try {
           logger.info('🔍 Generating RAG index...');
           // Dynamic import to avoid loading astro:content at module level

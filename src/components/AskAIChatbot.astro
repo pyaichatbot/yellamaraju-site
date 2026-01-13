@@ -438,6 +438,7 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
           }
 
           // Story 10.4: Call API endpoint with chunkIds (even if empty, API can handle it)
+          let apiCallSuccess = false;
           try {
             const apiResponse = await fetch('/api/chat', {
               method: 'POST',
@@ -452,90 +453,59 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
             });
 
             if (!apiResponse.ok) {
-              const errorData = await apiResponse.json().catch(() => ({ error: 'Unknown error' }));
+              // Try to get error message from response
+              let errorMessage = `HTTP ${apiResponse.status}`;
+              try {
+                const errorData = await apiResponse.json();
+                errorMessage = errorData.error || errorMessage;
+              } catch (e) {
+                // Response is not JSON, use status text
+                errorMessage = apiResponse.statusText || errorMessage;
+              }
               
               if (apiResponse.status === 429) {
                 // Rate limited
                 const retryAfter = apiResponse.headers.get('Retry-After');
-                throw new Error(`Rate limit exceeded. Please wait ${retryAfter || 'a moment'} before trying again.`);
+                errorMessage = `Rate limit exceeded. Please wait ${retryAfter || 'a moment'} before trying again.`;
               }
               
-              throw new Error(errorData.error || `HTTP ${apiResponse.status}`);
+              // Show API error message directly
+              this.addMessage('assistant', `**API Error:** ${errorMessage}\n\nThe API endpoint is available but returned an error. This might be a temporary issue. Please try again.`, []);
+              this.hideLoading();
+              return;
             }
 
             const data = await apiResponse.json();
             
             if (!data.success) {
-              throw new Error(data.error || 'Failed to get response from API');
+              // API returned success: false
+              const errorMsg = data.error || 'The API returned an error response';
+              this.addMessage('assistant', `**API Response:** ${errorMsg}\n\nPlease check the browser console (F12) for more details.`, []);
+              this.hideLoading();
+              return;
             }
 
-            // Use API response
+            // Use API response - success!
             const answer = data.answer || 'No answer provided';
             const apiCitations = data.citations || citations;
             
             this.addMessage('assistant', answer, apiCitations);
             this.hideLoading();
+            apiCallSuccess = true;
             return;
           } catch (apiError) {
             console.error('API call error:', apiError);
-            // Fall through to show search results or error message
-          }
-
-          // Fallback: Show helpful message if API call also failed
-          let response: string;
-          
-          if (!searchSuccess) {
-            // Search failed - try API anyway with empty chunkIds (API can handle it)
-            // The API will return a helpful message
-            try {
-              const fallbackResponse = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  query,
-                  currentUrl: this.currentUrl,
-                  chunkIds: [], // Empty - API will handle gracefully
-                }),
-              });
-
-              if (fallbackResponse.ok) {
-                const fallbackData = await fallbackResponse.json();
-                if (fallbackData.success && fallbackData.answer) {
-                  this.addMessage('assistant', fallbackData.answer, fallbackData.citations || []);
-                  this.hideLoading();
-                  return;
-                }
-              }
-            } catch (fallbackError) {
-              console.warn('Fallback API call also failed:', fallbackError);
-            }
-            
-            // If API also failed, show helpful message
-            response = `I'm having trouble accessing the search index. `;
-            response += `\n\n**Your question:** "${query}"`;
-            response += `\n\n**Status:**`;
-            response += `\n- ✅ API endpoint ready (Story 10.4)`;
-            response += `\n- ⚠️ Client-side search not loading (Story 10.3)`;
-            response += `\n\n**Note:** The chat widget is working, but search indexing needs to be fixed. `;
-            response += `Please check the browser console (F12) for error details.`;
-          } else if (chunkResults.length > 0) {
-            // Found results but API might have failed
-            const topChunk = chunkResults[0];
-            response = `I found ${chunkResults.length} relevant section(s) from the blog. `;
-            response += `The most relevant is from "${topChunk.postTitle}". `;
-            response += `\n\n**Preview:** ${topChunk.text.substring(0, 200)}...`;
-            response += `\n\n*The API endpoint (Story 10.4) is ready. `;
-            response += `LLM processing will be available in Story 10.5.*`;
-          } else {
-            // No results found but search worked
-            response = `I searched the blog posts but couldn't find specific content matching "${query}". `;
-            response += `\n\n*This might be a general question or the content might not be in the indexed posts yet. `;
-            response += `Try rephrasing your question or asking about a specific topic from the blog.*`;
+            // Network error or other exception
+            const errorMsg = apiError instanceof Error ? apiError.message : 'Network error';
+            this.addMessage('assistant', `**Connection Error:** ${errorMsg}\n\nUnable to reach the API endpoint. Please check your connection and try again.`, []);
+            this.hideLoading();
+            return;
           }
           
-          this.addMessage('assistant', response, citations);
+          // This code should never be reached - API call always returns above
+          // But keep as safety net
+          console.error('⚠️ Unexpected: API call did not return');
+          this.addMessage('assistant', 'Unexpected error: API call did not complete. Please check the browser console (F12) for details.', []);
           this.hideLoading();
         } catch (error) {
           console.error('❌ Send message error:', error);
