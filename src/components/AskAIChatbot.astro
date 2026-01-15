@@ -242,7 +242,8 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 
       document.querySelectorAll('.suggestion-chip').forEach(chip => {
         chip.addEventListener('click', (e) => {
-          const suggestion = (e.target as HTMLElement).dataset.suggestion;
+          const target = e.target as HTMLElement;
+          const suggestion = (target as HTMLElement).dataset.suggestion || (e.currentTarget as HTMLElement | null)?.dataset.suggestion;
           if (suggestion && this.input) {
             this.input.value = suggestion;
             this.input.focus();
@@ -268,7 +269,12 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
         if (!this.isOpen || !this.panel || !this.toggle) return;
         const target = e.target as Node | null;
         if (!target) return;
-        if (this.panel.contains(target) || this.toggle.contains(target)) return;
+        const path = typeof (e as Event & { composedPath?: () => EventTarget[] }).composedPath === 'function'
+          ? (e as Event & { composedPath: () => EventTarget[] }).composedPath()
+          : [];
+        const clickedInsidePanel = this.panel.contains(target) || path.includes(this.panel);
+        const clickedToggle = this.toggle.contains(target) || path.includes(this.toggle);
+        if (clickedInsidePanel || clickedToggle) return;
         this.closePanel();
       });
 
@@ -287,7 +293,7 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
 
     private async openPanel(): Promise<void> {
       if (!this.panel || !this.toggle) return;
-      
+
       this.hideLoading();
       
       this.panel.hidden = false;
@@ -811,7 +817,7 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
     --chat-border: rgba(0, 0, 0, 0.1);
     
     position: fixed;
-    bottom: calc(44px + 0.5rem + 44px + 1.5rem + 1rem);
+    bottom: var(--space-md);
     right: 1.5rem;
     z-index: 1000;
     font-family: var(--font-sans);
@@ -1644,7 +1650,7 @@ const { currentUrl = typeof window !== 'undefined' ? window.location.pathname : 
   /* Responsive */
   @media (max-width: 768px) {
     .ask-ai-chatbot {
-      bottom: calc(40px + 0.5rem + 40px + 1rem + 0.75rem);
+      bottom: var(--space-sm);
       right: 1rem;
     }
     
