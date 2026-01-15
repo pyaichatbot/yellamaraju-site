@@ -10,7 +10,7 @@ import Callout from '../../components/Callout.astro';
 import Mermaid from '../../components/Mermaid.astro';
 import BlogDisclaimer from '../../components/BlogDisclaimer.astro';
 
-At 3 AM, your AI code reviewer gives up. It's analyzed 200 files of your 5-million-line codebase and hit the context limit. The critical security vulnerability? Buried in file #847. Your AI never saw it. This isn't a bug—it's a fundamental limitation of how AI remembers information.
+At 3 AM, your AI code reviewer gives up. It's analyzed 200 files of your 5-million-line codebase and hit the context limit. The critical security vulnerability? Buried in file #847. Your AI never saw it. This isn't a bug - it's a fundamental limitation of how AI remembers information.
 
 But what if AI didn't need to remember? What if it could explore information like a programmer writes code?
 
@@ -24,7 +24,7 @@ RLMs don't make context windows bigger. They make context windows irrelevant.
 
 <h2 id="the-problem-why-context-windows-fail">The Problem: Why Context Windows Fail</h2>
 
-Every Large Language Model has a maximum number of tokens it can process in a single request. GPT-5 handles roughly 100,000–200,000 tokens—about 75,000 to 150,000 words<sup>2</sup>. That sounds like a lot until you realize a typical codebase can span millions of lines, or a research corpus might contain thousands of documents.
+Every Large Language Model has a maximum number of tokens it can process in a single request. GPT-5 handles roughly 100,000–200,000 tokens - about 75,000 to 150,000 words<sup>2</sup>. That sounds like a lot until you realize a typical codebase can span millions of lines, or a research corpus might contain thousands of documents.
 
 The transformer architecture creates this bottleneck. Each token must mathematically "attend" to every other token in the context window. This attention mechanism scales quadratically: processing 200,000 tokens is exponentially more expensive than 100,000. Cost can multiply up to 50x as context grows<sup>2</sup>.
 
@@ -51,11 +51,11 @@ Here's how it works:
 
 **1. Load Data into a Python Environment**
 
-The entire document, codebase, or dataset is stored as a Python variable in a REPL (Read-Eval-Print Loop)<sup>1</sup>. The data lives outside the model's context window—accessible only through code execution.
+The entire document, codebase, or dataset is stored as a Python variable in a REPL (Read-Eval-Print Loop)<sup>1</sup>. The data lives outside the model's context window - accessible only through code execution.
 
 **2. AI Writes Code to Navigate**
 
-The model doesn't try to remember everything. Instead, it writes Python code to search, filter, and analyze the data<sup>4</sup>. Think regex queries, chunking strategies, or pattern matching—whatever the task requires.
+The model doesn't try to remember everything. Instead, it writes Python code to search, filter, and analyze the data<sup>4</sup>. Think regex queries, chunking strategies, or pattern matching - whatever the task requires.
 
 **3. Recursive Problem Solving**
 
@@ -63,7 +63,7 @@ For complex tasks, the AI can call itself or other LLMs on subsets of data, comb
 
 **4. Final Synthesis**
 
-The model assembles insights from all recursive calls into a coherent answer<sup>1</sup>. The answer emerges via an iterative variable (the `answer` dictionary with a `content` key) that the model refines across turns—not generated in a single pass<sup>4</sup>.
+The model assembles insights from all recursive calls into a coherent answer<sup>1</sup>. The answer emerges via an iterative variable (the `answer` dictionary with a `content` key) that the model refines across turns - not generated in a single pass<sup>4</sup>.
 
 <img id="rlm-final-syntehsis" src="/images/rlm-final-syntehsis.png"/>
 
@@ -73,7 +73,7 @@ The RLM architecture includes three key capabilities<sup>1</sup>:
 - **Sub-LLM Delegation** - Parallel processing of focused subsets
 - **Answer Variable Refinement** - Iterative synthesis instead of single-pass generation
 
-Raw data stays in Python variables (accessible only via print-limited output: ~8,192 characters per turn)<sup>1</sup>. The model writes code to filter, search, and transform data<sup>4</sup>. When needed, sub-LLMs process focused subsets in parallel via `llm_batch()` calls<sup>1</sup>. Final answers are built iteratively—not generated in a single pass<sup>4</sup>.
+Raw data stays in Python variables (accessible only via print-limited output: ~8,192 characters per turn)<sup>1</sup>. The model writes code to filter, search, and transform data<sup>4</sup>. When needed, sub-LLMs process focused subsets in parallel via `llm_batch()` calls<sup>1</sup>. Final answers are built iteratively - not generated in a single pass<sup>4</sup>.
 
 <Callout type="success" title="The Mental Model">
 Think of RLMs as AI acting like a programmer: writing code to explore data, not trying to memorize it all.
@@ -81,7 +81,7 @@ Think of RLMs as AI acting like a programmer: writing code to explore data, not 
 
 <h2 id="the-proof-one-compelling-example">The Proof: One Compelling Example</h2>
 
-Consider this scenario: You need to summarize key insights from 100 research papers—roughly 10 million tokens of content.
+Consider this scenario: You need to summarize key insights from 100 research papers - roughly 10 million tokens of content.
 
 **Traditional LLM approach:**
 - Can only load ~5 papers (500K tokens) before context fills up
@@ -164,7 +164,7 @@ This shifts the bottleneck from hardware (GPU memory) to reasoning capability<su
 
 If you're working with long-context challenges today, start experimenting: Load your documents into a Python REPL, write code to explore them, and observe how an AI model reasons through complexity differently.
 
-The future of AI intelligence isn't about bigger context windows—it's about smarter navigation through unbounded information.
+The future of AI intelligence isn't about bigger context windows - it's about smarter navigation through unbounded information.
 
 The paradigm of 2026 is here. Are you ready?
 

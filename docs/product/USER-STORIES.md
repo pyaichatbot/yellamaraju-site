@@ -1220,8 +1220,9 @@ logger.info('chat_request', {
 | 9.37 | 8.2 | 17 Lessons from Delivering 17 AI Workshops | Series 8 | 🔵 OPEN | 5 | P1 |
 | 9.38 | 8.3 | The AI Engineer's Reading List | Series 8 | 🔵 OPEN | 3 | P1 |
 | 9.39 | - | AI and Data Quality: When Training Data Becomes Time Bomb | Custom | 🟢 DONE | 8 | P0 |
+| 9.40 | - | Sloperators: Why AI Outputs Need Owners, Not Better Models | Custom | 🟢 DONE | 5 | P0 |
 
-**Total Story Points**: ~208 points (content creation: 200 strategy + 8 custom)
+**Total Story Points**: ~213 points (content creation: 200 strategy + 13 custom)
 
 ---
 
@@ -2326,6 +2327,27 @@ logger.info('chat_request', {
 
 ---
 
+### Story 9.40: Post - "Sloperators: Why AI Outputs Need Owners, Not Better Models"
+**Epic**: Content Creation  
+**Priority**: P0  
+**Story Points**: 5  
+**Status**: 🟢 DONE  
+**Reference**: Custom post (not in content strategy)
+
+**User Story**:
+> As a content creator, I want to publish a post on sloperators, so readers understand why AI outputs need owners and a judgment layer.
+
+**Acceptance Criteria**:
+- [x] Post published at `/blog/sloperators-why-ai-outputs-need-owners-not-better-models`
+- [x] Slop Scale framework included
+- [x] Judgment layer diagram included
+- [x] Images included (`sloperator-illustration.png`, `sloperator-funnel-diagram.png`, `collage-enterprise-failures.png`, `ai_signal_review_dashboard.png`)
+- [x] Sources list included
+
+**Dependencies**: Story 1.1, Story 4.1, Story 4.2
+
+---
+
 ## Sprint Planning Summary
 
 ### Sprint 1 (Weeks 1-2): Foundation
@@ -2379,6 +2401,7 @@ logger.info('chat_request', {
 - **Post 1.1**: "The Anatomy of a Production LLM Call" ✅ (Story 9.2)
 - **Post 1.2**: "Prompt Engineering: The Difference Between Demos and Production" ✅ (Story 9.3)
 - **Post**: "AI and Data Quality: When Your Training Data Becomes Your Ticking Time Bomb" ✅ (Story 9.39)
+- **Post**: "Sloperators: Why AI Outputs Need Owners, Not Better Models" ✅ (Story 9.40)
 
 **Custom Posts** (not in content strategy, but published):
 - `decentralized-ai-compute-depin-networks.mdx` - "Decentralized AI Compute: Building DePIN Networks"
@@ -2394,9 +2417,9 @@ logger.info('chat_request', {
 
 ### Content Creation Progress
 - **Published (Strategy)**: 3 of 37 planned posts (8%)
-- **Published (Tracked Custom)**: 1 post (Data Quality - Story 9.39)
+- **Published (Tracked Custom)**: 2 posts (Data Quality - Story 9.39, Sloperators - Story 9.40)
 - **Published (Other Custom)**: 3 additional posts (not tracked)
-- **Total Published**: 7 posts
+- **Total Published**: 8 posts
 - **Remaining (Strategy)**: 34 posts
 - **Target**: 1-2 posts per week to complete strategy in 6-12 months
 

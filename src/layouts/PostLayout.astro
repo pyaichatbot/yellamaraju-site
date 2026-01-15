@@ -125,9 +125,14 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
         )}
         
         <ShareLinks title={title} url={canonicalURL} />
-        
+
+      </div>
+      
+      <div class="wide-wrapper">
         <Comments title={title} identifier={Astro.url.pathname} />
-        
+      </div>
+      
+      <div class="content-wrapper post-content-wrapper">
         <div class="subscribe-cta">
           <h3>Want more insights like this?</h3>
           <p>Get notified when I publish new articles on AI, architecture, and building intelligent systems.</p>

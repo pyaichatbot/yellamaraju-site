@@ -121,6 +121,14 @@ const isConfigured = repo && repoId && categoryId;
   /* Giscus theme customization to match site design */
   .giscus-container :global(.giscus) {
     font-family: var(--font-sans);
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .giscus-container :global(.giscus-frame),
+  .giscus-container :global(iframe) {
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   /* Warning message for development */
@@ -147,4 +155,3 @@ const isConfigured = repo && repoId && categoryId;
     }
   }
 </style>
-
