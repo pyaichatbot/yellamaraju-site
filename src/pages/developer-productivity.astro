@@ -1,0 +1,345 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Tool cards data - each tool becomes a microsite
+const tools = [
+  {
+    name: 'Claude',
+    slug: 'claude',
+    tagline: 'Long-context reasoning & structured thinking',
+    posture: 'Primary tool for deep analysis',
+    status: 'coming-soon',
+    icon: '🧠'
+  },
+  {
+    name: 'ChatGPT',
+    slug: 'chatgpt',
+    tagline: 'Multimodal, ecosystem leverage',
+    posture: 'Daily driver for ideation & scaffolding',
+    status: 'coming-soon',
+    icon: '💬'
+  },
+  {
+    name: 'GitHub Copilot',
+    slug: 'copilot',
+    tagline: 'Inline acceleration',
+    posture: 'Execution speed, not thinking',
+    status: 'coming-soon',
+    icon: '⚡'
+  },
+  {
+    name: 'Cursor',
+    slug: 'cursor',
+    tagline: 'AI-native IDE experience',
+    posture: 'Where code and context meet',
+    status: 'coming-soon',
+    icon: '🎯'
+  },
+  {
+    name: 'Gemini',
+    slug: 'gemini',
+    tagline: 'Google ecosystem integration',
+    posture: 'Specialized use cases',
+    status: 'coming-soon',
+    icon: '✨'
+  }
+];
+---
+
+<BaseLayout 
+  title="Developer Productivity"
+  description="Tools, workflows, and patterns I actually use. A working notebook for senior devs - not tutorials, not docs, just what works."
+>
+  <main class="dev-productivity-page">
+    <div class="container">
+      <div class="wide-wrapper">
+        <header class="page-header">
+          <h1>Developer Productivity</h1>
+          <p class="tagline">Tools, workflows, and patterns I actually use</p>
+          <p class="description">
+            Not tutorials. Not docs. What I'd tell a senior dev in 5 minutes before they start using this.
+          </p>
+        </header>
+        
+        <section class="tools-grid">
+          {tools.map(tool => (
+            <article class={`tool-card ${tool.status}`}>
+              {tool.status === 'coming-soon' && (
+                <span class="status-badge">Coming Soon</span>
+              )}
+              <div class="tool-icon">{tool.icon}</div>
+              <h2 class="tool-name">{tool.name}</h2>
+              <p class="tool-tagline">{tool.tagline}</p>
+              <p class="tool-posture">{tool.posture}</p>
+              {tool.status === 'live' ? (
+                <a href={`/developer-productivity/${tool.slug}`} class="tool-link">
+                  Explore
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+              ) : (
+                <span class="tool-link disabled">Coming Soon</span>
+              )}
+            </article>
+          ))}
+        </section>
+        
+        <section class="philosophy-section">
+          <h2>How This Section Works</h2>
+          <div class="philosophy-grid">
+            <div class="philosophy-card">
+              <h3>Experiential, Not Theoretical</h3>
+              <p>Every page reflects actual usage patterns, not feature lists. What works, what fails, when to switch.</p>
+            </div>
+            <div class="philosophy-card">
+              <h3>Tool Microsites</h3>
+              <p>Each tool gets deep coverage: 101 guides, skills breakdowns, workflows, and comparisons.</p>
+            </div>
+            <div class="philosophy-card">
+              <h3>Senior Dev Filter</h3>
+              <p>"What would I tell someone in 5 minutes before they start?" That's the content bar.</p>
+            </div>
+          </div>
+        </section>
+        
+        <section class="cta-section">
+          <p>Want to be notified when new tool guides launch?</p>
+          <a href="/contact" class="cta-button">Get in Touch</a>
+        </section>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .dev-productivity-page {
+    padding: var(--space-xl) 0;
+    min-height: 70vh;
+  }
+  
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .page-header h1 {
+    font-size: 2.75rem;
+    margin-bottom: var(--space-sm);
+    color: var(--color-text);
+  }
+  
+  .tagline {
+    font-size: 1.25rem;
+    color: var(--color-accent);
+    font-weight: 500;
+    margin-bottom: var(--space-sm);
+  }
+  
+  .description {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+  
+  /* Tools Grid */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+  }
+  
+  .tool-card {
+    position: relative;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: var(--space-lg);
+    transition: all var(--transition-base);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .tool-card:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  }
+  
+  .tool-card.coming-soon {
+    opacity: 0.85;
+  }
+  
+  .tool-card.coming-soon:hover {
+    opacity: 1;
+  }
+  
+  .status-badge {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    padding: 0.25rem 0.5rem;
+    background: var(--color-text-tertiary);
+    color: var(--color-background);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .tool-icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-xs);
+  }
+  
+  .tool-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+  
+  .tool-tagline {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+  
+  .tool-posture {
+    font-size: 0.875rem;
+    color: var(--color-accent);
+    font-weight: 500;
+    margin: 0;
+    padding-top: var(--space-xs);
+    border-top: 1px solid var(--color-border);
+    margin-top: auto;
+  }
+  
+  .tool-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: var(--space-sm);
+    padding: 0.5rem 1rem;
+    background: var(--color-accent);
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    width: fit-content;
+  }
+  
+  .tool-link:hover {
+    background: var(--color-accent-hover);
+  }
+  
+  .tool-link.disabled {
+    background: var(--color-border);
+    color: var(--color-text-tertiary);
+    cursor: default;
+  }
+  
+  .tool-link.disabled:hover {
+    background: var(--color-border);
+  }
+  
+  /* Philosophy Section */
+  .philosophy-section {
+    margin-bottom: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--color-border);
+  }
+  
+  .philosophy-section h2 {
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: var(--space-lg);
+    color: var(--color-text);
+  }
+  
+  .philosophy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-md);
+  }
+  
+  .philosophy-card {
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: var(--space-md);
+  }
+  
+  .philosophy-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--space-xs);
+  }
+  
+  .philosophy-card p {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin: 0;
+  }
+  
+  /* CTA Section */
+  .cta-section {
+    text-align: center;
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+  }
+  
+  .cta-section p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+    font-size: 1.1rem;
+  }
+  
+  .cta-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: var(--color-accent);
+    color: white;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all var(--transition-base);
+  }
+  
+  .cta-button:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+    
+    .tagline {
+      font-size: 1.1rem;
+    }
+    
+    .tools-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .tool-card {
+      padding: var(--space-md);
+    }
+  }
+</style>

@@ -1,0 +1,102 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Tools" description="Utilities and production templates for building AI systems.">
+  <div class="tools-page">
+    <div class="container">
+      <header class="tools-header">
+        <h1>Tools</h1>
+        <p>Practical utilities and production-ready templates to accelerate real-world AI work.</p>
+      </header>
+
+      <div class="tools-grid">
+        <a class="tool-card" href="/tools/utilities">
+          <h2>Utilities</h2>
+          <p>Token counters, cost calculators, and quick evaluators.</p>
+          <span class="tool-status">Coming soon</span>
+        </a>
+
+        <a class="tool-card" href="/templates">
+          <h2>Templates</h2>
+          <p>Production code patterns you can drop into your stack.</p>
+          <span class="tool-cta">Browse templates</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .tools-page {
+    padding: var(--space-lg) 0 var(--space-xl);
+  }
+
+  .tools-header {
+    text-align: left;
+    margin-bottom: var(--space-lg);
+  }
+
+  .tools-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-sm);
+  }
+
+  .tools-header p {
+    color: var(--color-text-secondary);
+    max-width: 700px;
+    margin: 0;
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-md);
+  }
+
+  .tool-card {
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: var(--space-lg);
+    text-decoration: none;
+    color: var(--color-text);
+    background: var(--color-surface);
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+  }
+
+  .tool-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .tool-card h2 {
+    margin: 0 0 var(--space-xs);
+    font-size: 1.25rem;
+  }
+
+  .tool-card p {
+    margin: 0 0 var(--space-md);
+    color: var(--color-text-secondary);
+  }
+
+  .tool-status {
+    display: inline-block;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: var(--color-code-bg);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+
+  .tool-cta {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+
+  @media (max-width: 768px) {
+    .tools-header h1 {
+      font-size: 2rem;
+    }
+  }
+</style>

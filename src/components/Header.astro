@@ -18,18 +18,80 @@ const currentPath = Astro.url.pathname;
           <ul>
             {NAV_ITEMS.map(item => {
               const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
+              const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+              const isDropdownOnly = hasChildren && item.href === '#';
+              const isActive = currentPath === item.href || (hasChildren && item.children?.some(child => child.href === currentPath));
               return (
-                <li>
-                  <a 
-                    href={item.href}
-                    class={currentPath === item.href ? 'active' : ''}
-                    aria-current={currentPath === item.href ? 'page' : undefined}
-                    target={isExternal ? '_blank' : undefined}
-                    rel={isExternal ? 'noopener noreferrer' : undefined}
-                    data-external={isExternal ? 'true' : undefined}
-                  >
-                    {item.label}
-                  </a>
+                <li class={`nav-item ${hasChildren ? 'has-children' : ''}`}>
+                  <div class="nav-item-trigger">
+                    {isDropdownOnly ? (
+                      <button
+                        type="button"
+                        class={`nav-dropdown-trigger ${isActive ? 'active' : ''}`}
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                      >
+                        {item.label}
+                        <span class="nav-caret" aria-hidden="true"></span>
+                      </button>
+                    ) : (
+                      <>
+                        <a 
+                          href={item.href}
+                          class={isActive ? 'active' : ''}
+                          aria-current={isActive ? 'page' : undefined}
+                          aria-haspopup={hasChildren ? 'true' : undefined}
+                          target={isExternal ? '_blank' : undefined}
+                          rel={isExternal ? 'noopener noreferrer' : undefined}
+                          data-external={isExternal ? 'true' : undefined}
+                        >
+                          {item.label}
+                        </a>
+                        {hasChildren && (
+                          <button
+                            class="nav-submenu-toggle"
+                            type="button"
+                            aria-expanded="false"
+                            aria-label={`Toggle ${item.label} menu`}
+                          >
+                            <span class="nav-caret" aria-hidden="true"></span>
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {hasChildren && (
+                    <ul class="nav-submenu" aria-label={`${item.label} submenu`}>
+                      {item.children?.map(child => {
+                        const childExternal = child.href.startsWith('http://') || child.href.startsWith('https://');
+                        const childActive = currentPath === child.href;
+                        const childIcon = child.label === 'Utilities' ? (
+                          <svg class="nav-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          </svg>
+                        ) : child.label === 'Templates' ? (
+                          <svg class="nav-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M4 4h16v16H4zM8 4v16M4 8h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        ) : null;
+                        return (
+                          <li>
+                            <a
+                              href={child.href}
+                              class={childActive ? 'active' : ''}
+                              aria-current={childActive ? 'page' : undefined}
+                              target={childExternal ? '_blank' : undefined}
+                              rel={childExternal ? 'noopener noreferrer' : undefined}
+                              data-external={childExternal ? 'true' : undefined}
+                            >
+                              {childIcon}
+                              <span>{child.label}</span>
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
@@ -58,20 +120,83 @@ const currentPath = Astro.url.pathname;
     </div>
     <nav class="mobile-menu-nav">
       <ul>
-        {NAV_ITEMS.map(item => {
+        {NAV_ITEMS.map((item, index) => {
           const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
+          const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+          const isDropdownOnly = hasChildren && item.href === '#';
+          const isActive = currentPath === item.href || (hasChildren && item.children?.some(child => child.href === currentPath));
+          const submenuId = `mobile-submenu-${index}`;
           return (
-            <li>
-              <a 
-                href={item.href}
-                class={currentPath === item.href ? 'active' : ''}
-                aria-current={currentPath === item.href ? 'page' : undefined}
-                target={isExternal ? '_blank' : undefined}
-                rel={isExternal ? 'noopener noreferrer' : undefined}
-                data-external={isExternal ? 'true' : undefined}
-              >
-                {item.label}
-              </a>
+            <li class={hasChildren ? 'mobile-has-children' : ''}>
+              <div class="mobile-item-row">
+                {isDropdownOnly ? (
+                  <button
+                    type="button"
+                    class={`mobile-dropdown-trigger ${isActive ? 'active' : ''}`}
+                    aria-expanded="false"
+                    aria-controls={submenuId}
+                  >
+                    {item.label}
+                    <span class="mobile-caret" aria-hidden="true">{'>'}</span>
+                  </button>
+                ) : (
+                  <>
+                    <a 
+                      href={item.href}
+                      class={isActive ? 'active' : ''}
+                      aria-current={isActive ? 'page' : undefined}
+                      target={isExternal ? '_blank' : undefined}
+                      rel={isExternal ? 'noopener noreferrer' : undefined}
+                      data-external={isExternal ? 'true' : undefined}
+                    >
+                      {item.label}
+                    </a>
+                    {hasChildren && (
+                      <button
+                        class="mobile-submenu-toggle"
+                        type="button"
+                        aria-expanded="false"
+                        aria-controls={submenuId}
+                        aria-label={`Toggle ${item.label} menu`}
+                      >
+                        <span class="mobile-caret" aria-hidden="true">{'>'}</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+              {hasChildren && (
+                <ul class="mobile-submenu" id={submenuId} aria-label={`${item.label} submenu`}>
+                  {item.children?.map(child => {
+                    const childExternal = child.href.startsWith('http://') || child.href.startsWith('https://');
+                    const childActive = currentPath === child.href;
+                    const childIcon = child.label === 'Utilities' ? (
+                      <svg class="nav-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    ) : child.label === 'Templates' ? (
+                      <svg class="nav-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 4h16v16H4zM8 4v16M4 8h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    ) : null;
+                    return (
+                      <li>
+                        <a
+                          href={child.href}
+                          class={childActive ? 'active' : ''}
+                          aria-current={childActive ? 'page' : undefined}
+                          target={childExternal ? '_blank' : undefined}
+                          rel={childExternal ? 'noopener noreferrer' : undefined}
+                          data-external={childExternal ? 'true' : undefined}
+                        >
+                          {childIcon}
+                          <span>{child.label}</span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </li>
           );
         })}
@@ -173,6 +298,132 @@ const currentPath = Astro.url.pathname;
     right: 0;
     height: 2px;
     background: var(--color-accent);
+  }
+
+  .nav-item {
+    position: relative;
+  }
+
+  .nav-item-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .nav-submenu-toggle {
+    border: none;
+    background: none;
+    padding: 0.15rem 0.25rem;
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .nav-item.open .nav-submenu-toggle,
+  .nav-item:hover .nav-submenu-toggle {
+    color: var(--color-accent);
+  }
+
+  .nav-dropdown-trigger {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: none;
+    background: transparent;
+    background-color: transparent;
+    font-weight: 500;
+    font-size: inherit;
+    font-family: inherit;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0;
+    margin: 0;
+    line-height: inherit;
+    transition: color var(--transition-fast);
+  }
+
+  .nav-dropdown-trigger:hover,
+  .nav-dropdown-trigger.active {
+    color: var(--color-accent);
+  }
+
+  .nav-item.open .nav-dropdown-trigger {
+    color: var(--color-accent);
+  }
+
+  .nav-dropdown-trigger .nav-caret {
+    margin-left: 0;
+  }
+
+  .nav-caret {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+    opacity: 0.7;
+    transition: transform var(--transition-fast);
+  }
+
+  .nav-submenu {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    left: 0;
+    min-width: 190px;
+    padding: 0.35rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  .nav-submenu li {
+    list-style: none;
+    margin: 0;
+  }
+
+  .nav-submenu a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    line-height: 1.15;
+  }
+
+  .nav-item-icon {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .nav-submenu a.active::after {
+    display: none;
+  }
+
+  .nav-item.open .nav-submenu {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .nav-item.open .nav-caret {
+    transform: rotate(180deg);
   }
   
   .mobile-menu-toggle {
@@ -297,7 +548,7 @@ const currentPath = Astro.url.pathname;
       overflow-y: auto;
     }
     
-    .mobile-menu-nav ul {
+    .mobile-menu-nav > ul {
       list-style: none;
       padding: 0;
       margin: 0;
@@ -317,7 +568,9 @@ const currentPath = Astro.url.pathname;
     }
     
     .mobile-menu-nav a {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       width: 100%;
       padding: var(--space-md) 0;
       font-weight: 500;
@@ -335,6 +588,83 @@ const currentPath = Astro.url.pathname;
     
     .mobile-menu-nav a.active {
       font-weight: 600;
+    }
+
+    .mobile-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-xs);
+    }
+
+    .mobile-has-children > .mobile-item-row > a {
+      font-weight: 600;
+    }
+
+    .mobile-submenu {
+      list-style: none;
+      padding-left: 1rem;
+      margin-top: 0.25rem;
+      display: none;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .mobile-has-children.open .mobile-submenu {
+      display: flex;
+    }
+
+    .mobile-submenu-toggle {
+      border: none;
+      background: none;
+      padding: 0.4rem;
+      color: var(--color-text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .mobile-dropdown-trigger {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      border: none;
+      background: transparent;
+      background-color: transparent;
+      padding: var(--space-md) 0;
+      margin: 0;
+      font-weight: 500;
+      font-size: 1.125rem;
+      font-family: inherit;
+      line-height: inherit;
+      color: var(--color-text);
+      cursor: pointer;
+      text-align: left;
+      transition: color var(--transition-fast);
+    }
+
+    .mobile-dropdown-trigger:hover,
+    .mobile-dropdown-trigger.active {
+      color: var(--color-accent);
+    }
+
+    .mobile-dropdown-trigger .mobile-caret {
+      margin-left: auto;
+    }
+
+    .mobile-caret {
+      display: inline-block;
+      transform: translateY(-1px);
+      transition: transform var(--transition-fast);
+    }
+
+    .mobile-has-children.open .mobile-caret {
+      transform: rotate(90deg);
     }
   }
 
@@ -390,6 +720,13 @@ const currentPath = Astro.url.pathname;
       overlay?.classList.remove('open');
       toggle?.classList.remove('open');
       body.style.overflow = '';
+      overlay?.querySelectorAll('.mobile-has-children').forEach(item => {
+        item.classList.remove('open');
+        const button = item.querySelector('.mobile-submenu-toggle');
+        if (button) {
+          button.setAttribute('aria-expanded', 'false');
+        }
+      });
     }
     
     toggle?.addEventListener('click', () => {
@@ -402,6 +739,19 @@ const currentPath = Astro.url.pathname;
     
     close?.addEventListener('click', () => {
       closeMenu();
+    });
+
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest('.nav-item')) return;
+      document.querySelectorAll('.nav-item.open').forEach(item => {
+        item.classList.remove('open');
+        const button = item.querySelector('.nav-submenu-toggle, .nav-dropdown-trigger');
+        if (button) {
+          button.setAttribute('aria-expanded', 'false');
+        }
+      });
     });
     
     // Close menu when clicking on overlay background
@@ -416,6 +766,64 @@ const currentPath = Astro.url.pathname;
     mobileLinks?.forEach(link => {
       link.addEventListener('click', () => {
         closeMenu();
+      });
+    });
+
+    const submenuToggles = overlay?.querySelectorAll('.mobile-submenu-toggle');
+    submenuToggles?.forEach(button => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const parentItem = button.closest('.mobile-has-children');
+        if (!parentItem) return;
+        const isOpen = parentItem.classList.toggle('open');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    });
+
+    // Mobile dropdown triggers (buttons that only open dropdown, no navigation)
+    const mobileDropdownTriggers = overlay?.querySelectorAll('.mobile-dropdown-trigger');
+    mobileDropdownTriggers?.forEach(button => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        const parentItem = button.closest('.mobile-has-children');
+        if (!parentItem) return;
+        const isOpen = parentItem.classList.toggle('open');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    });
+
+    const desktopToggles = document.querySelectorAll('.nav-submenu-toggle');
+    desktopToggles.forEach(button => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const parentItem = button.closest('.nav-item');
+        if (!parentItem) return;
+        const isOpen = parentItem.classList.toggle('open');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    });
+
+    // Desktop dropdown triggers (buttons that only open dropdown, no navigation)
+    const desktopDropdownTriggers = document.querySelectorAll('.nav-dropdown-trigger');
+    desktopDropdownTriggers.forEach(button => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const parentItem = button.closest('.nav-item');
+        if (!parentItem) return;
+        // Close other open dropdowns
+        document.querySelectorAll('.nav-item.open').forEach(item => {
+          if (item !== parentItem) {
+            item.classList.remove('open');
+            const otherButton = item.querySelector('.nav-dropdown-trigger, .nav-submenu-toggle');
+            if (otherButton) {
+              otherButton.setAttribute('aria-expanded', 'false');
+            }
+          }
+        });
+        const isOpen = parentItem.classList.toggle('open');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
       });
     });
   });

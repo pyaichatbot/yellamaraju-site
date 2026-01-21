@@ -11,12 +11,25 @@ export const SITE = {
 
 export const NAV_ITEMS = [
   { label: 'Home', href: '/' },
-  { label: 'Blog', href: '/blog' },
-  { label: 'Templates', href: '/templates' },
-  { label: 'About', href: '/about' },
-  { label: 'Resume', href: '/resume' },
-  { label: 'Contact', href: '/contact' },
-  { label: 'AI Learning Playground', href: 'https://pyaichatbot.github.io/ai-learning-playground/' }
+  { label: 'Writing', href: '/blog' },
+  { label: 'Developer Productivity', href: '/developer-productivity' },
+  { 
+    label: 'Utilities', 
+    href: '#',
+    children: [
+      { label: 'Templates', href: '/templates' }
+    ]
+  },
+  { label: 'AI Learning Playground', href: 'https://pyaichatbot.github.io/ai-learning-playground/' },
+  { 
+    label: 'About', 
+    href: '#',
+    children: [
+      { label: 'About Me', href: '/about' },
+      { label: 'Resume', href: '/resume' },
+      { label: 'Contact', href: '/contact' }
+    ]
+  }
 ];
 
 export const POSTS_PER_PAGE = 10;
