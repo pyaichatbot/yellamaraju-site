@@ -9,6 +9,7 @@ pinned: true
 import Callout from '../../components/Callout.astro';
 import Mermaid from '../../components/Mermaid.astro';
 import BlogDisclaimer from '../../components/BlogDisclaimer.astro';
+import YouTubeEmbed from '../../components/YouTubeEmbed.astro';
 
 Imagine this scenario: At 2 AM on a Tuesday, a team gets a call. Their AI-powered fraud detection system has flagged 40% of legitimate transactions as fraudulent. Customers are furious. The system has been in production for three months, and they've just discovered a fundamental flaw: they'd never properly validated whether AI was the right solution.
 
@@ -31,6 +32,8 @@ Why do AI projects fail? After working on dozens of initiatives, I've noticed th
 2. **Wrong Abstraction Level** - Building a Level 4 (Advanced ML) system when Level 1 (Rules) would work. Over-engineering kills projects. A simple rule-based system catches 85% of cases, but teams jump to deep learning "because AI is cool." Match the AI level to the problem complexity.
 
 3. **Wrong Expectations** - Expecting 100% accuracy from day one. AI systems are probabilistic. They improve over time. Teams abandon projects when initial accuracy is 75% instead of 95%. Set realistic success criteria based on baseline performance.
+
+<YouTubeEmbed id="q4T6lA2Kn4s" title="Before You Build: A Realistic Framework for Evaluating AI Use Cases" />
 
 <Callout type="success" title="Real Example">
 A fraud detection system started at 85% accuracy with simple Logistic Regression. After two years of iteration, it reached 99.2% with ensemble models. But they almost killed it in month three because "85% wasn't good enough." The lesson: start simple, improve iteratively.
