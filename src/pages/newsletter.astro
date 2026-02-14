@@ -16,6 +16,7 @@ import NewsletterSignup from '../components/NewsletterSignup.astro';
             Monthly insights on AI architecture, production LLM systems, and practical engineering patterns.
           </p>
         </header>
+        <div id="newsletter-status-banner" class="status-banner" hidden aria-live="polite"></div>
 
         <NewsletterSignup source="newsletter-page" />
 
@@ -34,6 +35,25 @@ import NewsletterSignup from '../components/NewsletterSignup.astro';
     </div>
   </div>
 </BaseLayout>
+
+<script>
+  const banner = document.getElementById('newsletter-status-banner');
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get('status');
+
+  if (banner && status) {
+    if (status === 'check-email') {
+      banner.textContent = 'Check your inbox and click the confirmation link to finish subscribing.';
+      banner.classList.add('status-pending');
+      banner.hidden = false;
+    }
+    if (status === 'confirmed') {
+      banner.textContent = 'Subscription confirmed. Welcome to the newsletter.';
+      banner.classList.add('status-success');
+      banner.hidden = false;
+    }
+  }
+</script>
 
 <style>
   .newsletter-page {
@@ -83,5 +103,28 @@ import NewsletterSignup from '../components/NewsletterSignup.astro';
 
   .newsletter-details a {
     color: var(--color-accent);
+  }
+
+  .status-banner {
+    margin: 0 auto var(--space-md);
+    max-width: 720px;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    text-align: center;
+  }
+
+  .status-banner.status-pending {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.25);
+    color: var(--color-text);
+  }
+
+  .status-banner.status-success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--color-text);
   }
 </style>

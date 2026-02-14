@@ -1,0 +1,73 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Check Your Email"
+  description="Please confirm your newsletter subscription from your inbox."
+>
+  <main class="newsletter-status-page">
+    <div class="container">
+      <div class="content-wrapper">
+        <section class="status-card">
+          <p class="status-kicker">Almost done</p>
+          <h1>Check your email</h1>
+          <p>
+            Confirm your subscription using the link in the confirmation email.
+            If you do not see it, check spam/promotions folders.
+          </p>
+          <p class="status-actions">
+            <a href="/newsletter" class="status-link">Back to Newsletter</a>
+            <a href="/blog" class="status-link">Read the Blog</a>
+          </p>
+        </section>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .newsletter-status-page {
+    padding: var(--space-lg) 0 var(--space-xl);
+  }
+
+  .status-card {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--space-lg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    text-align: center;
+  }
+
+  .status-kicker {
+    margin-bottom: var(--space-xs);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+    font-weight: 700;
+  }
+
+  .status-card h1 {
+    margin: 0 0 var(--space-sm);
+  }
+
+  .status-card p {
+    color: var(--color-text-secondary);
+  }
+
+  .status-actions {
+    margin-top: var(--space-md);
+    display: flex;
+    justify-content: center;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+  }
+
+  .status-link {
+    font-family: var(--font-sans);
+    font-weight: 600;
+  }
+</style>
