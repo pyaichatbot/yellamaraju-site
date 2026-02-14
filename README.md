@@ -142,6 +142,7 @@ yellamaraju-site/
    import YouTubeEmbed from '../../components/YouTubeEmbed.astro';
    import Callout from '../../components/Callout.astro';
    import Mermaid from '../../components/Mermaid.astro';
+   import CodePlayground from '../../components/CodePlayground.astro';
    
    Your content here...
    
@@ -156,6 +157,11 @@ yellamaraju-site/
        A[Start] --> B[Process]
        B --> C[End]
    `} />
+   
+   <CodePlayground 
+     title="Python Example"
+     code="print('Hello, World!')"
+   />
    ```
 
 ### Post Frontmatter Options
@@ -170,6 +176,81 @@ yellamaraju-site/
   draft?: boolean;      // Optional: Hide from production (default: false)
 }
 ```
+
+## Newsletter Setup
+
+The newsletter is implemented with a static-site-safe Buttondown integration.
+
+1. Set environment variable:
+   ```bash
+   PUBLIC_BUTTONDOWN_USERNAME=your-buttondown-username
+   ```
+2. Signup appears in:
+   - End of each blog post
+   - `/newsletter` page
+3. Privacy policy page:
+   - `/privacy`
+
+If `PUBLIC_BUTTONDOWN_USERNAME` is not set, the component shows a safe fallback (RSS + contact link).
+
+### Newsletter Automation (Draft-Only Hard Lock)
+
+You can control newsletter template/content from this repo and automate draft creation via Netlify Function.
+Sending is intentionally disabled in API for safety.
+
+- Endpoint: `/api/newsletter`
+- Function: `netlify/functions/newsletter.ts`
+- Template renderer: `src/utils/newsletter-template.ts`
+
+Required server-side env vars:
+
+```bash
+BUTTONDOWN_API_KEY=your-buttondown-api-key
+NEWSLETTER_AUTOMATION_SECRET=your-strong-secret
+```
+
+Example: create draft from latest blog post
+
+```bash
+curl -X POST https://yellamaraju.com/api/newsletter \
+  -H "Content-Type: application/json" \
+  -H "x-newsletter-secret: $NEWSLETTER_AUTOMATION_SECRET" \
+  -d '{"action":"draft"}'
+```
+
+Example: create draft with custom summary + tools + additional info
+
+```bash
+curl -X POST https://yellamaraju.com/api/newsletter \
+  -H "Content-Type: application/json" \
+  -H "x-newsletter-secret: $NEWSLETTER_AUTOMATION_SECRET" \
+  -d '{
+    "action": "draft",
+    "postSlug": "prompt-engineering-demos-vs-production",
+    "summary": "This article explains how production prompting differs from demo prompting, with emphasis on reliability and governance.",
+    "tools": [
+      {
+        "name": "Prompt Evaluation Checklist",
+        "description": "A quick checklist for testing prompt robustness before release.",
+        "url": "https://yellamaraju.com/templates/ai-use-cases/poc-validation-checklist"
+      },
+      {
+        "name": "ROI Calculator",
+        "description": "Estimate return from AI initiatives with cost and benefit assumptions.",
+        "url": "https://yellamaraju.com/templates/ai-use-cases/ai-roi-calculator"
+      }
+    ],
+    "additionalInfo": [
+      "Reply to this email with your biggest production prompting challenge.",
+      "Next issue: context engineering patterns and anti-patterns."
+    ]
+  }'
+```
+
+After draft creation:
+1. Open Buttondown dashboard.
+2. Review/edit draft.
+3. Send or schedule from Buttondown UI.
 
 ### Available Components
 
@@ -192,6 +273,31 @@ yellamaraju-site/
        A --> B
        B --> C
    `} />
+   ```
+
+4. **CodePlayground** - Runnable Python code examples
+   ```mdx
+   <CodePlayground 
+     title="Python Example"
+     code={`
+   def greet(name):
+       return f"Hello, {name}!"
+   
+   print(greet("World"))
+     `}
+   />
+   ```
+   
+   For multi-file projects (e.g., MCP servers):
+   ```mdx
+   <CodePlayground 
+     title="MCP Server"
+     height="600px"
+     files={{
+       "server.py": "...",
+       "requirements.txt": "..."
+     }}
+   />
    ```
 
 ## 🎨 Customization

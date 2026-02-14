@@ -54,6 +54,7 @@ import YouTubeEmbed from '../../components/YouTubeEmbed.astro';
 import TweetEmbed from '../../components/TweetEmbed.astro';
 import AudioEmbed from '../../components/AudioEmbed.astro';
 import Mermaid from '../../components/Mermaid.astro';
+import CodePlayground from '../../components/CodePlayground.astro';
 
 Your introduction paragraph here.
 
@@ -221,6 +222,65 @@ graph TD
     B --> C[End]
 `} />
 ```
+
+### Code Playground
+
+Embed runnable Python code examples with interactive execution:
+
+**Single-file Python example:**
+```mdx
+import CodePlayground from '../../components/CodePlayground.astro';
+
+<CodePlayground 
+  title="Simple Python Example"
+  code={`
+def greet(name):
+    return f"Hello, {name}!"
+
+print(greet("World"))
+  `}
+/>
+```
+
+**Multi-file project example (e.g., MCP server):**
+```mdx
+import CodePlayground from '../../components/CodePlayground.astro';
+
+<CodePlayground 
+  title="MCP Server Example"
+  height="600px"
+  files={{
+    "server.py": `
+from mcp.server import Server
+
+server = Server("my-server")
+
+@server.tool()
+def hello():
+    return "Hello from MCP!"
+    `,
+    "requirements.txt": "mcp>=0.1.0",
+    "test_server.py": `
+import server
+result = server.hello()
+print(result)
+    `
+  }}
+/>
+```
+
+**Available props:**
+- `code` (string): Python code for single-file examples
+- `files` (object): Object mapping filenames to content for multi-file projects
+- `title` (string, optional): Title displayed above the playground
+- `height` (string, optional): Height of the playground (default: "500px")
+- `language` ('python' | 'python-wasm', optional): Python runtime (default: 'python')
+  - `python`: Uses Brython (lightweight, no external packages)
+  - `python-wasm`: Uses Pyodide (supports PyPI packages like numpy, pandas)
+- `readonly` (boolean, optional): Make code read-only (default: false)
+- `showConsole` (boolean, optional): Show/hide console output (default: true)
+
+**Note:** The playground runs entirely in the browser using LiveCodes SDK. For packages requiring external dependencies, use `language="python-wasm"`.
 
 ## 📋 Content Guidelines
 
@@ -391,6 +451,7 @@ import YouTubeEmbed from '../../components/YouTubeEmbed.astro';
 import TweetEmbed from '../../components/TweetEmbed.astro';
 import AudioEmbed from '../../components/AudioEmbed.astro';
 import Mermaid from '../../components/Mermaid.astro';
+import CodePlayground from '../../components/CodePlayground.astro';
 
 Start with a compelling introduction that hooks the reader and sets up what they'll learn.
 

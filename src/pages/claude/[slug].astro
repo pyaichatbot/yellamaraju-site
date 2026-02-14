@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageNav from '../../components/PageNav.astro';
+
+export async function getStaticPaths() {
+  // Define known routes to exclude from dynamic routing
+  const excludedRoutes = ['workflows', 'prompts', 'limits'];
+  
+  // For now, return empty array since we don't have dynamic content yet
+  // This can be extended later to support dynamic pages
+  return [];
+}
+
+const { slug } = Astro.params;
+---
+
+<BaseLayout 
+  title={`Claude - ${slug}`}
+  description={`Claude microsite page: ${slug}`}
+>
+  <main class="claude-dynamic-page">
+    <div class="container">
+      <div class="content-wrapper">
+        <PageNav backUrl="/claude" backLabel="Back to Claude" />
+        
+        <header class="page-header">
+          <h1>{slug}</h1>
+          <p class="description">This is a dynamic page under the Claude microsite.</p>
+        </header>
+        
+        <article class="content">
+          <p>Content for this page is coming soon.</p>
+        </article>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .claude-dynamic-page {
+    padding: var(--space-xl) 0;
+    min-height: 70vh;
+  }
+  
+  .page-header {
+    margin-bottom: var(--space-lg);
+  }
+  
+  .page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-sm);
+    text-transform: capitalize;
+  }
+  
+  .description {
+    font-size: 1.1rem;
+    color: var(--color-text-secondary);
+  }
+  
+  .content {
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+  }
+</style>

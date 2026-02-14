@@ -8,7 +8,7 @@ const tools = [
     slug: 'claude',
     tagline: 'Long-context reasoning & structured thinking',
     posture: 'Primary tool for deep analysis',
-    status: 'coming-soon',
+    status: 'live',
     icon: '🧠'
   },
   {
@@ -72,7 +72,7 @@ const tools = [
               <p class="tool-tagline">{tool.tagline}</p>
               <p class="tool-posture">{tool.posture}</p>
               {tool.status === 'live' ? (
-                <a href={`/developer-productivity/${tool.slug}`} class="tool-link">
+                <a href={`/${tool.slug}`} class="tool-link">
                   Explore
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -83,6 +83,19 @@ const tools = [
               )}
             </article>
           ))}
+        </section>
+        
+        <section class="utilities-section">
+          <h2>Utilities & Resources</h2>
+          <div class="utilities-grid">
+            <article class="utility-card">
+              <div class="tool-icon">💻</div>
+              <h3 class="tool-name">Code Playground</h3>
+              <p class="tool-tagline">Interactive coding environment</p>
+              <p class="tool-posture">Temporarily hidden while migrating to StackBlitz-based implementation.</p>
+              <span class="tool-link disabled">Coming Soon</span>
+            </article>
+          </div>
         </section>
         
         <section class="philosophy-section">
@@ -252,6 +265,73 @@ const tools = [
     background: var(--color-border);
   }
   
+  /* Utilities Section */
+  .utilities-section {
+    margin-bottom: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--color-border);
+  }
+  
+  .utilities-section h2 {
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: var(--space-lg);
+    color: var(--color-text);
+  }
+  
+  .utilities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-lg);
+  }
+  
+  .utility-card {
+    position: relative;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: var(--space-lg);
+    transition: all var(--transition-base);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .utility-card:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  }
+  
+  .utility-card .tool-icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-xs);
+  }
+  
+  .utility-card .tool-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+  
+  .utility-card .tool-tagline {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+  
+  .utility-card .tool-posture {
+    font-size: 0.875rem;
+    color: var(--color-accent);
+    font-weight: 500;
+    margin: 0;
+    padding-top: var(--space-xs);
+    border-top: 1px solid var(--color-border);
+    margin-top: auto;
+  }
+  
   /* Philosophy Section */
   .philosophy-section {
     margin-bottom: var(--space-xl);
@@ -339,6 +419,14 @@ const tools = [
     }
     
     .tool-card {
+      padding: var(--space-md);
+    }
+    
+    .utilities-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .utility-card {
       padding: var(--space-md);
     }
   }

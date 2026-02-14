@@ -498,26 +498,26 @@ Issues Encountered:
 ---
 
 ### Story 2.2: Newsletter Signup Component
-**Status**: 🟡 READY  
-**Assigned**: -  
+**Status**: ✅ COMPLETED  
+**Assigned**: Codex + Praveen  
 **Points**: 3  
 **Dependencies**: None
 
 **Progress Checklist**:
-- [ ] 1. SELECT: Review acceptance criteria
-- [ ] 2. IMPLEMENT: [Details in USER-STORIES.md]
-- [ ] 3. TEST: [Test scenarios in USER-STORIES.md]
-- [ ] 4. FIX EDGE CASES
-- [ ] 5. LOG LEARNINGS
-- [ ] 6. CODE REVIEW
-- [ ] 7. MARK COMPLETE
+- [x] 1. SELECT: Review acceptance criteria
+- [x] 2. IMPLEMENT: [Details in USER-STORIES.md]
+- [x] 3. TEST: [Test scenarios in USER-STORIES.md]
+- [x] 4. FIX EDGE CASES
+- [x] 5. LOG LEARNINGS
+- [x] 6. CODE REVIEW
+- [x] 7. MARK COMPLETE
 
 **Notes**:
 ```
-Start Date: 
-End Date: 
-Actual Points: 
-Issues Encountered: 
+Start Date: 2026-02-14
+End Date: 2026-02-14
+Actual Points: 3
+Issues Encountered: Global project has unrelated existing type errors in ReplitEmbed + test-code-playground; newsletter files pass targeted checks.
 ```
 
 ---

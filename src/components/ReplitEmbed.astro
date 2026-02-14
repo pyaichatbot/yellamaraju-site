@@ -1,0 +1,69 @@
+---
+interface Props {
+  replId: string;
+  title?: string;
+  height?: string;
+  theme?: 'light' | 'dark';
+}
+
+const { 
+  replId, 
+  title, 
+  height = '600px',
+  theme = 'light'
+} = Astro.props;
+---
+
+<div class="replit-embed-wrapper">
+  {title && (
+    <div class="embed-header">
+      <h3 class="embed-title">{title}</h3>
+    </div>
+  )}
+  <div class="replit-container" style={`height: ${height};`}>
+    <iframe
+      src={`https://replit.com/@${replId}?embed=true&theme=${theme}`}
+      title={title || 'Replit Embed'}
+      class="replit-iframe"
+      allow="clipboard-read; clipboard-write"
+      sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+    ></iframe>
+  </div>
+</div>
+
+<style>
+  .replit-embed-wrapper {
+    margin: var(--space-lg) 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .embed-header {
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-code-bg);
+  }
+  
+  .embed-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+  
+  .replit-container {
+    position: relative;
+    width: 100%;
+    min-height: 400px;
+  }
+  
+  .replit-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+</style>

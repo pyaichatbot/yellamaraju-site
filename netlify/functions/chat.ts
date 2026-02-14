@@ -352,6 +352,26 @@ function getChunksByIds(ragIndex: RAGIndex, chunkIds: string[]): Chunk[] {
 }
 
 /**
+ * Fallback chunk selection for broad/generic queries that return no lexical hits.
+ * Uses the current post's earliest chunks so the LLM still gets core context.
+ */
+function getFallbackChunksForCurrentPost(
+  ragIndex: RAGIndex,
+  currentUrl?: string,
+  limit: number = 6
+): Chunk[] {
+  if (!currentUrl) return [];
+
+  const postSlug = extractPostSlug(currentUrl);
+  if (!postSlug) return [];
+
+  return ragIndex.chunks
+    .filter(chunk => chunk.metadata.postSlug === postSlug)
+    .sort((a, b) => a.metadata.chunkIndex - b.metadata.chunkIndex)
+    .slice(0, limit);
+}
+
+/**
  * Call Groq LLM API
  */
 async function callGroqLLM(query: string, chunks: Chunk[]): Promise<{ answer: string; tokensUsed: number }> {
@@ -540,31 +560,6 @@ export const handler: Handler = async (event, context) => {
 
     const { query, currentUrl, chunkIds } = validation.data!;
 
-    // If no chunks, return helpful message
-    if (chunkIds.length === 0) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...createCORSHeaders(origin),
-        },
-        body: JSON.stringify({
-          success: true,
-          answer: "I couldn't find specific content chunks to answer your question. This might happen if:\n\n" +
-            "1. The client-side search is still loading\n" +
-            "2. Your question doesn't match any indexed content\n" +
-            "3. You're asking about a different blog post\n\n" +
-            "Try rephrasing your question or ask about specific topics from this post.",
-          citations: [],
-          chunks: [],
-          rateLimit: {
-            remaining: rateLimit.remaining,
-            resetAt: rateLimit.resetAt,
-          },
-        }),
-      };
-    }
-
     // Load RAG index (try per-post first, fallback to legacy)
     let ragIndex: RAGIndex | null = null;
     
@@ -594,8 +589,18 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    // Get chunks
-    const chunks = getChunksByIds(ragIndex, chunkIds);
+    // Get chunks from client retrieval results first
+    let chunks = chunkIds.length > 0 ? getChunksByIds(ragIndex, chunkIds) : [];
+
+    // Fallback for generic prompts (e.g., "Explain the main concepts")
+    // when client-side lexical search returns zero chunks.
+    if (chunks.length === 0) {
+      const fallbackChunks = getFallbackChunksForCurrentPost(ragIndex, currentUrl, 6);
+      if (fallbackChunks.length > 0) {
+        console.log(`ℹ️ Using fallback chunks for ${extractPostSlug(currentUrl || '')}: ${fallbackChunks.length}`);
+        chunks = fallbackChunks;
+      }
+    }
 
     if (chunks.length === 0) {
       return {
@@ -606,7 +611,7 @@ export const handler: Handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          answer: "I found the chunk references but couldn't load the actual content. Please try refreshing the page.",
+          answer: "I couldn't find enough indexed context for that question on this page. Try asking with specific terms from the post (for example, a section heading or keyword).",
           citations: [],
           chunks: [],
           rateLimit: {

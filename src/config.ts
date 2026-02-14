@@ -6,7 +6,12 @@ export const SITE = {
   image: '/images/praveen.jpg',
   locale: 'en-US',
   twitter: '@praveensrinagy', // Update with actual handle if available
-  linkedin: 'www.linkedin.com/in/praveensrinagy'
+  linkedin: 'www.linkedin.com/in/praveensrinagy',
+  newsletter: {
+    provider: 'buttondown',
+    username: import.meta.env.PUBLIC_BUTTONDOWN_USERNAME || '',
+    enabled: Boolean(import.meta.env.PUBLIC_BUTTONDOWN_USERNAME),
+  },
 };
 
 export const NAV_ITEMS = [

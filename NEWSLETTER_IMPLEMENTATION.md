@@ -2,6 +2,28 @@
 
 A comprehensive guide for implementing newsletter functionality on yellamaraju.com when traffic warrants it.
 
+## Implementation Status
+
+Status: Implemented in codebase on February 14, 2026.
+
+Implemented artifacts:
+- `src/components/NewsletterSignup.astro`
+- `src/pages/newsletter.astro`
+- `src/pages/privacy.astro`
+- Newsletter embedded in `src/layouts/PostLayout.astro`
+- Config wiring in `src/config.ts`
+- Environment template in `.env.example`
+- Automation function: `netlify/functions/newsletter.ts` (`/api/newsletter`)
+- Template renderer: `src/utils/newsletter-template.ts`
+- Draft-only safety lock: API can create drafts only; sending must be done in Buttondown dashboard.
+
+Production go-live checklist:
+1. Create Buttondown publication and set sender/domain.
+2. Set `PUBLIC_BUTTONDOWN_USERNAME` in deployment environment.
+3. Publish/update privacy policy content for legal requirements in your jurisdiction.
+4. Test subscribe flow with real address (confirm email + unsubscribe).
+5. Verify UTM/attribution via `tag` field values (`post`, `newsletter-page`, etc.).
+
 ## 📋 Overview
 
 This document outlines the plan for adding newsletter subscription functionality to the static site. The implementation will be done when there's sufficient traffic to justify the setup and ongoing management.
@@ -622,4 +644,3 @@ Once newsletter is established:
 **Last Updated:** 2026-01-06
 
 **Next Review:** When site reaches 100+ daily visitors
-

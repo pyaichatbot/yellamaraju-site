@@ -1,0 +1,200 @@
+---
+import { SITE } from '../config';
+
+interface Props {
+  title?: string;
+  description?: string;
+  compact?: boolean;
+  source?: string;
+  showPrivacyNote?: boolean;
+}
+
+const {
+  title = 'Subscribe to the Newsletter',
+  description = 'Get notified when I publish new articles on AI, architecture, and building intelligent systems.',
+  compact = false,
+  source = 'site',
+  showPrivacyNote = true,
+} = Astro.props;
+
+const isConfigured = SITE.newsletter.enabled;
+const provider = SITE.newsletter.provider;
+const buttondownUsername = SITE.newsletter.username;
+
+const formAction =
+  provider === 'buttondown' && buttondownUsername
+    ? `https://buttondown.com/api/emails/embed-subscribe/${buttondownUsername}`
+    : '';
+---
+
+<section class={`newsletter-signup ${compact ? 'compact' : ''}`} aria-label="Newsletter signup">
+  <h3>{title}</h3>
+  <p>{description}</p>
+
+  {isConfigured && formAction ? (
+    <form
+      action={formAction}
+      method="post"
+      class="newsletter-form embeddable-buttondown-form"
+    >
+      <label for={`newsletter-email-${source}`} class="email-label">Enter your email</label>
+      <input
+        id={`newsletter-email-${source}`}
+        class="email-input"
+        type="email"
+        name="email"
+        placeholder="you@company.com"
+        autocomplete="email"
+        required
+        aria-required="true"
+      />
+      <input type="hidden" name="embed" value="1" />
+      <input type="hidden" name="tag" value={source} />
+      <button type="submit" class="submit-button">Subscribe</button>
+    </form>
+    <p class="powered-by">
+      <a href={`https://buttondown.com/refer/${buttondownUsername}`} target="_blank" rel="noopener noreferrer">
+        Powered by Buttondown.
+      </a>
+    </p>
+  ) : (
+    <div class="newsletter-fallback">
+      <p class="status-message">
+        Newsletter signup is not configured yet. Follow via <a href="/blog/rss.xml">RSS</a> in the meantime.
+      </p>
+      <a href="/contact" class="fallback-link">Contact me for updates</a>
+    </div>
+  )}
+
+  {showPrivacyNote && (
+    <p class="privacy-note">
+      No spam. Unsubscribe anytime. Read the <a href="/privacy">privacy policy</a>.
+    </p>
+  )}
+</section>
+
+<style>
+  .newsletter-signup {
+    margin-top: var(--space-xl);
+    padding: var(--space-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .newsletter-signup.compact {
+    margin-top: var(--space-md);
+    padding: var(--space-md);
+  }
+
+  .newsletter-signup h3 {
+    margin-bottom: var(--space-sm);
+    color: var(--color-text);
+  }
+
+  .newsletter-signup > p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+  }
+
+  .newsletter-form {
+    max-width: 460px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .email-label {
+    width: 100%;
+    text-align: left;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+  }
+
+  .email-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text);
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+  }
+
+  .email-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+
+  .submit-button,
+  .fallback-link {
+    display: inline-block;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--color-accent);
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+  }
+
+  .submit-button:hover,
+  .fallback-link:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+  }
+
+  .newsletter-fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .status-message {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .privacy-note {
+    margin-top: var(--space-sm);
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .powered-by {
+    margin-top: var(--space-sm);
+    margin-bottom: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .privacy-note a,
+  .status-message a {
+    color: var(--color-accent);
+  }
+
+  @media (max-width: 768px) {
+    .newsletter-form {
+      flex-direction: column;
+    }
+
+    .email-label {
+      text-align: center;
+    }
+
+    .submit-button {
+      width: 100%;
+    }
+  }
+</style>

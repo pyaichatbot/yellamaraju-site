@@ -1,0 +1,382 @@
+---
+interface Props {
+  // Code content - for single-file mode
+  code?: string;
+  
+  // Multi-file support: object mapping filenames to content
+  files?: Record<string, string>;
+  
+  // Display options
+  title?: string;
+  height?: string; // e.g., "400px", "600px"
+  language?: 'python' | 'python-wasm'; // python (Brython) or python-wasm (Pyodide)
+  
+  // Advanced options
+  template?: string; // LiveCodes template (defaults to 'python' or 'python-wasm')
+  readonly?: boolean; // Make code read-only
+  showConsole?: boolean; // Show/hide console output (default: true)
+  id?: string; // Unique ID for the playground
+  
+  // Provider selection
+  provider?: 'livecodes' | 'replit'; // Code playground provider (default: 'livecodes')
+  replitId?: string; // Replit repl ID for embedding (if using Replit)
+}
+
+const { 
+  code, 
+  files, 
+  title, 
+  height = '500px',
+  language = 'python',
+  template,
+  readonly = false,
+  showConsole = true,
+  id
+} = Astro.props;
+
+// Generate unique ID if not provided
+const playgroundId = id || `playground-${Math.random().toString(36).substring(2, 9)}`;
+
+// Determine template based on language or explicit template prop
+const playgroundTemplate = template || (language === 'python-wasm' ? 'python-wasm' : 'python');
+
+// Prepare files configuration
+// If files prop is provided, use it; otherwise, if code is provided, create a single file
+let filesConfig: Record<string, string> = {};
+if (files) {
+  filesConfig = files;
+} else if (code) {
+  // Default to main.py for single-file Python code
+  filesConfig = { 'main.py': code };
+}
+
+// Serialize files config for the script
+const filesConfigJson = JSON.stringify(filesConfig);
+---
+
+<div class="code-playground-wrapper" id={playgroundId}>
+  {title && (
+    <div class="playground-header">
+      <h3 class="playground-title">{title}</h3>
+    </div>
+  )}
+  <div 
+    class="playground-container" 
+    style={`height: ${height};`}
+    data-playground-id={playgroundId}
+    data-template={playgroundTemplate}
+    data-files={filesConfigJson}
+    data-readonly={readonly.toString()}
+    data-show-console={showConsole.toString()}
+  >
+    <div class="playground-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading code playground...</p>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (function() {
+    if (typeof window === 'undefined') return;
+    
+    // Find all playground containers on the page
+    const playgroundContainers = document.querySelectorAll('.playground-container[data-playground-id]');
+    
+    playgroundContainers.forEach(function(playgroundContainer) {
+      const container = playgroundContainer.closest('.code-playground-wrapper');
+      if (!container) return;
+      
+      const playgroundId = playgroundContainer.getAttribute('data-playground-id');
+      const playgroundTemplate = playgroundContainer.getAttribute('data-template') || 'python';
+      const filesConfigJson = playgroundContainer.getAttribute('data-files') || '{}';
+      const readonly = playgroundContainer.getAttribute('data-readonly') === 'true';
+      const showConsole = playgroundContainer.getAttribute('data-show-console') !== 'false';
+      
+      // Get current theme
+      function getTheme() {
+        const html = document.documentElement;
+        const theme = html.getAttribute('data-theme') || 'auto';
+        if (theme === 'auto') {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        return theme;
+      }
+      
+      // Load and initialize LiveCodes
+      async function initializePlayground() {
+        try {
+          console.log('Loading LiveCodes SDK for', playgroundId);
+          
+          // Dynamically import LiveCodes SDK
+          // Using the CDN import for LiveCodes SDK
+          const livecodesModule = await import('https://cdn.jsdelivr.net/npm/livecodes');
+          console.log('LiveCodes SDK loaded:', livecodesModule);
+          
+          if (!livecodesModule || !livecodesModule.createPlayground) {
+            throw new Error('createPlayground function not found in LiveCodes SDK');
+          }
+          
+          const { createPlayground } = livecodesModule;
+          
+          // Parse files configuration
+          const files = JSON.parse(filesConfigJson);
+          
+          // Prepare configuration
+          // LiveCodes uses 'params' for code content
+          const config = {
+          template: playgroundTemplate,
+          theme: getTheme(),
+          readonly: readonly,
+          params: {}
+        };
+        
+        // Configure console
+        if (showConsole !== undefined) {
+          config.params.console = showConsole ? 'open' : 'closed';
+        }
+        
+        // Configure files
+        if (Object.keys(files).length > 0) {
+          if (Object.keys(files).length === 1) {
+            // Single file - use params.script
+            const fileContent = Object.values(files)[0];
+            config.params.script = fileContent;
+          } else {
+            // Multi-file project - combine all files into one with clear separators
+            // LiveCodes Python template supports single script, so we combine files
+            let combinedContent = '';
+            
+            // Sort files: main.py last (so imports work), others first
+            const fileEntries = Object.entries(files);
+            const mainFile = fileEntries.find(([name]) => name === 'main.py');
+            const otherFiles = fileEntries.filter(([name]) => name !== 'main.py');
+            
+            // Add other files first
+            otherFiles.forEach(([filename, content]) => {
+              if (filename.endsWith('.py')) {
+                combinedContent += `# ============================================\n`;
+                combinedContent += `# File: ${filename}\n`;
+                combinedContent += `# ============================================\n\n`;
+                combinedContent += content;
+                combinedContent += `\n\n`;
+              }
+            });
+            
+            // Add main.py last (if it exists)
+            if (mainFile) {
+              combinedContent += `# ============================================\n`;
+              combinedContent += `# File: ${mainFile[0]}\n`;
+              combinedContent += `# ============================================\n\n`;
+              combinedContent += mainFile[1];
+            } else if (otherFiles.length > 0) {
+              // If no main.py, use the first Python file's content
+              const firstPy = otherFiles.find(([name]) => name.endsWith('.py'));
+              if (firstPy) {
+                combinedContent = `# ============================================\n`;
+                combinedContent += `# File: ${firstPy[0]}\n`;
+                combinedContent += `# ============================================\n\n`;
+                combinedContent += firstPy[1];
+                combinedContent += `\n\n`;
+                // Add other files after
+                otherFiles.forEach(([filename, content]) => {
+                  if (filename !== firstPy[0] && filename.endsWith('.py')) {
+                    combinedContent += `# ============================================\n`;
+                    combinedContent += `# File: ${filename}\n`;
+                    combinedContent += `# ============================================\n\n`;
+                    combinedContent += content;
+                    combinedContent += `\n\n`;
+                  }
+                });
+              }
+            }
+            
+            // Set the combined content as the script
+            config.params.script = combinedContent;
+          }
+        }
+        
+        console.log('Initializing LiveCodes with config:', config);
+        
+          // Create the playground - pass the element directly
+          const playground = await createPlayground(playgroundContainer, config);
+          
+          console.log('Playground created:', playground);
+          
+          // Hide loading indicator
+          const loadingEl = container.querySelector('.playground-loading');
+          if (loadingEl) {
+            loadingEl.style.display = 'none';
+          }
+          
+          // Store playground instance for theme updates
+          container.__playground = playground;
+          
+        } catch (error) {
+          console.error('Failed to initialize LiveCodes playground:', error);
+          const loadingEl = container.querySelector('.playground-loading');
+          if (loadingEl) {
+            loadingEl.innerHTML = `
+              <div style="text-align: center; padding: var(--space-lg);">
+                <p style="color: var(--color-text-secondary); margin-bottom: var(--space-sm);">
+                  Failed to load code playground.
+                </p>
+                <p style="color: var(--color-text-tertiary); font-size: 0.875rem; margin-bottom: var(--space-md);">
+                  Error: ${error instanceof Error ? error.message : 'Unknown error'}
+                </p>
+                <button 
+                  onclick="location.reload()" 
+                  style="padding: 0.5rem 1rem; background: var(--color-accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;"
+                >
+                  Retry
+                </button>
+              </div>
+            `;
+          }
+        }
+      }
+      
+      // Initialize when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializePlayground);
+      } else {
+        initializePlayground();
+      }
+      
+      // Handle theme changes
+      function handleThemeChange() {
+        const playground = container.__playground;
+        if (playground && typeof playground.setTheme === 'function') {
+          playground.setTheme(getTheme());
+        }
+      }
+      
+      // Listen for theme changes
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      mediaQuery.addEventListener('change', handleThemeChange);
+      
+      // Also listen for manual theme changes via data-theme attribute
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+            handleThemeChange();
+          }
+        });
+      });
+      
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme']
+      });
+    });
+    
+    // Also handle dynamically added playgrounds
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        // Re-run initialization for any containers that might have been added
+        const newContainers = document.querySelectorAll('.playground-container[data-playground-id]:not([data-initialized])');
+        newContainers.forEach(function(container) {
+          container.setAttribute('data-initialized', 'true');
+        });
+      });
+    }
+    
+  })();
+</script>
+
+<style>
+  .code-playground-wrapper {
+    margin: var(--space-lg) 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    scroll-margin-top: 2rem;
+  }
+  
+  .playground-header {
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-code-bg);
+  }
+  
+  .playground-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+  
+  .playground-container {
+    position: relative;
+    min-height: 300px;
+    width: 100%;
+    background: var(--color-surface);
+  }
+  
+  .playground-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    background: var(--color-surface);
+    z-index: 10;
+  }
+  
+  .playground-loading p {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+  
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* LiveCodes playground styling overrides */
+  .playground-container :global(.livecodes) {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .playground-container :global(.livecodes iframe) {
+    border: none;
+    width: 100%;
+    height: 100%;
+  }
+  
+  @media (max-width: 768px) {
+    .code-playground-wrapper {
+      margin: var(--space-md) 0;
+      border-radius: 6px;
+    }
+    
+    .playground-header {
+      padding: var(--space-sm);
+    }
+    
+    .playground-title {
+      font-size: 1rem;
+    }
+  }
+</style>
