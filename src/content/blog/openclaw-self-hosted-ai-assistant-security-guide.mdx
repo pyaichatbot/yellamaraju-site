@@ -87,26 +87,7 @@ Most production issues can be mapped to this loop:
 5. Tool outputs return to gateway.
 6. Final response is sent back to channel.
 
-<Mermaid
-  chart={`
-sequenceDiagram
-  participant User
-  participant Channel
-  participant Gateway
-  participant Model
-  participant Tool
-  User->>Channel: Send request
-  Channel->>Gateway: Deliver message
-  Gateway->>Model: Prompt with context
-  Model-->>Gateway: Plan + tool intent
-  Gateway->>Tool: Execute tool call
-  Tool-->>Gateway: Return output
-  Gateway->>Model: Summarize tool output
-  Model-->>Gateway: Final answer
-  Gateway-->>Channel: Send response
-  Channel-->>User: Display response
-`}
-/>
+<img id="openclaw-sequence-diagram-gpt" src="/images/openclaw-sequence-diagram.png" />
 
 When responses are wrong, look at prompt and context.
 When behavior is dangerous, inspect tool invocation and policy checks.
