@@ -1,0 +1,426 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageNav from '../components/PageNav.astro';
+---
+
+<BaseLayout
+  title="OpenClaw Setup Guide - Developer Productivity"
+  description="Practical OpenClaw setup options across local machine, VPS, Railway, and DigitalOcean with security guardrails and deployment trade-offs."
+>
+  <main class="openclaw-page">
+    <div class="container">
+      <div class="wide-wrapper">
+        <PageNav backUrl="/developer-productivity" backLabel="Back to Developer Productivity" />
+
+        <header class="page-header">
+          <h1>OpenClaw Setup Paths</h1>
+          <p>
+            If you are choosing where to run OpenClaw, use this page first. It covers local, VPS, Railway,
+            and DigitalOcean with practical trade-offs and security controls.
+          </p>
+          <p class="companion-link">
+            Need architecture and threat model context first?
+            <a href="/blog/openclaw-self-hosted-ai-assistant-security-guide">
+              Read the OpenClaw security deep dive
+            </a>.
+          </p>
+        </header>
+
+        <section class="summary-grid" aria-label="Setup summary">
+          <article class="summary-card">
+            <h2>Local Machine</h2>
+            <p>Best for first setup and low-risk automation. Lowest blast radius if isolated well.</p>
+            <ul>
+              <li>Fastest start</li>
+              <li>No public exposure by default</li>
+              <li>Great for debugging and learning</li>
+            </ul>
+          </article>
+          <article class="summary-card">
+            <h2>VPS (Generic)</h2>
+            <p>Best for always-on runtime when you need stable background execution.</p>
+            <ul>
+              <li>Persistent availability</li>
+              <li>Full control of network and OS</li>
+              <li>Requires active hardening</li>
+            </ul>
+          </article>
+          <article class="summary-card">
+            <h2>Railway</h2>
+            <p>Good for quick managed deployment, but check runtime limits and secret handling carefully.</p>
+            <ul>
+              <li>Fast deploy workflow</li>
+              <li>Managed infra reduces ops load</li>
+              <li>Platform constraints to evaluate</li>
+            </ul>
+          </article>
+          <article class="summary-card">
+            <h2>DigitalOcean</h2>
+            <p>Good middle ground with solid control and predictable pricing on droplets.</p>
+            <ul>
+              <li>Straightforward VPS model</li>
+              <li>Easy firewall and VPC controls</li>
+              <li>You still own patching and security</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="decision-section">
+          <h2>Decision Matrix</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Option</th>
+                  <th>Time to Start</th>
+                  <th>Ops Load</th>
+                  <th>Security Control</th>
+                  <th>Best Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Local</td>
+                  <td>Very fast</td>
+                  <td>Low</td>
+                  <td>High (local only)</td>
+                  <td>Learning, prototypes, safe workflows</td>
+                </tr>
+                <tr>
+                  <td>VPS</td>
+                  <td>Medium</td>
+                  <td>Medium to high</td>
+                  <td>Very high</td>
+                  <td>Always-on personal or team runtime</td>
+                </tr>
+                <tr>
+                  <td>Railway</td>
+                  <td>Fast</td>
+                  <td>Low to medium</td>
+                  <td>Medium</td>
+                  <td>Quick managed deployment</td>
+                </tr>
+                <tr>
+                  <td>DigitalOcean</td>
+                  <td>Medium</td>
+                  <td>Medium</td>
+                  <td>High</td>
+                  <td>Stable VPS with explicit control</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="guidance-section">
+          <h2>Recommended Setup Sequence</h2>
+          <ol>
+            <li>Start local with loopback-only access.</li>
+            <li>Add only low-risk tools and no third-party skills.</li>
+            <li>Move to VPS after logging, backups, and token hygiene are in place.</li>
+            <li>Use VPN or SSH tunnel for dashboard access.</li>
+            <li>Expand capabilities only after policy checks and isolation are in place.</li>
+          </ol>
+        </section>
+
+        <section class="security-section">
+          <h2>Security Guardrails for Every Setup</h2>
+          <ul>
+            <li>Never expose admin dashboard publicly.</li>
+            <li>Use dedicated API keys with low permissions.</li>
+            <li>Treat third-party skills as executable code and review before install.</li>
+            <li>Separate OpenClaw runtime from sensitive file systems.</li>
+            <li>Log every tool call and keep a simple incident rollback plan.</li>
+          </ul>
+        </section>
+
+        <section class="playbook-section">
+          <h2>Secure Local Install and Channel Connection Playbook</h2>
+          <p>
+            Use this sequence if you want to run OpenClaw on your own PC first, then connect Telegram or
+            WhatsApp without opening an unsafe control plane.
+          </p>
+
+          <h3>Phase 1: Secure local baseline</h3>
+          <ol>
+            <li>Use a dedicated OS user and dedicated workspace folder for OpenClaw.</li>
+            <li>Install from official OpenClaw docs only, then run dashboard-only for first validation.</li>
+            <li>Keep the gateway bound to <code>127.0.0.1</code> and do not bind to <code>0.0.0.0</code>.</li>
+            <li>Set a dashboard auth token and store it as an environment secret, not in Git.</li>
+            <li>Enable only low-risk tools first (read-only files, no unrestricted shell).</li>
+            <li>Only after local validation, add one chat connector at a time.</li>
+          </ol>
+
+          <h4>Install on local PC (official quick path)</h4>
+          <p>
+            Use one of the official install paths below, then validate the local dashboard before enabling
+            channels.
+          </p>
+          <pre><code># Prereq
+node --version   # Node 22+
+
+# Option A (OpenClaw official installer, macOS/Linux)
+curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install.sh | bash
+
+# Option B (npm global install)
+npm install -g openclaw@latest
+
+# Onboard + install daemon service
+openclaw onboard --install-daemon
+
+# Verify gateway and open dashboard
+openclaw gateway status
+openclaw dashboard</code></pre>
+          <p class="note-text">
+            If dashboard auth prompts appear, use your configured gateway token and keep access local-only.
+          </p>
+
+          <div class="config-note">
+            <p><strong>Minimal secure env baseline (example):</strong></p>
+            <pre><code>OPENCLAW_GATEWAY_HOST=127.0.0.1
+OPENCLAW_GATEWAY_PORT=18789
+OPENCLAW_GATEWAY_TOKEN=replace-with-long-random-secret</code></pre>
+            <p class="note-text">
+              Keep variable names aligned with your installed OpenClaw version and docs.
+            </p>
+          </div>
+
+          <h3>Phase 2: Connect Telegram safely</h3>
+          <ol>
+            <li>Create a bot in BotFather and get the bot token.</li>
+            <li>Add token in your local secret store or env file excluded from version control.</li>
+            <li>Connect Telegram in OpenClaw dashboard or CLI channel setup.</li>
+            <li>Restrict allowed chats or user IDs before enabling automation.</li>
+            <li>Test text-only workflows first, then enable limited tool actions.</li>
+          </ol>
+          <pre><code># Telegram token example
+export TELEGRAM_BOT_TOKEN="replace-with-your-botfather-token"
+openclaw gateway status</code></pre>
+
+          <h3>Phase 3: Connect WhatsApp safely</h3>
+          <ol>
+            <li>Use an official WhatsApp Business API path (Meta Cloud API or approved provider).</li>
+            <li>Use a dedicated phone number for bot traffic, not your primary personal number.</li>
+            <li>Store API token and webhook secret outside repo and rotate on schedule.</li>
+            <li>If webhooks require internet reachability, expose only webhook endpoint, never dashboard UI.</li>
+            <li>Start with read-only and notification tasks before any command-style automation.</li>
+          </ol>
+          <pre><code># WhatsApp QR login (OpenClaw web channel)
+openclaw channels login
+openclaw gateway --port 18789</code></pre>
+
+          <div class="channel-grid">
+            <article>
+              <h4>Telegram default posture</h4>
+              <ul>
+                <li>Fastest channel onboarding</li>
+                <li>Good for personal automation and alerts</li>
+                <li>Use chat allowlist to reduce abuse surface</li>
+              </ul>
+            </article>
+            <article>
+              <h4>WhatsApp default posture</h4>
+              <ul>
+                <li>Better for business-facing workflows</li>
+                <li>Webhook security and token hygiene are mandatory</li>
+                <li>Use staged rollout before enabling privileged tools</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="next-section">
+          <h2>Next Read</h2>
+          <p>
+            For architecture, data flow, and threat model details, read:
+            <a href="/blog/openclaw-self-hosted-ai-assistant-security-guide">
+              OpenClaw for Builders: Architecture, Data Flow, and Security Guardrails
+            </a>.
+          </p>
+        </section>
+
+        <section class="references-section">
+          <h2>Further Reading and Deploy Links</h2>
+          <p>
+            For latest setup instructions and ecosystem updates, use these official and community links:
+          </p>
+          <ul>
+            <li><a href="https://openclaw.ai" target="_blank" rel="noopener noreferrer">OpenClaw official site</a></li>
+            <li><a href="https://railway.com/deploy/openclaw" target="_blank" rel="noopener noreferrer">OpenClaw on Railway</a></li>
+            <li><a href="https://marketplace.digitalocean.com/apps/openclaw" target="_blank" rel="noopener noreferrer">OpenClaw on DigitalOcean Marketplace</a></li>
+            <li><a href="https://simpleclaw.com" target="_blank" rel="noopener noreferrer">SimpleClaw</a></li>
+            <li><a href="https://github.com/HKUDS/nanobot" target="_blank" rel="noopener noreferrer">HKUDS NanoBot (GitHub)</a></li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .openclaw-page {
+    padding: var(--space-lg) 0 var(--space-xl);
+  }
+
+  .page-header {
+    margin-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--space-md);
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-xs);
+  }
+
+  .page-header p {
+    max-width: 800px;
+    color: var(--color-text-secondary);
+  }
+
+  .companion-link {
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .companion-link a {
+    font-weight: 600;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+  }
+
+  .summary-card {
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: var(--space-md);
+    background: var(--color-surface);
+  }
+
+  .summary-card h2 {
+    margin-top: 0;
+    font-size: 1.15rem;
+  }
+
+  .summary-card p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-sm);
+  }
+
+  .summary-card ul {
+    margin: 0;
+  }
+
+  .decision-section,
+  .guidance-section,
+  .security-section,
+  .playbook-section,
+  .next-section,
+  .references-section {
+    margin-top: var(--space-lg);
+  }
+
+  .decision-section h2,
+  .guidance-section h2,
+  .security-section h2,
+  .playbook-section h2,
+  .next-section h2,
+  .references-section h2 {
+    margin-top: 0;
+  }
+
+  .playbook-section p {
+    color: var(--color-text-secondary);
+  }
+
+  .playbook-section h3 {
+    margin-top: var(--space-md);
+  }
+
+  .config-note {
+    margin: var(--space-md) 0;
+    padding: var(--space-sm);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+  }
+
+  .config-note pre {
+    margin: 0.5rem 0;
+    overflow-x: auto;
+    padding: 0.75rem;
+    border-radius: 6px;
+    background: var(--color-code-bg);
+  }
+
+  .config-note code {
+    font-size: 0.9rem;
+  }
+
+  .note-text {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .channel-grid {
+    margin-top: var(--space-sm);
+    display: grid;
+    gap: var(--space-sm);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .channel-grid article {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: var(--space-sm);
+    background: var(--color-surface);
+  }
+
+  .channel-grid h4 {
+    margin: 0 0 0.5rem;
+  }
+
+  .channel-grid ul {
+    margin: 0;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+    background: var(--color-surface);
+  }
+
+  th,
+  td {
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    padding: 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  th {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    background: var(--color-code-bg);
+  }
+
+  .next-section a {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+
+  .references-section p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-sm);
+  }
+</style>
