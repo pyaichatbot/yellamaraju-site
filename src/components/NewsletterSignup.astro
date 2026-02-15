@@ -7,6 +7,7 @@ interface Props {
   compact?: boolean;
   source?: string;
   showPrivacyNote?: boolean;
+  showPoweredBy?: boolean;
 }
 
 const {
@@ -15,6 +16,7 @@ const {
   compact = false,
   source = 'site',
   showPrivacyNote = true,
+  showPoweredBy = true,
 } = Astro.props;
 
 const isConfigured = SITE.newsletter.enabled;
@@ -28,35 +30,39 @@ const formAction =
 ---
 
 <section class={`newsletter-signup ${compact ? 'compact' : ''}`} aria-label="Newsletter signup">
-  <h3>{title}</h3>
-  <p>{description}</p>
+  {title?.trim() && <h3>{title}</h3>}
+  {description?.trim() && <p>{description}</p>}
 
   {isConfigured && formAction ? (
-    <form
-      action={formAction}
-      method="post"
-      class="newsletter-form embeddable-buttondown-form"
-    >
-      <label for={`newsletter-email-${source}`} class="email-label">Enter your email</label>
-      <input
-        id={`newsletter-email-${source}`}
-        class="email-input"
-        type="email"
-        name="email"
-        placeholder="you@company.com"
-        autocomplete="email"
-        required
-        aria-required="true"
-      />
-      <input type="hidden" name="embed" value="1" />
-      <input type="hidden" name="tag" value={source} />
-      <button type="submit" class="submit-button">Subscribe</button>
-    </form>
-    <p class="powered-by">
-      <a href={`https://buttondown.com/refer/${buttondownUsername}`} target="_blank" rel="noopener noreferrer">
-        Powered by Buttondown.
-      </a>
-    </p>
+    <>
+      <form
+        action={formAction}
+        method="post"
+        class="newsletter-form embeddable-buttondown-form"
+      >
+        <label for={`newsletter-email-${source}`} class="email-label">Enter your email</label>
+        <input
+          id={`newsletter-email-${source}`}
+          class="email-input"
+          type="email"
+          name="email"
+          placeholder="you@company.com"
+          autocomplete="email"
+          required
+          aria-required="true"
+        />
+        <input type="hidden" name="embed" value="1" />
+        <input type="hidden" name="tag" value={source} />
+        <button type="submit" class="submit-button">Subscribe</button>
+      </form>
+      {showPoweredBy && (
+        <p class="powered-by">
+          <a href={`https://buttondown.com/refer/${buttondownUsername}`} target="_blank" rel="noopener noreferrer">
+            Powered by Buttondown.
+          </a>
+        </p>
+      )}
+    </>
   ) : (
     <div class="newsletter-fallback">
       <p class="status-message">
