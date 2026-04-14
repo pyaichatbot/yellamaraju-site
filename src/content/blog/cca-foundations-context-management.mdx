@@ -1,0 +1,330 @@
+---
+title: "CCA Foundations: Context Management & Reliability"
+description: "Domain 5 deep dive — context preservation, escalation decision trees, graceful degradation, confidence-based routing, source attribution, and uncertainty communication."
+date: 2026-03-31
+tags: ["Claude", "Certification", "CCA", "Reliability", "Context Management"]
+image: "/images/cca-context-management.png"
+series: "CCA Foundations Learning Series"
+seriesPart: 6
+hide: true
+---
+
+import Callout from '../../components/Callout.astro';
+
+Domain 5 covers **how you maintain context integrity and build reliable AI systems**. It accounts for **15% of the CCA Foundations exam** — roughly 12 questions. This is the smallest domain by weight, but it wraps the entire series together: a system that can't manage context or degrade gracefully isn't production-ready.
+
+**Key theme: Reliability is a design choice.** Every pattern here — from context preservation to confidence routing — exists to prevent silent failures in production.
+
+<img src="/images/cca-context-management.png" alt="Context Management and Reliability" />
+
+<h2 id="what-this-domain-tests">What This Domain Is Really Testing</h2>
+
+This domain tests whether you can:
+
+- Design context preservation strategies for long-running and multi-agent workflows
+- Build escalation decision trees with clear thresholds
+- Implement graceful degradation (not silent failure)
+- Apply confidence-based routing for autonomous vs human-reviewed outputs
+- Communicate uncertainty and attribute sources correctly
+
+<h2 id="context-preservation">Core Concept 1: Context Preservation Strategies</h2>
+
+Long-running conversations and multi-agent workflows face a fundamental problem: context windows are finite. When context exceeds the window, Claude loses track of earlier instructions, results, and state. Three strategies address this:
+
+**Strategy 1: Scratchpad Pattern**
+
+Maintain a running summary that gets updated at checkpoints:
+
+```python
+scratchpad = """
+## Current State
+- Task: Refactor authentication module
+- Files modified: auth.ts, middleware.ts
+- Pending: Update tests, update API docs
+- Key decisions: Using JWT (not session cookies)
+- Blockers: None
+"""
+
+# Include scratchpad in every message
+messages = [
+    {"role": "user", "content": f"""
+    Context scratchpad:
+    {scratchpad}
+
+    Now update the tests for the auth module changes.
+    """}
+]
+```
+
+The scratchpad acts as a compressed memory: it holds just enough context for Claude to continue working without re-reading the entire conversation history.
+
+**Strategy 2: Structured Handoff**
+
+When tasks move between agents (or between Claude sessions), pass a structured handoff document:
+
+```json
+{
+  "task_id": "auth-refactor-2024",
+  "status": "in_progress",
+  "completed_steps": [
+    "Migrated from session cookies to JWT",
+    "Updated auth.ts with new token validation"
+  ],
+  "pending_steps": [
+    "Update middleware.ts error handling",
+    "Write integration tests"
+  ],
+  "key_decisions": {
+    "token_format": "JWT with RS256",
+    "expiry": "15 minutes access, 7 days refresh"
+  },
+  "files_modified": ["src/auth.ts"],
+  "files_to_modify": ["src/middleware.ts", "tests/auth.test.ts"]
+}
+```
+
+**Strategy 3: Per-File Isolation**
+
+For multi-file operations, process each file independently with only the relevant context:
+
+```python
+for file_path in files_to_process:
+    file_content = read_file(file_path)
+    result = client.messages.create(
+        messages=[{
+            "role": "user",
+            "content": f"""
+            Apply this refactoring rule to the file below:
+            Rule: {refactoring_rule}
+            File: {file_path}
+            Content: {file_content}
+            """
+        }]
+    )
+    write_file(file_path, result.content[0].text)
+```
+
+Per-file isolation prevents context window exhaustion. Each call uses minimal context.
+
+<Callout type="warning" title="">
+**Exam Trap: "Just use a bigger context window" is never the correct answer. Context preservation strategies are about reliability, not just capacity. Even with large windows, attention degrades over long contexts.**
+</Callout>
+
+<h2 id="escalation-decision-trees">Core Concept 2: Escalation vs Resolve</h2>
+
+Not every error should be retried. Not every ambiguity should be guessed at. The escalation decision tree defines **when Claude should stop and ask for help**:
+
+```
+Input received
+├── Can Claude resolve autonomously?
+│   ├── YES → Process and return result
+│   └── NO → Is the input ambiguous?
+│       ├── YES → Request clarification from user
+│       └── NO → Is it a known error type?
+│           ├── YES → Apply standard fix + retry
+│           └── NO → Escalate to human review
+```
+
+The key decision factors:
+
+| Signal | Action |
+|--------|--------|
+| Clear input, straightforward task | Resolve autonomously |
+| Ambiguous requirements | Request clarification |
+| Known error, standard fix available | Retry with correction |
+| Unknown error, no standard fix | Escalate to human |
+| Conflicting instructions | Escalate (don't guess) |
+| Safety-critical operation | Escalate (always) |
+
+<Callout type="warning" title="">
+**Exam Trap: "Always retry before escalating" is wrong. If the error is unknown or the instructions are conflicting, retrying won't help. Escalate immediately.**
+</Callout>
+
+<h2 id="graceful-degradation">Core Concept 3: Graceful Degradation</h2>
+
+Graceful degradation means **failing visibly with useful information**, not silently producing bad output. This is the opposite of "fail silently."
+
+**Anti-pattern (silent failure):**
+```python
+def classify_ticket(text: str) -> dict:
+    try:
+        result = call_claude(text)
+        return result
+    except Exception:
+        return {"category": "general"}  # Silent wrong answer
+```
+
+**Correct pattern (graceful degradation):**
+```python
+def classify_ticket(text: str) -> dict:
+    try:
+        result = call_claude(text)
+        if not validate(result):
+            return {
+                "status": "degraded",
+                "category": "unclassified",
+                "reason": "Classification failed validation",
+                "requires_human_review": True,
+                "raw_output": result
+            }
+        return result
+    except RateLimitError:
+        return {
+            "status": "degraded",
+            "category": "queued",
+            "reason": "Rate limited — queued for retry",
+            "requires_human_review": False
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "category": "unclassified",
+            "reason": str(e),
+            "requires_human_review": True
+        }
+```
+
+Graceful degradation principles:
+1. **Never return a confident wrong answer.** A visible "I don't know" is better than a silent wrong classification.
+2. **Include the reason for failure.** Downstream systems and humans need to know why.
+3. **Flag for human review** when automated resolution isn't possible.
+4. **Preserve raw output** for debugging.
+
+<h2 id="confidence-routing">Core Concept 4: Confidence-Based Routing</h2>
+
+Production systems route outputs differently based on confidence level. This is the most exam-tested pattern in Domain 5:
+
+| Confidence Level | Action | Example |
+|-----------------|--------|---------|
+| **95%+** | Autonomous execution | Clear classification, standard format |
+| **75-94%** | Flag for spot-check | Unusual but plausible input |
+| **50-74%** | Human review required | Ambiguous input, edge case |
+| **Below 50%** | Escalate immediately | Conflicting signals, unknown domain |
+
+```python
+def route_by_confidence(result: dict) -> dict:
+    confidence = result.get("confidence", 0)
+
+    if confidence >= 0.95:
+        return {"action": "auto_execute", "result": result}
+    elif confidence >= 0.75:
+        return {"action": "flag_for_review", "result": result,
+                "review_priority": "low"}
+    elif confidence >= 0.50:
+        return {"action": "human_review", "result": result,
+                "review_priority": "high"}
+    else:
+        return {"action": "escalate", "result": result,
+                "review_priority": "critical"}
+```
+
+<Callout type="warning" title="">
+**Exam Trap: The threshold boundaries matter. 95% is the autonomous threshold, not 90%. 50% is the escalation boundary. Memorize the four tiers: 95+ / 75-94 / 50-74 / below 50.**
+</Callout>
+
+<h2 id="attribution-uncertainty">Core Concept 5: Source Attribution & Uncertainty Communication</h2>
+
+Production AI systems must communicate two things clearly:
+
+**1. Where the information came from (attribution):**
+```
+Based on the project's auth.ts file (lines 45-67), the current
+implementation uses session cookies with a 24-hour expiry.
+```
+
+Not:
+```
+The implementation uses session cookies.
+```
+
+Attribution requirements:
+- Reference specific files, line numbers, or documents
+- Distinguish between "found in source" vs "inferred by Claude"
+- Never present inference as fact
+
+**2. When Claude isn't sure (uncertainty):**
+```
+I'm not confident about this classification. The input mentions
+both "billing" and "technical issue" — it could be either category.
+I've flagged it for human review with both possible classifications.
+```
+
+Not:
+```
+Category: billing
+```
+
+Uncertainty communication principles:
+- **State confidence level** when it's below the autonomous threshold
+- **Explain what's ambiguous** — don't just say "I'm not sure"
+- **Provide alternatives** when multiple interpretations exist
+- **Never fabricate certainty** to appear more helpful
+
+<h2 id="exam-traps">Exam Traps for Domain 5</h2>
+
+**Trap 1: "Bigger context window solves everything."** Context preservation is about reliability and attention quality, not just capacity.
+
+**Trap 2: "Always retry before escalating."** Unknown errors and conflicting instructions should escalate immediately. Retrying won't resolve ambiguity.
+
+**Trap 3: Silent failure is acceptable.** Never return a confident wrong answer. Graceful degradation means visible failure with useful information.
+
+**Trap 4: Wrong confidence thresholds.** 95%+ = autonomous, 75-94% = spot-check, 50-74% = human review, &lt;50% = escalate. Don't confuse the tiers.
+
+**Trap 5: Attribution is optional.** In production systems, attribution is required. "The code does X" is not the same as "Lines 45-67 of auth.ts show X."
+
+<h2 id="practice-questions">Practice Questions</h2>
+
+**Q1:** Claude is processing a long conversation and starts contradicting instructions given 50 messages ago. What's the most appropriate solution?
+
+A) Increase the context window size
+B) Implement a scratchpad pattern with periodic state summaries
+C) Restart the conversation from scratch
+D) Add "remember all instructions" to the system prompt
+
+<details>
+<summary>Answer</summary>
+
+**B.** The scratchpad pattern maintains a compressed summary of key decisions, state, and instructions. This survives context window attention degradation. Increasing window size doesn't fix attention quality. "Remember all instructions" doesn't work — the model can't selectively boost attention to earlier content.
+
+</details>
+
+**Q2:** Claude classifies a support ticket with 60% confidence. The system auto-executes the classification. What went wrong?
+
+A) The model is too small
+B) The confidence threshold for autonomous execution is too low
+C) Few-shot examples are missing
+D) The tool_use schema is wrong
+
+<details>
+<summary>Answer</summary>
+
+**B.** At 60% confidence, the system should route to human review (50-74% tier), not auto-execute. The autonomous threshold is 95%+. The system's routing logic has an incorrect confidence threshold.
+
+</details>
+
+**Q3:** An AI system encounters an unknown error type during classification. It returns `{"category": "general"}` as a default. What's wrong with this approach?
+
+A) Nothing — it's a reasonable default
+B) It should retry with a different model
+C) It's a silent failure — it returns a confident wrong answer instead of flagging for review
+D) It should use a larger context window
+
+<details>
+<summary>Answer</summary>
+
+**C.** Returning `{"category": "general"}` for an unknown error is a silent failure. The system produces a confident-looking answer when it actually failed. The correct approach: return a degraded status with `requires_human_review: true` and preserve the raw output for debugging.
+
+</details>
+
+<Callout type="info" title="Series Complete">
+This is the final post in the **CCA Foundations Learning Series**. Review all six parts, practice the questions, and use the two-week study plan from Part 1 to structure your preparation.
+</Callout>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+- Context preservation (scratchpad, structured handoff, per-file isolation) prevents attention degradation in long workflows.
+- Escalation decision trees define clear boundaries: resolve, clarify, retry, or escalate.
+- Graceful degradation means visible failure with useful information — never silent wrong answers.
+- Confidence routing: 95%+ autonomous, 75-94% spot-check, 50-74% human review, &lt;50% escalate.
+- Attribution references specific sources. Uncertainty states what's ambiguous and provides alternatives.
+- Reliability is designed in, not bolted on. Every pattern here prevents silent production failures.

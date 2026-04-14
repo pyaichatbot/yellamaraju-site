@@ -1,0 +1,411 @@
+---
+title: "CCA Foundations: Agentic Architecture & Orchestration"
+description: "Domain 1 deep dive — stop_reason control flow, coordinator-subagent patterns, the Task tool, PostToolUse hooks, and the exam traps that catch most candidates."
+date: 2026-03-31
+tags: ["Claude", "Certification", "CCA", "Agents", "Architecture"]
+image: "/images/cca-agentic-loop.png"
+series: "CCA Foundations Learning Series"
+seriesPart: 2
+hide: true
+---
+
+import Callout from '../../components/Callout.astro';
+
+Domain 1 is the **largest weighted domain** on the CCA Foundations exam — 27%, roughly 21 questions. This is the heartland of Claude agent design: how agents make decisions, how multiple agents coordinate, and how you enforce workflow compliance without relying on probabilistic prompt behavior.
+
+The key insight that separates passing candidates from failing ones: **Agentic systems are not about prompting harder — they're about architectural design.** You use `stop_reason` to drive control flow, structured patterns to coordinate agents, and programmatic enforcement to guarantee compliance.
+
+<img src="/images/cca-agentic-loop.png" alt="The Agentic Loop: stop_reason-Driven Control Flow" />
+
+<h2 id="what-this-domain-tests">What This Domain Is Really Testing</h2>
+
+This domain tests whether you can design autonomous agent systems that are:
+
+- **Deterministic** — Control flow is based on signals (`stop_reason`), not text parsing
+- **Scalable** — Multi-agent coordination with proper context isolation
+- **Enforceable** — Workflow steps happen in order, guaranteed by code, not by hope
+- **Resilient** — Agents handle edge cases, failures, and unexpected states
+
+If you've built one agent that calls one tool in a demo, that's not enough. The exam expects you to reason about systems with coordinators, subagents, hooks, and enforcement gates.
+
+<h2 id="agentic-loops">Core Concept 1: The Agentic Loop</h2>
+
+An agentic loop is the core pattern that makes an agent autonomous. Instead of a single request-response, the loop iterates:
+
+1. Agent receives a goal and tools
+2. Agent responds with `stop_reason: "tool_use"` (wants to call a tool)
+3. System appends tool results to conversation
+4. Loop continues until `stop_reason: "end_turn"` (agent is done)
+
+The agent **drives the control flow**, not you.
+
+<h3 id="stop-reason">The stop_reason Mechanism</h3>
+
+The `stop_reason` field in the response is your control signal:
+
+- **`tool_use`**: Model wants to call one or more tools. Append the tool results and continue the loop.
+- **`end_turn`**: Model has finished. No more tool calls needed. Extract the final message.
+- **`max_tokens`** (rare): Model ran out of tokens mid-response. Worth handling but uncommon.
+
+<Callout type="warning" title="">
+**Never implement decision logic based on the text of the response. Always use stop_reason.**
+</Callout>
+
+```python
+import anthropic
+import json
+
+def research_agent_loop(query: str) -> str:
+    client = anthropic.Anthropic()
+    tools = [
+        {
+            "name": "web_search",
+            "description": "Search the web for information on a topic",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"}
+                },
+                "required": ["query"]
+            }
+        },
+        {
+            "name": "summarize",
+            "description": "Summarize a piece of text into key points",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to summarize"}
+                },
+                "required": ["text"]
+            }
+        }
+    ]
+
+    messages = [{"role": "user", "content": f"Research and summarize: {query}"}]
+
+    while True:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            tools=tools,
+            messages=messages
+        )
+
+        # Critical: based on stop_reason, not text parsing
+        if response.stop_reason == "end_turn":
+            final_text = next(
+                (block.text for block in response.content if hasattr(block, "text")),
+                "No response"
+            )
+            return final_text
+
+        elif response.stop_reason == "tool_use":
+            tool_uses = [block for block in response.content if block.type == "tool_use"]
+
+            if not tool_uses:
+                break  # Safety: stop_reason is tool_use but no blocks
+
+            messages.append({"role": "assistant", "content": response.content})
+
+            tool_results = []
+            for tool_use in tool_uses:
+                result = execute_tool(tool_use.name, tool_use.input)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_use.id,
+                    "content": result
+                })
+
+            messages.append({"role": "user", "content": tool_results})
+
+        else:
+            break  # Unexpected stop reason
+
+    return "Agent failed to complete"
+```
+
+<h3 id="agentic-loop-rules">Key Rules</h3>
+
+1. **The loop drives everything.** The agent decides whether to call tools or finish — you just respond to `stop_reason`.
+2. **Tool results are always appended as user messages.** This is how the agent sees the outcome of its actions.
+3. **No arbitrary iteration caps.** Some agents need 3 tool calls, others need 15. Trust `stop_reason`.
+4. **Batch tool calls.** If the agent returns multiple `tool_use` blocks, execute them all before the next iteration.
+
+<h2 id="coordinator-subagent">Core Concept 2: Coordinator-Subagent Architecture</h2>
+
+When a single agent isn't enough, use the **hub-and-spoke** (coordinator-subagent) pattern:
+
+- **Coordinator**: Understands the high-level goal, decides which subagents to invoke, aggregates results
+- **Subagents**: Specialized agents with narrower scope (e.g., "security reviewer", "performance analyst")
+- **Isolation**: Each subagent has its own context and tool set — no automatic inheritance
+
+<Callout type="warning" title="">
+**Subagents don't automatically see what the coordinator sees. You must explicitly pass context in the task prompt.**
+</Callout>
+
+```python
+# DON'T assume the subagent knows about findings
+task = "Review the code"
+
+# DO include the findings explicitly
+task = f"""Review the following code for security issues:
+
+```python
+{code_snippet}
+```
+
+Context from previous analysis:
+- Performance bottleneck in the parsing step
+- Currently handles 1000 requests/sec
+- Target: 5000 requests/sec"""
+```
+
+<h3 id="task-tool">The Task Tool and AgentDefinition</h3>
+
+The **Task tool** is how coordinators invoke subagents in the Agent SDK:
+
+```python
+{
+    "name": "Task",
+    "description": "Invoke a subagent to complete a subtask",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "subagent_id": {
+                "type": "string",
+                "enum": ["security_reviewer", "performance_reviewer", "style_reviewer"]
+            },
+            "task": {
+                "type": "string",
+                "description": "The task prompt including all relevant context"
+            }
+        },
+        "required": ["subagent_id", "task"]
+    }
+}
+```
+
+Requirements:
+- The coordinator must have `"Task"` in its `allowedTools`
+- Subagents are defined in **AgentDefinition**, not dynamically created
+- The coordinator explicitly **includes findings in the task prompt**
+
+<h3 id="dynamic-routing">Dynamic Subagent Selection</h3>
+
+The coordinator doesn't need to invoke all subagents. It decides based on context:
+
+```python
+prompt = """Review this code for issues:
+
+Based on what you see:
+- If security concerns: invoke security_reviewer
+- If performance issues: invoke performance_reviewer
+- If style issues: invoke style_reviewer
+
+Invoke multiple subagents if needed.
+Aggregate all findings into a consolidated review."""
+```
+
+<h2 id="workflow-enforcement">Core Concept 3: Programmatic Workflow Enforcement</h2>
+
+There are two ways to ensure workflows follow required steps:
+
+1. **Prompt-based**: "Please verify the security review before approving" — **probabilistic, not guaranteed**
+2. **Programmatic**: Block downstream tools until prerequisites are met — **deterministic, guaranteed**
+
+For production systems with compliance requirements, **always use programmatic enforcement**.
+
+```python
+# Programmatic enforcement: check prerequisites before executing tool
+for tool_use in tool_uses:
+    if tool_use.name == "approve_deployment":
+        if workflow_state["security_findings"] is None:
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": tool_use.id,
+                "content": "BLOCKED: Security review must complete first.",
+                "is_error": True
+            })
+            continue
+
+    if tool_use.name == "deploy_to_production":
+        if workflow_state["approval_status"] != "approved":
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": tool_use.id,
+                "content": "BLOCKED: Deployment must be approved first.",
+                "is_error": True
+            })
+            continue
+```
+
+<h3 id="structured-handoffs">Structured Handoff Protocols</h3>
+
+When one agent hands off work, use a structured format — not text summaries:
+
+```python
+handoff_summary = {
+    "agent": "security_reviewer",
+    "findings": [
+        {
+            "category": "SQL_INJECTION",
+            "severity": "HIGH",
+            "location": "line 45",
+            "description": "User input not sanitized in database query"
+        }
+    ],
+    "recommendation": "BLOCK_DEPLOYMENT",
+    "timestamp": "2026-03-22T14:30:00Z",
+    "requires_review_by": ["lead_architect", "security_lead"]
+}
+```
+
+The next agent receives this structure, not a text summary. This enables deterministic routing.
+
+<h2 id="post-tool-use-hooks">Core Concept 4: PostToolUse Hooks</h2>
+
+The Agent SDK provides **PostToolUse hooks** that run after a tool result is received. These are your enforcement layer:
+
+```python
+def post_tool_use_hook(tool_name, tool_input, tool_result, stop_reason):
+    """
+    Runs after every tool call. Can:
+    - Transform or normalize the result
+    - Validate data before the agent sees it
+    - Block tools based on workflow state
+    - Log or audit tool usage
+    """
+
+    # Example: Block deployment approval without security review
+    if tool_name == "approve_deployment":
+        if not workflow_state.get("security_review_completed"):
+            raise PermissionError(
+                "Cannot approve deployment until security review is complete."
+            )
+
+    # Example: Normalize data format
+    if tool_name == "fetch_user_data":
+        parsed = json.loads(tool_result)
+        parsed["email"] = parsed["email"].lower()
+        return json.dumps(parsed)
+
+    return tool_result  # Pass through unchanged
+```
+
+PostToolUse hooks are **deterministic** — they always run, regardless of what the prompt says. This is why they're the correct layer for compliance enforcement.
+
+<h2 id="fork-session">Core Concept 5: fork_session</h2>
+
+`fork_session` creates an **isolated copy** of the current execution context. The forked session can explore a hypothesis, run risky operations, or test alternatives without corrupting the main flow.
+
+Use `fork_session` when:
+- You need to explore multiple strategies and pick the best one
+- An operation might fail and you want to protect main state
+- You want parallel exploration of different approaches
+
+Don't use `fork_session` when:
+- Better prompt structure or state passing would solve the problem
+- The overhead of forking outweighs the benefit
+- You're just running a simple tool call
+
+<h2 id="exam-traps">Exam Traps for Domain 1</h2>
+
+**Trap 1: Parsing natural language to detect completion**
+
+```python
+# WRONG — fragile, non-deterministic
+if "complete" in response.text or "finished" in response.text:
+    return response
+
+# RIGHT — deterministic signal
+if response.stop_reason == "end_turn":
+    return final_response
+```
+
+**Trap 2: Stopping the loop early with an arbitrary cap**
+
+```python
+# WRONG — prevents agent from solving harder problems
+for i in range(5):
+    response = call_api()
+
+# RIGHT — let the agent decide when it's done
+while True:
+    response = call_api()
+    if response.stop_reason == "end_turn":
+        break
+```
+
+**Trap 3: Assuming subagents inherit coordinator context**
+
+The coordinator sees code, so the subagent automatically knows about it? **No.** Explicitly include code and context in every task prompt.
+
+**Trap 4: Not using the Task tool for subagent invocation**
+
+Trying to invoke subagents via prompting ("Please contact the security team...") instead of using the Task tool is wrong. Use the formal `Task` tool to invoke registered subagents.
+
+**Trap 5: Relying on prompt-based enforcement for compliance**
+
+"You must review security before approving" in a prompt is guidance, not a guarantee. The model *can* skip it. Use programmatic enforcement with hooks or tool availability checks.
+
+**Trap 6: Not appending tool results correctly**
+
+Tool results must include the `tool_use_id` linking them back to the specific tool call. Appending only tool names or summaries breaks the conversation protocol.
+
+<h2 id="practice-questions">Practice Questions</h2>
+
+**Q1:** You're implementing an agentic loop. The response has `stop_reason: "tool_use"` but your code finds zero `tool_use` blocks in `response.content`. What should you do?
+
+A) Continue the loop and append an empty user message
+B) Treat this as `end_turn` and return the final response
+C) Throw an error immediately
+D) Log a warning and break the loop
+
+<details>
+<summary>Answer</summary>
+
+**D.** This is an edge case that shouldn't happen, but it's safer to log and break rather than create an infinite loop or crash. In production, you'd also want to alert monitoring.
+
+</details>
+
+**Q2:** A coordinator agent is reviewing a request that could have security, performance, and style issues. It invokes the `security_reviewer` subagent. In the task prompt, should the coordinator include the entire code snippet?
+
+A) No, the subagent should fetch it from the coordinator's context
+B) Yes, always include the code snippet explicitly in the task prompt
+C) Only if the code is less than 500 lines
+D) No, just describe the security concern in natural language
+
+<details>
+<summary>Answer</summary>
+
+**B.** Subagents don't have automatic context inheritance. Explicit is better than implicit. Always include the full code and relevant context in the task prompt.
+
+</details>
+
+**Q3:** Your deployment workflow requires security review before approval. You use prompt-based guidance: "You must complete security review before approving." However, the agent calls `approve_deployment` without calling `security_review` first. Why?
+
+A) The model didn't read the prompt carefully enough
+B) Prompt-based enforcement is probabilistic, not deterministic
+C) You need programmatic enforcement in your code
+D) B and C
+
+<details>
+<summary>Answer</summary>
+
+**D.** Prompts are guidance, not guarantees. You must use programmatic enforcement (hooks, tool availability checks) for deterministic compliance.
+
+</details>
+
+<Callout type="info" title="Next in the Series">
+**Part 3: Tool Design & MCP Integration** — How Claude selects tools, structured error responses, tool distribution across agents, and MCP server configuration.
+</Callout>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+- `stop_reason` is the control signal for agentic loops. Never parse natural language to determine completion.
+- Coordinator-subagent patterns scale multi-agent coordination. Always pass context explicitly — subagents don't inherit it.
+- The Task tool and AgentDefinition are how you formally invoke subagents. Don't use prompt-based invocation.
+- Programmatic enforcement (hooks, prerequisite checks) guarantees workflow compliance. Prompts are guidance, not guarantees.
+- PostToolUse hooks run after every tool call and are the correct layer for validation, normalization, and compliance.
+- `fork_session` isolates exploration from main state. Use it for risky operations, not routine tool calls.

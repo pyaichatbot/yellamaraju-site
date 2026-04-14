@@ -1,0 +1,330 @@
+---
+title: "CCA Foundations: Tool Design & MCP Integration"
+description: "Domain 2 deep dive — tool descriptions as selection mechanisms, structured error responses, tool distribution, tool_choice modes, and MCP configuration."
+date: 2026-03-31
+tags: ["Claude", "Certification", "CCA", "MCP", "Tool Design"]
+image: "/images/cca-tool-design.png"
+series: "CCA Foundations Learning Series"
+seriesPart: 3
+hide: true
+---
+
+import Callout from '../../components/Callout.astro';
+
+Tools are how Claude takes action. Domain 2 accounts for **18% of the CCA Foundations exam** — roughly 14 questions. The exam tests not just whether you know what tools are, but whether you can design tools that Claude will *actually use correctly*, handle errors that Claude can reason about, and configure MCP servers for real workflows.
+
+The core insight: **tool descriptions are the primary selection mechanism.** Claude doesn't see your code. It sees only the name, description, and parameter schema. A poorly described tool is a tool Claude will skip over — even if it's perfect for the job.
+
+<img src="/images/cca-tool-design.png" alt="Tool Descriptions Are the Primary Selection Mechanism" />
+
+<h2 id="what-this-domain-tests">What This Domain Is Really Testing</h2>
+
+This domain tests whether you can:
+
+- **Design tool descriptions** that prevent misrouting between similar tools
+- **Communicate failures** with structured error responses that Claude can reason about
+- **Distribute tools** across agents to stay in the reliability sweet spot
+- **Configure MCP servers** at project and user scope
+- **Choose the right tool_choice mode** for different orchestration scenarios
+
+<h2 id="tool-descriptions">Core Concept 1: Tool Descriptions as a Selection Mechanism</h2>
+
+When you add a tool to Claude, the description is everything. Claude selects tools based on:
+
+- Tool name
+- Description text
+- Parameter schema (types, required fields)
+- Examples (if provided)
+
+If your description is unclear, ambiguous, or overlaps with other tools, Claude will guess — and it will guess wrong.
+
+<Callout type="warning" title="">
+**If two tools have overlapping descriptions, Claude plays roulette. You pay for the wrong guesses.**
+</Callout>
+
+A good tool description answers four questions:
+1. **What does it do?** (specific, not generic)
+2. **When should I use it?** (vs other tools)
+3. **What are inputs/outputs?** (format, constraints)
+4. **What can go wrong?** (errors, edge cases, limits)
+
+```python
+# BAD: Vague, no boundaries
+{
+    "name": "search",
+    "description": "Search for things",
+    "inputSchema": {
+        "type": "object",
+        "properties": {"q": {"type": "string"}}
+    }
+}
+
+# GOOD: Specific, bounded, differentiated
+{
+    "name": "search_product_catalog",
+    "description": """Search products by keyword, category, or price range.
+
+    Use this to find products a customer is looking for.
+    DO NOT use for inventory checks or supplier lookups.
+
+    Returns: list of products with id, name, price, stock_status
+    Maximum 50 results; use pagination for more.
+    Returns empty list if no matches (not an error).""",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "category": {"type": "string", "enum": ["footwear", "apparel", "accessories"]},
+            "max_price": {"type": "number", "minimum": 0}
+        },
+        "required": ["query"]
+    }
+}
+```
+
+<h3 id="differentiation-matrix">Avoiding Tool Overlap</h3>
+
+When descriptions overlap, use a differentiation matrix:
+
+| Tool | Primary Use | When NOT to Use |
+|------|-------------|-----------------|
+| `search_products` | Find by keyword/category | Inventory checks |
+| `get_product_details` | Fetch full specs by ID | Searching across catalogs |
+| `check_inventory` | Real-time stock levels | Searching, price comparisons |
+
+If tools overlap in more than two use cases, merge or rename them.
+
+<h3 id="system-prompt-interaction">System Prompt Interactions</h3>
+
+The system prompt can enhance or sabotage tool descriptions:
+
+```
+# HELPS — reinforces tool boundaries
+"Use search_products to find items, then get_product_details for specs.
+ Never use get_product_details as a search tool."
+
+# HURTS — contradicts good tool design
+"Use search for everything."
+```
+
+<h2 id="structured-errors">Core Concept 2: Structured Error Responses</h2>
+
+When a tool fails, Claude needs to know: **Can I retry, or is this permanent?**
+
+Without structured error metadata, Claude treats all failures the same. It might retry a permanent business error or give up on a transient network blip.
+
+<h3 id="error-categories">The Four Error Categories</h3>
+
+```typescript
+interface ToolResponse {
+  isError: boolean;
+  errorCategory?: "transient" | "validation" | "business" | "permission";
+  isRetryable?: boolean;
+  message: string;
+  data?: any;
+}
+```
+
+**Transient** (`isRetryable: true`): Network timeout, 503, rate limit. Retry with backoff.
+
+```json
+{
+  "isError": true,
+  "errorCategory": "transient",
+  "isRetryable": true,
+  "message": "Database connection timeout. Retry in 5 seconds."
+}
+```
+
+**Validation** (`isRetryable: false`): Missing field, invalid format, type mismatch.
+
+```json
+{
+  "isError": true,
+  "errorCategory": "validation",
+  "isRetryable": false,
+  "message": "Invalid email format. Expected 'user@example.com'"
+}
+```
+
+**Business** (`isRetryable: false`): Insufficient funds, out of stock, expired window.
+
+```json
+{
+  "isError": true,
+  "errorCategory": "business",
+  "isRetryable": false,
+  "message": "Refund window (30 days) has expired. Contact support."
+}
+```
+
+**Permission** (`isRetryable: false`): No access, invalid API key, missing role.
+
+```json
+{
+  "isError": true,
+  "errorCategory": "permission",
+  "isRetryable": false,
+  "message": "User lacks 'refunds' permission. Contact admin."
+}
+```
+
+<Callout type="warning" title="">
+**Exam Trap: Marking business errors as retryable. Retrying "insufficient funds" 100 times won't change the account balance.**
+</Callout>
+
+<h2 id="tool-distribution">Core Concept 3: Tool Distribution Across Agents</h2>
+
+Claude's tool selection reliability degrades with tool count:
+
+- **4-5 tools**: >95% accuracy
+- **10-15 tools**: ~85% accuracy
+- **20+ tools**: ~70% accuracy
+
+More tools = more hallucination, wrong tool selection, longer latency.
+
+**Solution:** Distribute tools across specialized subagents instead of giving one agent everything:
+
+```
+Main Agent (5 tools)
+├─ search_orders
+├─ search_customers
+├─ contact_support
+├─ escalate_issue
+└─ route_to_specialist
+
+Refund Specialist (4 tools)
+├─ get_order_details
+├─ check_refund_policy
+├─ process_refund
+└─ send_confirmation
+
+Tech Support (6 tools)
+├─ get_system_status
+├─ list_common_errors
+├─ view_logs
+├─ run_diagnostics
+├─ create_ticket
+└─ request_logs_from_user
+```
+
+Each agent has a focused toolset, improving accuracy from ~70% to >95%.
+
+<h2 id="tool-choice">Core Concept 4: tool_choice Modes</h2>
+
+```python
+# auto (default) — Claude decides whether to use tools
+tool_choice={"type": "auto"}
+
+# any — Claude MUST use a tool (any of the available ones)
+tool_choice={"type": "any"}
+
+# specific — force a particular tool
+tool_choice={"type": "tool", "name": "search_products"}
+```
+
+When to use each:
+- **auto**: Default for most agentic loops. Claude decides freely.
+- **any**: When you know a tool call is required and want to skip reasoning about whether to call one.
+- **specific**: When you need to force a particular tool for a step in a deterministic pipeline.
+
+<h2 id="mcp-configuration">Core Concept 5: MCP Server Configuration</h2>
+
+MCP (Model Context Protocol) servers extend Claude's tool access. Configuration lives in two scopes:
+
+**Project scope** (`.mcp.json` in project root):
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "..."
+      }
+    }
+  }
+}
+```
+
+**User scope** (`~/.claude.json`):
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/docs"]
+    }
+  }
+}
+```
+
+Project-level config is shared with your team. User-level config is personal. Know the difference — the exam tests this.
+
+<h2 id="exam-traps">Exam Traps for Domain 2</h2>
+
+**Trap 1: Vague tool descriptions.** "Gets data from the system" tells Claude nothing. Always specify what, when, and what NOT to use the tool for.
+
+**Trap 2: Marking business errors as retryable.** Retrying "refund window expired" is pointless. Only transient errors (timeout, 503, rate limit) should be retryable.
+
+**Trap 3: Giving one agent 20+ tools.** Accuracy drops to ~70%. Distribute tools across focused subagents.
+
+**Trap 4: Confusing tool_choice with tool design.** `tool_choice` controls orchestration (which tool gets called). Tool design controls quality (will Claude pick the right tool?). They're separate problems.
+
+**Trap 5: Using system prompt to override tool boundaries.** "Use search for everything" in a system prompt sabotages carefully designed tool descriptions. The system prompt should reinforce boundaries, not erase them.
+
+<h2 id="practice-questions">Practice Questions</h2>
+
+**Q1:** You have two tools: `fetch_user_data` ("Retrieves user information") and `get_customer_profile` ("Gets customer profile data"). Claude frequently calls both when one would suffice. What's the root cause?
+
+A) Claude is hallucinating
+B) The tool descriptions overlap — Claude can't differentiate them
+C) You need to use `tool_choice` to force one
+D) The model is too small
+
+<details>
+<summary>Answer</summary>
+
+**B.** The descriptions are nearly identical. Claude treats them as interchangeable. Fix the descriptions to clearly differentiate when each should be used.
+
+</details>
+
+**Q2:** A tool calls an external API. The API returns a 503 error (service unavailable). What should `isRetryable` be?
+
+A) False — the service is broken
+B) True — 503 is transient; the service may recover
+C) Depends on the error message content
+D) Neither — don't include isRetryable
+
+<details>
+<summary>Answer</summary>
+
+**B.** 503 is transient. The service may recover. Return `isRetryable: true` with `errorCategory: "transient"`.
+
+</details>
+
+**Q3:** A company adds 25 tools to Claude for a customer service agent, expecting "Claude will just pick the right one." Claude calls the wrong tool 30% of the time. What's the best fix?
+
+A) Write better descriptions for all 25 tools
+B) Use `tool_choice` to force specific tools
+C) Distribute tools across specialized subagents (5-6 tools each)
+D) Switch to a larger model
+
+<details>
+<summary>Answer</summary>
+
+**C.** Tool selection accuracy degrades above ~10 tools. Distributing across focused subagents brings accuracy back to >95%. Better descriptions help but won't overcome the sheer volume.
+
+</details>
+
+<Callout type="info" title="Next in the Series">
+**Part 4: Claude Code Configuration & Workflows** — The CLAUDE.md hierarchy, @import, commands vs skills, plan mode, path-specific rules, and CI/CD integration.
+</Callout>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+- Tool descriptions are the primary selection mechanism. Vague descriptions cause misrouting; specific descriptions prevent it.
+- Structured error responses with `isError`, `errorCategory`, and `isRetryable` let Claude reason about failures intelligently.
+- Keep agents to 4-6 tools for >95% accuracy. Distribute larger toolsets across specialized subagents.
+- `tool_choice` controls orchestration (auto/any/specific). Tool design controls quality. They solve different problems.
+- MCP configuration has project scope (`.mcp.json`) and user scope (`~/.claude.json`). Know which is which.

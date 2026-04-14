@@ -1,0 +1,220 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageNav from '../../components/PageNav.astro';
+
+const ccaSeriesPosts = (await getCollection('blog', ({ data }) => !data.draft && !data.hide))
+  .filter((post) => post.data.series === 'CCA Foundations Learning Series')
+  .sort((a, b) => (a.data.seriesPart || 0) - (b.data.seriesPart || 0));
+---
+
+<BaseLayout
+  title="Claude Tutorials - Developer Productivity"
+  description="Curated Claude learning paths, including the full six-part CCA Foundations Learning Series."
+>
+  <main class="claude-tutorials-page">
+    <div class="container">
+      <div class="wide-wrapper">
+        <PageNav backUrl="/claude" backLabel="Back to Claude" />
+
+        <header class="page-header">
+          <div class="page-icon">📚</div>
+          <h1>Tutorials</h1>
+          <p class="tagline">Structured learning paths for Claude</p>
+          <p class="description">
+            Start with the CCA Foundations series: six posts that move from exam framing to architecture,
+            tooling, configuration, prompting, and reliability.
+          </p>
+        </header>
+
+        <section class="series-section">
+          <div class="series-intro">
+            <span class="series-label">Featured Series (Coming soon)</span>
+            <h2>CCA Foundations Learning Series</h2>
+            <p>
+              A six-part study path for the Claude Certified Architect Foundations exam, organized in series order.
+            </p>
+          </div>
+
+          <div class="tutorial-list">
+            {ccaSeriesPosts.map((post) => (
+              <article class="tutorial-card">
+                <div class="tutorial-meta">Part {post.data.seriesPart}</div>
+                <h3>
+                  <a href={`/blog/${post.slug}`}>{post.data.title}</a>
+                </h3>
+                <p>{post.data.description}</p>
+                <a class="tutorial-link" href={`/blog/${post.slug}`}>
+                  Read post
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .claude-tutorials-page {
+    padding: var(--space-xl) 0;
+    min-height: 70vh;
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .page-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-sm);
+  }
+
+  .page-header h1 {
+    font-size: 2.75rem;
+    margin-bottom: var(--space-sm);
+    color: var(--color-text);
+  }
+
+  .tagline {
+    font-size: 1.25rem;
+    color: var(--color-accent);
+    font-weight: 500;
+    margin-bottom: var(--space-sm);
+  }
+
+  .description {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+
+  .series-section {
+    display: grid;
+    gap: var(--space-lg);
+  }
+
+  .series-intro {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 12%, transparent), var(--color-surface));
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: var(--space-lg);
+  }
+
+  .series-label {
+    display: inline-block;
+    margin-bottom: var(--space-sm);
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    color: var(--color-accent);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .series-intro h2 {
+    margin: 0 0 var(--space-sm);
+    font-size: 1.8rem;
+    color: var(--color-text);
+  }
+
+  .series-intro p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+
+  .tutorial-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-lg);
+  }
+
+  .tutorial-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+  }
+
+  .tutorial-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-accent);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .tutorial-meta {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .tutorial-card h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1.35;
+  }
+
+  .tutorial-card h3 a {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .tutorial-card h3 a:hover {
+    color: var(--color-accent);
+  }
+
+  .tutorial-card p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    flex-grow: 1;
+  }
+
+  .tutorial-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+    margin-top: var(--space-xs);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    background: var(--color-accent);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background var(--transition-fast);
+  }
+
+  .tutorial-link:hover {
+    background: var(--color-accent-hover);
+  }
+
+  @media (max-width: 720px) {
+    .page-header h1 {
+      font-size: 2.2rem;
+    }
+
+    .series-intro,
+    .tutorial-card {
+      padding: var(--space-md);
+    }
+  }
+</style>

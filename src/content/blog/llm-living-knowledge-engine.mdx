@@ -1,0 +1,331 @@
+---
+title: "The Living Knowledge Engine: How LLMs Can Replace Your Tabs, Wikis, and Notebooks"
+description: "Andrej Karpathy's LLM knowledge base pattern is one of the most practical shifts in AI engineering right now. A breakdown of the architecture, why it works, and how I built a working POC in Python."
+date: 2026-04-05
+tags: ["LLM", "Knowledge Base", "RAG", "Context Engineering", "AI Architecture", "Karpathy", "Python"]
+image: "/images/llm-knowledge-engine.png"
+hide: true
+---
+
+import Callout from '../../components/Callout.astro';
+
+You have 37 browser tabs open.
+
+There is a Notion page called "AI Research Notes (FINAL v3)" that you last touched six weeks ago. A folder of PDFs you will "read properly later." A Slack thread where someone posted a great paper and you starred it. Three Google Docs that each summarise a different aspect of the same topic, written by your past self at different levels of understanding. Somewhere in there, a half-finished markdown file that was supposed to be the definitive summary.
+
+I have all of these. Probably so do you.
+
+This is not a productivity problem. It is a knowledge architecture problem — and I think I have found a better approach.
+
+---
+
+**Prefer to watch?** I put together a short video walkthrough of everything in this post:
+
+<video controls width="100%" style={{ borderRadius: '12px', marginBottom: '1.5rem' }}>
+  <source src="/videos/llm-kb-video.mp4" type="video/mp4" />
+</video>
+
+---
+
+## What Karpathy Was Actually Describing
+
+In early 2025, Andrej Karpathy posted a [gist on GitHub](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) describing a pattern he had been using to manage personal knowledge. It crossed 10 million views on X. Most people skimmed it. I spent a few hours with it and realised it was describing something genuinely different.
+
+He was not describing a new tool. He was describing a new *primitive* — a way of using LLMs that is fundamentally different from RAG, chatbots, or code generation. What happens when you stop using an LLM to *answer questions* and start using it to *accumulate knowledge*.
+
+The pattern is deceptively simple. You maintain a directory structure with three layers:
+
+```
+kb/
+  raw/      ← source documents you ingest (articles, papers, PDFs)
+  wiki/     ← LLM-generated markdown knowledge base
+  _meta/    ← indexes, summaries, agent rules
+```
+
+The `raw/` directory holds the original source material — never edited, append-only. The `wiki/` directory is where the LLM builds something persistent: structured concept pages, backlinks, cross-references. The LLM *owns* this directory. You rarely touch it directly.
+
+When you ingest a new source, the LLM does not just summarise it in isolation. It reads the new material, looks at what already exists in the wiki, and updates relevant existing pages — adjusting claims, adding connections, flagging contradictions. A single new article can deepen several concepts you already had pages for.
+
+Karpathy connects this to the Memex — the hypothetical personal knowledge device described by Vannevar Bush in his 1945 essay "As We May Think." Bush imagined information connected by associative trails, the way human memory works, rather than rigid categorical indexes. The idea influenced early hypertext research and eventually the Web. For 80 years it stayed hypothetical, because the technology to *maintain* such a system automatically did not exist.
+
+That maintenance piece is what LLMs change.
+
+<Callout type="info" title="The Core Shift">
+The LLM is not a search engine over your notes. It is the *author* of your notes — continuously editing, linking, and improving a knowledge base that compounds in value with every source you add.
+</Callout>
+
+---
+
+## Why RAG Alone Is Not Enough
+
+Before building the POC, I wanted to understand precisely where standard RAG falls short — because this pattern is not anti-RAG, it's addressing something RAG was never designed for.
+
+RAG — Retrieval-Augmented Generation — grounds LLM outputs in external documents. You chunk documents, embed them as vectors, retrieve relevant chunks at query time, inject them into the prompt. It solves knowledge cutoffs and hallucination well.
+
+But RAG is, by design, **stateless and reactive**.
+
+Every RAG query starts from scratch. It retrieves chunks, synthesises an answer, and forgets everything. The system does not learn from queries. The knowledge base does not improve. A hundred queries later, the raw documents look exactly the same as day one.
+
+Anthropic's research on contextual retrieval is relevant here: standard RAG has a retrieval failure rate of around 5.7%. Contextual retrieval (adding chunk-level context before embedding) drops this to ~2.9% — a meaningful improvement. But all of these improvements are solving the same underlying problem: **chunks retrieved without context often lose the meaning that surrounded them**.
+
+<Callout type="warning" title="What RAG Doesn't Solve">
+RAG retrieves facts. It does not synthesise understanding. Ask "how does approach A compare to approach B across everything I've read?" and RAG either returns unrelated chunks or gives a shallow answer, because that comparison never existed as a retrievable chunk.
+</Callout>
+
+The wiki pattern addresses a different problem. Understanding is **pre-synthesised and stored**. Comparisons, contradictions, concept relationships — written into the wiki as the knowledge base grows, not computed fresh at query time.
+
+| RAG | LLM Knowledge Base |
+|-----|--------------------|
+| Stateless — resets after each query | Stateful — accumulates over time |
+| Synthesis recomputed on every query | Synthesis pre-built and refined |
+| Chunk retrieval (fragmented context) | Concept pages (full context) |
+| Struggles with cross-document questions | Cross-references are explicit in the wiki |
+| Quality is flat over time | Quality compounds with each source |
+| Cost grows linearly with queries | Cost shifts to ingest-time |
+
+For a corpus under roughly 500K words (~150–200 documents), Karpathy notes a well-maintained wiki can let the LLM navigate without any vector retrieval at all — just reading the relevant pages directly. I found this to hold in practice with my POC.
+
+---
+
+## The Architecture
+
+Here is how the three layers fit together with the LLM at the centre:
+
+![LLM Knowledge Base Architecture — three storage layers (raw/, wiki/, output/) with five operations orchestrated by a central LLM, and a feedback loop from outputs back into the wiki](/images/llm-architecture-diagram.png)
+
+### Layer 1: raw/ — The Source of Truth
+
+You ingest source material here and never modify it. Each document becomes a markdown file in `raw/`. Tools like the Obsidian Web Clipper convert web articles; `markitdown` handles PDFs and Office documents.
+
+The key discipline: `raw/` is append-only. It is the permanent record of what you have read.
+
+### Layer 2: wiki/ — The Living Knowledge Base
+
+This is where the intelligence lives. The wiki is organised around *concepts*, not sources. In my POC, I had pages like:
+
+- `wiki/concepts/transformer-architecture.md` — a concept page
+- `wiki/comparisons/rag-vs-wiki.md` — a synthesised comparison
+- `wiki/index.md` — the master index with one-line summaries of every page
+
+Each page is written by the LLM. Each page links to related pages and records which raw sources it came from. When a new source changes an existing concept, that page gets updated — not replaced, *updated*.
+
+### Layer 3: _meta/ — The Rules Layer
+
+This layer contains the schema that makes the system consistent. The most important file is `WIKI_RULES.md` — it tells the LLM how to behave:
+
+- What constitutes a concept worth its own page
+- Naming conventions for files and links
+- How to handle contradictions between sources
+- How to decide whether to create a new page or update an existing one
+
+Without this layer, the wiki drifts quickly. Different sessions produce inconsistently formatted pages. The LLM improvises its own conventions. The schema document is the difference between a well-maintained wiki and a pile of AI-generated notes.
+
+<Callout type="success" title="The Key Insight">
+The schema layer is what makes the LLM behave as a disciplined maintainer rather than a generic assistant. You are not just prompting it — you are giving it an operating procedure.
+</Callout>
+
+---
+
+## The Five Operations
+
+The system runs five distinct operations, each with a different purpose and cost profile.
+
+### 1. Ingest
+
+```bash
+kb ingest https://arxiv.org/abs/2310.06825
+kb ingest ./papers/attention-is-all-you-need.pdf
+```
+
+Fetches or reads the source, converts it to markdown, stores it in `raw/`, then triggers a compile pass for that document.
+
+### 2. Compile
+
+```bash
+kb compile --source raw/new-paper.md
+```
+
+The main LLM operation. The LLM reads the new source, reads `wiki/index.md` to understand what already exists, identifies which pages are affected, and updates them — adding new information, citations, and links. New concept pages are created if warranted. In my testing, a compile pass on a substantial paper typically touches 8–12 wiki pages.
+
+### 3. Ask
+
+```bash
+kb ask "What are the main critiques of the attention mechanism's quadratic complexity?"
+```
+
+The LLM reads the index, identifies the most relevant wiki pages (typically 3–8), reads them in full, synthesises an answer, and writes it to `output/`. If the question surfaces new understanding, it gets filed back into the wiki. This is the compounding behaviour: questions improve the knowledge base.
+
+### 4. Lint
+
+```bash
+kb lint
+```
+
+A wiki health check. The LLM scans for:
+
+- **Contradictions** — two pages making incompatible claims
+- **Stale content** — claims superseded by later sources
+- **Orphaned pages** — concept pages with no inbound links
+- **Gaps** — topics mentioned across multiple pages but lacking their own page
+
+The output is a lint report with suggested fixes. You review and approve. Run this occasionally and the wiki stays coherent. I found this genuinely useful — it surfaced things I would have missed manually.
+
+### 5. Export
+
+```bash
+kb export --format=slides --topic "transformer-architecture"
+kb export --format=report --topic "state-of-rag"
+```
+
+Generates artefacts from the wiki — Marp-format slides, summary reports, comparison tables. The best outputs get filed back into `output/` and referenced from the wiki.
+
+---
+
+## Context Engineering Is the Actual Work
+
+Karpathy also coined the term "context engineering" — and this pattern is the clearest practical example of it I have encountered.
+
+Context engineering is the discipline of filling a model's context window with precisely the right information to make a task solvable. Not just prompts — the full context: what the system knows, how it is organised, what conventions it follows.
+
+<Callout type="info" title="Tobi Lütke's framing">
+Shopify CEO Tobi Lütke described it as "the art of providing all the context for the task to be plausibly solvable by the LLM." It is what prompt engineering was trying to say, but more precisely.
+</Callout>
+
+When you build an LLM knowledge base, context engineering is not abstract — it is the actual work:
+
+- **What the system knows**: the wiki pages, their structure, their depth
+- **How it connects ideas**: the backlinks and cross-references
+- **How it behaves**: the schema and rules in `_meta/`
+- **What it can navigate**: the index files
+
+The model's capabilities are largely fixed. The quality of what it produces is determined by the quality of the context you build around it.
+
+---
+
+## Idea Files: A Subtler Point
+
+One thing in Karpathy's gist I found easy to miss: he posted the pattern *without* code. Intentionally. Instead of a Python script, he shared a text description of the concept — the architecture, the operations, the conventions. An "idea file."
+
+The reasoning makes sense: everyone's knowledge base needs differ. Your topics, your tools, your LLM provider, your file structure — none of it matches mine. A shared script that works for Karpathy's setup will break in yours. A shared *description* of the pattern lets your agent build a version that fits your exact context.
+
+| Before | Now |
+|--------|-----|
+| Share a GitHub repository | Share an idea file |
+| User clones and runs the code | User's agent reads and implements |
+| One implementation for everyone | One pattern, many implementations |
+| Code tied to a specific environment | Ideas are environment-agnostic |
+
+This resonated with me. When I built the POC, I kept the `WIKI_RULES.md` as the primary artefact — the code is secondary. You should be able to throw away my implementation and rebuild it from the rules file.
+
+---
+
+## The POC: Building It Myself
+
+I built a working CLI in Python called `kb` — the LLM Knowledge Base Engine — to validate whether this pattern actually holds in practice. It implements all five operations against the Claude API (or OpenAI, your choice), using local markdown files for storage.
+
+The full project is at [github.com/pyaichatbot/llm-kb-engine](https://github.com/pyaichatbot/llm-kb-engine).
+
+```
+llm-kb-engine/
+  kb.py           ← main CLI (~400 lines, single file)
+  WIKI_RULES.md   ← schema for the LLM agent
+  requirements.txt
+  raw/            ← source documents (auto-created)
+  wiki/           ← generated knowledge base (auto-created)
+  output/         ← query results and exports (auto-created)
+  demo/
+    run_demo.sh   ← end-to-end demo on "AI Agents" topic
+    sources.txt   ← 10 URLs to ingest
+```
+
+Here is what it looks like in practice:
+
+**Ingesting a source:**
+
+```bash
+python kb.py ingest https://arxiv.org/abs/2309.03409
+# → Fetches paper, converts to markdown, stores in raw/
+# → Reads existing wiki index, identifies affected pages
+# → Updates relevant wiki pages, creates new ones where needed
+```
+
+**Asking a complex question:**
+
+```bash
+python kb.py ask "What are the architectural differences between tool-using agents and RAG systems?"
+# → Reads wiki/index.md to navigate
+# → Reads relevant pages: agents.md, rag.md, tool-use.md
+# → Synthesises answer, saves to output/
+# → Files key insight back into wiki/comparisons/
+```
+
+**Running a lint check:**
+
+```bash
+python kb.py lint
+# → Scans wiki for contradictions, orphaned pages, gaps
+# → Generates lint-report.md with issues and suggested fixes
+```
+
+I ran the full demo — ingesting 10 articles on AI Agents — and got a ~40-page wiki in about 8 minutes using Claude Haiku. The compounding effect was real: by the fifth source, the compile step was updating pages in interesting ways, drawing connections I had not explicitly asked for.
+
+The implementation is intentionally simple — no vector databases, no orchestration frameworks, no embeddings. Just the API, the filesystem, and structured prompting against the schema.
+
+<Callout type="info" title="Try It Yourself">
+Clone the repo, add your Anthropic or OpenAI API key to `.env`, run `pip install -r requirements.txt`, then `bash demo/run_demo.sh`. The demo builds a wiki on AI Agents. In my testing it takes around 8–10 minutes with Haiku.
+</Callout>
+
+---
+
+## Where This Goes at Scale
+
+At small scale (under ~100 documents), the wiki approach works with no retrieval infrastructure. The LLM reads the index, finds relevant pages, reads them directly.
+
+At medium scale (~100–500 documents), you want a lightweight search layer. Karpathy mentions `qmd` — a small hybrid search tool combining BM25 and embeddings — as an auxiliary navigation aid. The wiki stays as markdown.
+
+At larger scale, two things get interesting:
+
+**Synthetic data generation.** A deep enough wiki can generate training data — question-answer pairs, concept explanations, contradiction examples. The wiki becomes a dataset factory, not just a knowledge store.
+
+**Fine-tuning.** Eventually, you could fine-tune on the wiki content itself — moving the knowledge from files on disk into model weights. The loop closes: LLM builds wiki → wiki generates training data → training data improves the LLM that maintains the wiki.
+
+I have not pushed my POC to that scale yet, but the architecture points there naturally.
+
+---
+
+## The Memex, Finally
+
+Vannevar Bush imagined the Memex in 1945: a device that would let a person store, link, and navigate their entire body of knowledge through associative trails rather than rigid categorical indexes.
+
+For 80 years the technology was not there. Wikis existed, but humans abandoned them because the maintenance burden grew faster than the value. Search engines retrieved information without understanding it.
+
+The LLM changes the maintenance equation. The cost of updating, linking, and synthesising knowledge drops dramatically. The wiki that people struggled to maintain consistently, an LLM can maintain with much greater reliability — and it improves with every source you add.
+
+We did not build the Memex by building a better database. We built it by building a system that can *read*, *understand*, and *write*.
+
+---
+
+## Getting Started
+
+**Beginners:** Start with Obsidian + the Web Clipper extension. Create a `raw/` folder and drop articles in. Use Claude or ChatGPT to manually summarise each into a `wiki/` folder. Do this for 10 sources and you will feel the compounding effect directly.
+
+**Developers:** Clone [llm-kb-engine](https://github.com/pyaichatbot/llm-kb-engine), run the demo, then adapt `WIKI_RULES.md` to your own research topic. The code is intentionally simple and meant to be modified.
+
+**Architects:** The pattern to internalise is *ingest → compile → query → lint → export → file back*. Each step is an integration point: a Slack bot that ingests articles from pinned messages, a GitHub Action that compiles the wiki nightly, a fine-tuning pipeline that kicks in when the wiki reaches a certain depth.
+
+---
+
+## TL;DR
+
+- RAG retrieves fragments. LLM knowledge bases build structured understanding that compounds over time.
+- Three layers: `raw/` (sources) + `wiki/` (LLM-maintained knowledge) + `_meta/` (schema and rules).
+- Five operations: ingest, compile, ask, lint, export.
+- The schema layer (`WIKI_RULES.md`) is what keeps it coherent — treat it as the primary artefact.
+- At scale: the wiki becomes a dataset factory; fine-tuning closes the loop.
+- Bush imagined this in 1945. The maintenance piece is what LLMs finally make practical.
+
+The POC is at [github.com/pyaichatbot/llm-kb-engine](https://github.com/pyaichatbot/llm-kb-engine). The demo runs in under 10 minutes.
+
+---
+
+*Praveen Yellamaraju builds AI systems and writes about what actually works. More at [yellamaraju.com](https://yellamaraju.com).*

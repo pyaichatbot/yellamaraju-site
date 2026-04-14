@@ -1,0 +1,320 @@
+---
+title: "CCA Foundations: Claude Code Configuration & Workflows"
+description: "Domain 3 deep dive — CLAUDE.md hierarchy, @import directive, commands vs skills, plan mode vs direct execution, path-specific rules, and CI/CD integration."
+date: 2026-03-31
+tags: ["Claude", "Certification", "CCA", "Claude Code", "Configuration"]
+image: "/images/cca-claude-md-hierarchy.png"
+series: "CCA Foundations Learning Series"
+seriesPart: 4
+hide: true
+---
+
+import Callout from '../../components/Callout.astro';
+
+Domain 3 covers **how you configure and orchestrate Claude Code** in production environments. It accounts for **20% of the CCA Foundations exam** — roughly 15 questions. This domain shifts from Claude's core capabilities to the mechanics of configuration hierarchy, custom commands, path-specific rules, execution strategies, and CI/CD integration.
+
+**Key theme: Configuration is code.** The same principles that make your application code maintainable — modularity, scoping, DRY, conditional logic — apply to Claude Code configuration.
+
+<img src="/images/cca-claude-md-hierarchy.png" alt="CLAUDE.md Configuration Hierarchy" />
+
+<h2 id="what-this-domain-tests">What This Domain Is Really Testing</h2>
+
+This domain tests whether you can:
+
+- Design and implement multi-level CLAUDE.md hierarchies
+- Use `@import` to keep configuration modular and maintainable
+- Choose between commands and skills based on isolation and complexity requirements
+- Choose between plan mode and direct execution based on risk
+- Configure path-specific rules with glob patterns
+- Integrate Claude Code into CI/CD pipelines
+
+<h2 id="claude-md-hierarchy">Core Concept 1: The CLAUDE.md Hierarchy</h2>
+
+CLAUDE.md is not a single monolithic file. Claude Code respects a **three-level hierarchy** with clear precedence:
+
+```
+1. USER-LEVEL              (highest precedence)
+   └── ~/.claude/CLAUDE.md
+
+2. SUBDIRECTORY LEVEL      (medium precedence)
+   └── ./src/CLAUDE.md
+   └── ./tests/CLAUDE.md
+
+3. PROJECT-ROOT LEVEL      (lowest precedence)
+   └── ./CLAUDE.md
+```
+
+**Precedence Rule:** When Claude Code is invoked in a subdirectory, it loads rules from the **closest CLAUDE.md file first**, then merges upward. If the same rule is defined at multiple levels, the closest (lowest directory depth) wins.
+
+<Callout type="warning" title="">
+**Exam Trap: Many candidates assume all imports merge equally. Scoping proximity matters more than import order. A rule in `/src/CLAUDE.md` overrides the same rule in `/CLAUDE.md` when working in `/src`.**
+</Callout>
+
+```yaml
+# /CLAUDE.md (project root — lowest precedence)
+## General Conventions
+- Use TypeScript for all backend code
+- Indent: 4 spaces
+- Test coverage target: 85%
+
+# /src/CLAUDE.md (subdirectory — overrides project root)
+## Service Layer Conventions
+- Indent: 2 spaces (overrides project default)
+- Services must implement dependency injection
+- Use Result<T, E> pattern for error handling
+
+# ~/.claude/CLAUDE.md (user-level — highest precedence)
+## Personal preferences
+- Always use dark mode in examples
+- Prefer functional style
+```
+
+If you're working on `/src/services/auth.ts`, the indentation rule is **2 spaces** (from `/src/CLAUDE.md`), not 4.
+
+<h2 id="import-directive">Core Concept 2: @import for Modular Configuration</h2>
+
+Instead of massive CLAUDE.md files, split configuration into focused modules:
+
+```yaml
+# ./CLAUDE.md (project root)
+@import "./claude-config/core-conventions.md"
+@import "./claude-config/testing-rules.md"
+@import "./claude-config/api-standards.md"
+@import "./claude-config/security-policies.md"
+```
+
+The `@import` paths are **relative to the location of the CLAUDE.md file**, not the current working directory. This ensures portability when projects are cloned or moved.
+
+A practical directory structure:
+
+```
+myproject/
+├── CLAUDE.md                 # Project root + @imports
+├── .claude/
+│   ├── rules/
+│   │   ├── test-files.yaml   # Glob-matched rules
+│   │   ├── api-endpoints.yaml
+│   │   └── migrations.yaml
+│   ├── core-conventions.md
+│   ├── testing-rules.md
+│   └── security-policies.md
+├── src/
+│   └── CLAUDE.md             # Subdirectory overrides
+└── tests/
+    └── CLAUDE.md             # Testing-specific overrides
+```
+
+<h2 id="commands-vs-skills">Core Concept 3: Commands vs Skills</h2>
+
+Claude Code provides two mechanisms for extending functionality. The distinction matters on the exam.
+
+**Commands** — lightweight, fast:
+- Live in `./commands/` directory
+- Execute immediately in Claude's current context
+- Good for quick utilities: `/format-json`, `/summarize`, `/generate-test`
+- Limited isolation
+- Should complete in < 5 seconds
+
+**Skills** — robust, isolated:
+- Live in `./skills/` directory
+- Execute with `context: fork` (isolated environment)
+- Maintain state, complex logic, tool access control via `allowed-tools`
+- Slower startup but safer
+- Good for: `/deploy`, `/audit-security`, `/generate-migration`
+
+```yaml
+# Skill file with YAML frontmatter
+---
+name: "Security Audit"
+description: "Scan codebase for security vulnerabilities"
+context: fork
+allowed-tools:
+  - read
+  - grep
+  - bash
+argument-hint: "directory path (e.g., '/src')"
+---
+
+# Security Audit Skill
+
+## Execution
+1. Scan for hardcoded secrets using regex patterns
+2. Check for SQL injection vulnerabilities
+3. Validate API authentication mechanisms
+4. Generate audit report in JSON format
+```
+
+<Callout type="warning" title="">
+**Exam Trap: Commands vs Skills confusion. If a tool needs tool access control (`allowed-tools`), might take > 5 seconds, or should be isolated from the parent session, it's a skill, not a command.**
+</Callout>
+
+The `context: fork` mechanism creates an isolated execution context:
+- Separate memory/state from parent session
+- Tool access restrictions via `allowed-tools`
+- Can fail independently without crashing parent
+- No access to parent session's variables
+
+<h2 id="path-specific-rules">Core Concept 4: Path-Specific Rules</h2>
+
+Path-specific rules live in `.claude/rules/` and automatically apply when Claude Code operates on matching file patterns:
+
+```yaml
+# .claude/rules/test-files.yaml
+---
+name: "Testing Conventions"
+glob:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "tests/**/*.ts"
+apply-mode: "merge"
+priority: "high"
+---
+
+## Testing Rules
+- Framework: Jest
+- Assertion library: chai
+- Coverage target: 85%
+- One test per file
+- Use beforeEach/afterEach for setup/teardown
+```
+
+```yaml
+# .claude/rules/api-endpoints.yaml
+---
+name: "API Endpoint Standards"
+glob:
+  - "src/routes/**/*.ts"
+  - "src/api/**/*.ts"
+apply-mode: "strict"
+---
+
+## API Conventions
+- All endpoints return JSON
+- Use standard HTTP status codes
+- Validate input with Zod
+- Bearer token auth on every request
+```
+
+Common glob patterns:
+
+| Pattern | Matches |
+|---------|---------|
+| `*.test.ts` | .test.ts files in current directory |
+| `**/*.test.ts` | .test.ts files recursively |
+| `src/**` | Everything under src/ |
+| `!src/generated/**` | Everything except generated/ |
+
+Glob patterns are precise. `src/components/**/*.tsx` does **not** match `src/utils/helpers.ts`.
+
+<h2 id="plan-mode">Core Concept 5: Plan Mode vs Direct Execution</h2>
+
+**Plan mode** (`claude-code --plan`): Claude outlines strategy before executing.
+
+Use plan mode when:
+- Exploring a complex codebase you don't fully understand
+- Planning a large refactoring (> 20 files)
+- Risk of unintended side effects (data migrations, deletions)
+- Stakeholder approval needed before execution
+
+Use direct execution when:
+- Task is straightforward and low-risk
+- You've already approved the strategy
+- Tight deadline (plan adds overhead)
+- Generating code, not modifying existing critical code
+
+| Aspect | Plan Mode | Direct Execution |
+|--------|-----------|-----------------|
+| Safety | High (review before execute) | Medium (immediate) |
+| Speed | Slower (+ planning overhead) | Fast |
+| Approval | Explicit | Implicit |
+| Use for | Risky, exploratory, multi-file | Routine, simple, generative |
+
+<Callout type="warning" title="">
+**Exam Trap: "Plan mode is always better" is wrong. For routine fixes in a single file, plan mode wastes time. Use it only for complex, risky, or exploratory tasks.**
+</Callout>
+
+<h2 id="ci-cd">Core Concept 6: CI/CD Integration</h2>
+
+Claude Code integrates into CI/CD pipelines using the `-p` flag for non-interactive execution:
+
+```bash
+# Run in CI/CD pipeline
+claude-code -p "run tests and fix any failing assertions"
+```
+
+The `-p` flag:
+- Runs Claude Code non-interactively
+- Suitable for automated pipelines
+- No user confirmation prompts
+- Returns exit code for pipeline gating
+
+This is how you automate Claude Code operations in GitHub Actions, GitLab CI, or similar systems.
+
+<h2 id="exam-traps">Exam Traps for Domain 3</h2>
+
+**Trap 1: Assuming project root always wins.** The closest CLAUDE.md wins. `/src/CLAUDE.md` overrides `/CLAUDE.md` when you're working in `/src`.
+
+**Trap 2: Confusing commands and skills.** If it needs isolation, tool restrictions, or takes > 5 seconds, it's a skill. Commands are instant utilities.
+
+**Trap 3: Thinking plan mode is always better.** For a typo fix in one file, direct execution is correct. Plan mode is for complex, multi-file, risky tasks.
+
+**Trap 4: Assuming `@import` paths are relative to CWD.** They're relative to the CLAUDE.md file that contains the import, not your current working directory.
+
+**Trap 5: Expecting glob patterns to match broadly.** `src/components/**/*.tsx` doesn't match `src/utils/helpers.ts`. Glob patterns are precise.
+
+<h2 id="practice-questions">Practice Questions</h2>
+
+**Q1:** You have `/CLAUDE.md` with "indent: 4 spaces" and `/src/CLAUDE.md` with "indent: 2 spaces". You're editing `/src/services/auth.ts`. Which indentation applies?
+
+A) 4 spaces (project root always wins)
+B) 2 spaces (closest CLAUDE.md wins)
+C) Both apply (merged)
+D) User-level `~/.claude/CLAUDE.md` decides
+
+<details>
+<summary>Answer</summary>
+
+**B.** The closest CLAUDE.md file wins. Since you're in `/src`, the `/src/CLAUDE.md` rule (2 spaces) takes precedence over the project root.
+
+</details>
+
+**Q2:** You need to create a tool that reads sensitive credentials, deploys to production servers, takes 2-3 minutes, and should be isolated from the parent session. Command or skill?
+
+A) Command (faster)
+B) Skill with `context: fork`
+C) Command with `allowed-tools` restriction
+D) Neither, use plain Claude Code
+
+<details>
+<summary>Answer</summary>
+
+**B.** This requires isolation (`context: fork`), tool restrictions (`allowed-tools`), and long runtime. Only skills provide these capabilities. Commands don't support `context: fork` or `allowed-tools`.
+
+</details>
+
+**Q3:** You need to fix a typo in a single function — change `getFoo()` to `getBar()` in `services/auth.ts`. Plan mode or direct execution?
+
+A) Plan mode (always safer)
+B) Direct execution (simple, low-risk)
+C) Plan mode first, then direct
+D) Depends on context
+
+<details>
+<summary>Answer</summary>
+
+**B.** This is a routine fix in a single file. Direct execution is appropriate. Plan mode would add unnecessary delay for a trivial change.
+
+</details>
+
+<Callout type="info" title="Next in the Series">
+**Part 5: Prompt Engineering & Structured Output** — Explicit criteria, few-shot examples, tool_use schemas, validation-retry loops, batch processing, and multi-pass review.
+</Callout>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+- CLAUDE.md uses a three-level hierarchy: user > subdirectory > project root. Closest file wins.
+- `@import` splits configuration into modules. Paths are relative to the importing file, not CWD.
+- Commands are instant utilities; skills are isolated programs with `context: fork` and `allowed-tools`.
+- Plan mode is for risky/exploratory tasks; direct execution is for routine/simple work.
+- Path-specific rules in `.claude/rules/` use glob patterns that must match precisely.
+- CI/CD integration uses the `-p` flag for non-interactive pipeline execution.

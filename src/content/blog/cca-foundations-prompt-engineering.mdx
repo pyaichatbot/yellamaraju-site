@@ -1,0 +1,368 @@
+---
+title: "CCA Foundations: Prompt Engineering & Structured Output"
+description: "Domain 4 deep dive — explicit criteria, few-shot prompting, tool_use JSON schemas, validation-retry loops, Batch API cost savings, and multi-pass review."
+date: 2026-03-31
+tags: ["Claude", "Certification", "CCA", "Prompt Engineering", "Structured Output"]
+image: "/images/cca-prompt-engineering.png"
+series: "CCA Foundations Learning Series"
+seriesPart: 5
+hide: true
+---
+
+import Callout from '../../components/Callout.astro';
+
+Domain 4 covers **how you design prompts and structured outputs** that produce reliable, consistent results. It accounts for **20% of the CCA Foundations exam** — roughly 15 questions. This domain bridges the gap between ad hoc prompting and production-grade prompt engineering with measurable reliability.
+
+**Key theme: Structured input produces structured output.** Every technique here reduces ambiguity to increase output predictability.
+
+<img src="/images/cca-prompt-engineering.png" alt="Prompt Engineering and Structured Output" />
+
+<h2 id="what-this-domain-tests">What This Domain Is Really Testing</h2>
+
+This domain tests whether you can:
+
+- Write explicit criteria that reduce false-positive outputs
+- Design few-shot examples for consistency
+- Use `tool_use` JSON schemas to guarantee structured output
+- Build validation-retry loops for production reliability
+- Apply the Batch API for cost optimization at scale
+- Implement multi-pass review workflows for quality gates
+
+<h2 id="explicit-criteria">Core Concept 1: Explicit Criteria</h2>
+
+The single most impactful prompt engineering technique: replace vague instructions with **specific, testable criteria**.
+
+**Before (vague):**
+```
+Summarize this customer complaint.
+```
+
+**After (explicit criteria):**
+```
+Summarize this customer complaint. Your summary must:
+1. Be exactly 2-3 sentences
+2. Include the product name mentioned
+3. State the specific issue (not a category)
+4. Include the customer's desired resolution
+5. Use neutral tone — no editorial judgment
+```
+
+This technique **reduces false-positive outputs by 70%+** according to Anthropic's training materials. Claude doesn't have to guess what "good" means when the criteria are explicit.
+
+<Callout type="warning" title="">
+**Exam Trap: "Summarize this well" is never a correct answer. The exam tests whether you can convert vague instructions into explicit, testable criteria. Look for answers that include measurable constraints.**
+</Callout>
+
+Explicit criteria work because they:
+- Eliminate ambiguity in what "correct" means
+- Make output quality **measurable** (you can verify each criterion)
+- Reduce the need for follow-up corrections
+- Enable automated validation (each criterion becomes a check)
+
+<h2 id="few-shot-prompting">Core Concept 2: Few-Shot Prompting</h2>
+
+Few-shot examples provide **input-output pairs** that demonstrate the exact format and reasoning pattern you expect. This technique delivers a **40-60% consistency improvement** over zero-shot prompts.
+
+```xml
+<examples>
+  <example>
+    <input>Customer: "Your app crashed and I lost my draft email"</input>
+    <output>
+      {
+        "category": "bug_report",
+        "severity": "high",
+        "product_area": "email_compose",
+        "summary": "App crash causing data loss during email composition",
+        "action": "escalate_engineering"
+      }
+    </output>
+  </example>
+  <example>
+    <input>Customer: "Can you add a dark mode option?"</input>
+    <output>
+      {
+        "category": "feature_request",
+        "severity": "low",
+        "product_area": "ui_settings",
+        "summary": "Request for dark mode toggle in settings",
+        "action": "log_to_backlog"
+      }
+    </output>
+  </example>
+</examples>
+
+Now classify this customer message:
+Customer: "The search function returns irrelevant results"
+```
+
+Key rules for few-shot examples:
+
+1. **Include edge cases.** If your data has ambiguous inputs, include an example of one.
+2. **Cover every output field.** Every field in your schema should appear in examples.
+3. **3-5 examples is the sweet spot.** Fewer under-specifies; more wastes context.
+4. **Order matters.** Put representative examples first, edge cases last.
+
+<h2 id="tool-use-schemas">Core Concept 3: tool_use JSON Schemas</h2>
+
+The `tool_use` forced output mechanism guarantees **100% schema compliance** for structured responses. This is the most reliable way to get structured output from Claude.
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+tools = [
+    {
+        "name": "classify_ticket",
+        "description": "Classify a support ticket into a category with severity",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["bug_report", "feature_request", "billing", "account"],
+                    "description": "The ticket category"
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "description": "Impact severity"
+                },
+                "summary": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "One-line plain-English summary"
+                }
+            },
+            "required": ["category", "severity", "summary"]
+        }
+    }
+]
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    tool_choice={"type": "tool", "name": "classify_ticket"},
+    messages=[
+        {"role": "user", "content": "Customer says: app crashes when I open settings"}
+    ]
+)
+```
+
+Key mechanics:
+
+| Feature | Effect |
+|---------|--------|
+| `tool_choice: {"type": "tool", "name": "..."}` | Forces Claude to call that specific tool |
+| `"required"` array | Guarantees these fields are always present |
+| `"enum"` constraint | Restricts to predefined values only |
+| `"maxLength"` | Truncates or constrains string output |
+
+<Callout type="warning" title="">
+**Exam Trap: Using `tool_choice: {"type": "auto"}` does NOT guarantee structured output. Auto lets Claude decide whether to use the tool at all. Use `{"type": "tool", "name": "..."}` to force it.**
+</Callout>
+
+<h2 id="validation-retry">Core Concept 4: Validation-Retry Loops</h2>
+
+Even with tool_use, production systems need validation. The pattern:
+
+```python
+MAX_RETRIES = 3
+
+def classify_with_retry(ticket_text: str) -> dict:
+    for attempt in range(MAX_RETRIES):
+        result = call_claude_classification(ticket_text)
+
+        # Validate the output
+        errors = validate_classification(result)
+        if not errors:
+            return result
+
+        # Feed errors back to Claude for correction
+        ticket_text = f"""
+        Previous attempt had these errors: {errors}
+        Original ticket: {ticket_text}
+        Please fix the classification.
+        """
+
+    # After max retries, escalate to human
+    return {"status": "needs_human_review", "raw": result}
+
+def validate_classification(result: dict) -> list[str]:
+    errors = []
+    if result.get("category") not in VALID_CATEGORIES:
+        errors.append(f"Invalid category: {result['category']}")
+    if result.get("severity") not in VALID_SEVERITIES:
+        errors.append(f"Invalid severity: {result['severity']}")
+    if len(result.get("summary", "")) > 200:
+        errors.append("Summary exceeds 200 characters")
+    return errors
+```
+
+The loop has three critical components:
+1. **Call** Claude with the original input
+2. **Validate** the output against explicit criteria
+3. **Retry** with error feedback if validation fails
+4. **Escalate** to human review after max retries
+
+This pattern converts a ~95% accuracy rate into ~99.9% by catching and correcting edge cases automatically.
+
+<h2 id="batch-api">Core Concept 5: Batch API for Cost Optimization</h2>
+
+The **Batch API** processes large volumes of requests asynchronously at a **50% cost discount**:
+
+```python
+# Submit a batch of classification requests
+batch = client.batches.create(
+    requests=[
+        {
+            "custom_id": f"ticket-{i}",
+            "params": {
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 1024,
+                "messages": [{"role": "user", "content": ticket}]
+            }
+        }
+        for i, ticket in enumerate(tickets)
+    ]
+)
+
+# Check batch status
+status = client.batches.retrieve(batch.id)
+# status.processing_status: "in_progress" | "ended"
+
+# Retrieve results when complete
+results = client.batches.results(batch.id)
+```
+
+When to use Batch API vs real-time:
+
+| Scenario | API Choice |
+|----------|-----------|
+| User-facing chatbot | Real-time (Messages API) |
+| Classifying 10,000 tickets overnight | Batch API |
+| Generating weekly reports | Batch API |
+| Interactive code review | Real-time |
+| Bulk content moderation | Batch API |
+
+**Rule of thumb:** If the user isn't waiting for the response, use Batch API.
+
+<h2 id="multi-pass-review">Core Concept 6: Multi-Pass Review</h2>
+
+Multi-pass review uses **separate Claude calls** to generate and then evaluate output. This creates a quality gate without human intervention:
+
+```
+Pass 1: Generate     → Claude produces the initial output
+Pass 2: Review       → A second Claude call evaluates output against criteria
+Pass 3: Revise       → If issues found, a third call fixes them
+```
+
+```python
+# Pass 1: Generate
+draft = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": f"Write a summary of: {document}"}]
+)
+
+# Pass 2: Review against criteria
+review = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": f"""
+    Review this summary against these criteria:
+    1. Contains no factual errors relative to the source
+    2. Is 2-3 sentences
+    3. Covers the main conclusion
+    4. Uses neutral tone
+
+    Summary: {draft.content[0].text}
+    Source: {document}
+
+    Return: PASS or FAIL with specific issues.
+    """}]
+)
+
+# Pass 3: Revise if needed
+if "FAIL" in review.content[0].text:
+    final = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        messages=[{"role": "user", "content": f"""
+        Fix this summary based on the review feedback:
+        Summary: {draft.content[0].text}
+        Feedback: {review.content[0].text}
+        """}]
+    )
+```
+
+<Callout type="warning" title="">
+**Exam Trap: Multi-pass is not the same as validation-retry. Validation-retry checks structure/format. Multi-pass review checks content quality and factual accuracy using a separate evaluation prompt.**
+</Callout>
+
+<h2 id="exam-traps">Exam Traps for Domain 4</h2>
+
+**Trap 1: Vague criteria.** "Summarize well" or "be accurate" is never sufficient. The correct answer always includes specific, measurable criteria.
+
+**Trap 2: `tool_choice: auto` for guaranteed structure.** Only `{"type": "tool", "name": "..."}` guarantees Claude uses the tool. `auto` lets Claude choose freely.
+
+**Trap 3: Unlimited retries.** Always cap retries (typically 3) and escalate to human review. Infinite loops are a production anti-pattern.
+
+**Trap 4: Batch API for real-time use cases.** Batch API is asynchronous. If the user is waiting, use Messages API.
+
+**Trap 5: Confusing multi-pass with retry.** Retry fixes structural errors. Multi-pass evaluates content quality with a separate review prompt.
+
+<h2 id="practice-questions">Practice Questions</h2>
+
+**Q1:** You need Claude to extract structured fields (name, date, amount) from 50,000 invoices overnight. Which combination of techniques is most appropriate?
+
+A) Real-time Messages API + validation-retry
+B) Batch API + tool_use forced output + validation
+C) Batch API + few-shot prompting only
+D) Real-time API + multi-pass review
+
+<details>
+<summary>Answer</summary>
+
+**B.** Batch API gives 50% cost discount for non-real-time processing. `tool_use` with forced output guarantees the structured schema. Validation catches edge cases. This is the optimal combination for high-volume structured extraction.
+
+</details>
+
+**Q2:** Your prompt says "Classify this ticket appropriately." Claude's output quality varies wildly. What's the highest-impact fix?
+
+A) Add more few-shot examples
+B) Switch to a larger model
+C) Add explicit criteria: valid categories, severity definitions, required fields
+D) Increase max_tokens
+
+<details>
+<summary>Answer</summary>
+
+**C.** Explicit criteria reduce false positives by 70%+. The prompt is vague — "appropriately" means nothing testable. Adding specific categories, severity definitions, and required fields gives Claude concrete targets. Few-shot examples help too, but explicit criteria is the highest single-impact change.
+
+</details>
+
+**Q3:** You use `tool_choice: {"type": "auto"}` with a classification tool. Sometimes Claude returns plain text instead of the structured tool call. Why?
+
+A) The tool schema has an error
+B) `auto` lets Claude decide whether to use the tool
+C) The model doesn't support tool_use
+D) max_tokens is too low
+
+<details>
+<summary>Answer</summary>
+
+**B.** `tool_choice: {"type": "auto"}` lets Claude choose freely between using a tool and responding with plain text. To guarantee structured output, use `{"type": "tool", "name": "classify_ticket"}` to force the specific tool.
+
+</details>
+
+<Callout type="info" title="Next in the Series">
+**Part 6: Context Management & Reliability** — Context preservation strategies, escalation decision trees, graceful degradation, confidence-based routing, and attribution.
+</Callout>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+- Explicit criteria reduce false positives by 70%+. Replace vague instructions with testable constraints.
+- Few-shot examples deliver 40-60% consistency gains. Use 3-5 examples covering edge cases.
+- `tool_use` with `tool_choice: {"type": "tool", "name": "..."}` guarantees structured JSON output.
+- Validation-retry loops (max 3 attempts) convert ~95% accuracy into ~99.9% with human escalation fallback.
+- Batch API saves 50% on non-real-time workloads. Use Messages API only when the user is waiting.
+- Multi-pass review adds a separate quality gate — generate, review, revise.
