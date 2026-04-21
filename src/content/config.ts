@@ -11,6 +11,7 @@ const blog = defineCollection({
     draft: z.boolean().optional().default(false),
     series: z.string().optional(),
     seriesPart: z.number().optional(),
+    presentation: z.enum(['premium-editorial']).optional(),
     pinned: z.boolean().optional().default(false),
     hide: z.boolean().optional().default(false),
   }),

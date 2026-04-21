@@ -37,3 +37,5 @@ Thumbs.db
 # Netlify CLI local state
 .netlify/
 .netlify/state.json
+
+docs/superpowers
