@@ -16,16 +16,48 @@ interface Props {
   date: Date;
   tags: string[];
   image?: string;
+  socialImage?: string;
   readingTime: string;
   series?: string;
   seriesPart?: number;
   seriesPosts?: Array<{ title: string; slug: string; part: number }>;
   presentation?: 'premium-editorial';
+  premiumAccent?: string;
+  premiumAccent2?: string;
+  premiumAccent3?: string;
+  premiumAccent4?: string;
   post?: CollectionEntry<'blog'>;
 }
 
-const { title, description, date, tags, image, readingTime, series, seriesPart, seriesPosts, presentation, post } = Astro.props;
+const {
+  title,
+  description,
+  date,
+  tags,
+  image,
+  socialImage,
+  readingTime,
+  series,
+  seriesPart,
+  seriesPosts,
+  presentation,
+  premiumAccent,
+  premiumAccent2,
+  premiumAccent3,
+  premiumAccent4,
+  post
+} = Astro.props;
 const isPremiumEditorial = presentation === 'premium-editorial';
+const premiumTitleParts = title.split(':');
+const premiumTitleMain = premiumTitleParts[0]?.trim() || title;
+const premiumTitleAccent = premiumTitleParts.length > 1 ? premiumTitleParts.slice(1).join(':').trim() : '';
+const premiumLabel = tags && tags.length > 1 ? `${tags[0]} · ${tags[1]}` : tags?.[0] || 'Featured Essay';
+const premiumStyle = [
+  premiumAccent ? `--premium-accent: ${premiumAccent}` : '',
+  premiumAccent2 ? `--premium-accent-2: ${premiumAccent2}` : '',
+  premiumAccent3 ? `--premium-accent-3: ${premiumAccent3}` : '',
+  premiumAccent4 ? `--premium-accent-4: ${premiumAccent4}` : '',
+].filter(Boolean).join('; ');
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
 
@@ -53,15 +85,17 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
   title={title}
   description={description}
   image={image}
+  socialImage={socialImage}
   article={true}
   publishedTime={date.toISOString()}
   modifiedTime={date.toISOString()}
   keywords={keywords}
+  noindex={post?.data.hide ?? false}
 >
   {articleSchema && <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />}
   {breadcrumbSchema && <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />}
   {isPremiumEditorial ? (
-    <article class="premium-failure-post">
+    <article class="premium-failure-post" style={premiumStyle}>
       <section class="premium-failure-hero">
         <div class="premium-failure-grid" aria-hidden="true"></div>
         <div class="premium-failure-glow primary" aria-hidden="true"></div>
@@ -71,9 +105,9 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
             <a href="/blog" class="premium-failure-nav-link">Back to Blog</a>
             <a href="/" class="premium-failure-nav-link">Home</a>
           </nav>
-          <div class="premium-failure-label">AI Engineering · Failure Modes</div>
+          <div class="premium-failure-label">{premiumLabel}</div>
           <h1 class="premium-failure-title">
-            Why AI Systems <span>Quietly Degrade</span>: Slop, Hallucinations, Drift & Collapse
+            {premiumTitleMain}{premiumTitleAccent && <>: <span>{premiumTitleAccent}</span></>}
           </h1>
           <p class="premium-failure-subtitle">{description}</p>
           <div class="premium-failure-meta">
@@ -758,8 +792,8 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(rgba(255, 77, 109, 0.055) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 77, 109, 0.055) 1px, transparent 1px);
+      linear-gradient(color-mix(in srgb, var(--premium-accent) 5.5%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--premium-accent) 5.5%, transparent) 1px, transparent 1px);
     background-size: 48px 48px;
     animation: premiumGridPulse 8s ease-in-out infinite;
   }
@@ -777,7 +811,7 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     right: -220px;
     width: 720px;
     height: 720px;
-    background: radial-gradient(circle, rgba(255, 77, 109, 0.14) 0%, transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--premium-accent) 14%, transparent) 0%, transparent 70%);
   }
 
   .premium-failure-glow.secondary {
@@ -785,7 +819,7 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     left: -130px;
     width: 540px;
     height: 540px;
-    background: radial-gradient(circle, rgba(6, 214, 160, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--premium-accent-3) 10%, transparent) 0%, transparent 70%);
     animation-direction: reverse;
   }
 
@@ -964,6 +998,38 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     font-style: italic;
   }
 
+  .premium-failure-content :global(.callout) {
+    width: min(100% - 40px, 760px);
+    margin: 34px auto;
+    padding: 22px 26px;
+    background: var(--premium-surface);
+    border-top: 1px solid var(--premium-border);
+    border-right: 1px solid var(--premium-border);
+    border-bottom: 1px solid var(--premium-border);
+    border-radius: 0 6px 6px 0;
+    color: #c8c8df;
+  }
+
+  .premium-failure-content :global(.callout-title) {
+    color: var(--premium-text);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  .premium-failure-content :global(.callout-content) {
+    color: #c8c8df;
+  }
+
+  .premium-failure-content :global(.callout-info) {
+    border-left-color: var(--premium-accent-4);
+  }
+
+  .premium-failure-content :global(.callout-warning) {
+    border-left-color: var(--premium-accent-2);
+  }
+
   .premium-failure-content :global(pre) {
     position: relative;
     margin-top: 34px;
@@ -976,23 +1042,7 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
     font-family: var(--font-mono);
     font-size: 0.88rem;
     line-height: 1.9;
-  }
-
-  .premium-failure-content :global(pre::before) {
-    content: 'Scenario';
-    position: absolute;
-    top: -1px;
-    left: 20px;
-    transform: translateY(-50%);
-    padding: 2px 10px;
-    background: var(--premium-code-bg);
-    border: 1px solid var(--premium-border);
-    border-radius: 2px;
-    color: var(--premium-accent);
-    font-family: var(--font-mono);
-    font-size: 0.63rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    overflow-x: auto;
   }
 
   .premium-failure-content :global(.scenario-box) {

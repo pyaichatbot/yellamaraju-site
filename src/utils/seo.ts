@@ -58,8 +58,8 @@ export function generateArticleSchema(
   post: CollectionEntry<'blog'>,
   canonicalURL: string
 ): StructuredData {
-  const imageUrl = post.data.image
-    ? new URL(post.data.image, SITE.url).toString()
+  const imageUrl = post.data.socialImage || post.data.image
+    ? new URL(post.data.socialImage || post.data.image || SITE.image, SITE.url).toString()
     : new URL(SITE.image, SITE.url).toString();
 
   const articleSchema: StructuredData = {
@@ -138,4 +138,3 @@ export function generateOrganizationSchema(): StructuredData {
     },
   };
 }
-
