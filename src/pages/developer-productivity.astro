@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
 
 // Tool cards data - each tool becomes a microsite
 const tools = [
@@ -50,6 +51,15 @@ const tools = [
     posture: 'Setup playbook: local, VPS, Railway, and DigitalOcean',
     status: 'live',
     icon: '🛡️'
+  },
+  {
+    name: 'subagent-evals',
+    slug: 'subagent-evals',
+    href: 'https://pyaichatbot.github.io/subagent-evals/',
+    tagline: 'Quality index for markdown AI agents',
+    posture: 'My open-source evaluator for linting, scoring, replay, and CI-style diffs across agent instructions',
+    status: 'live',
+    icon: '📏'
   }
 ];
 ---
@@ -59,16 +69,13 @@ const tools = [
   description="Tools, workflows, and patterns I actually use. A working notebook for senior devs - not tutorials, not docs, just what works."
 >
   <main class="dev-productivity-page">
+    <PageHero
+      kicker="Senior Dev Notes"
+      title="Developer Productivity"
+      description="Tools, workflows, and patterns I actually use. Not tutorials, not docs — what I'd tell a senior dev in 5 minutes before they start."
+    />
     <div class="container">
       <div class="wide-wrapper">
-        <header class="page-header">
-          <h1>Developer Productivity</h1>
-          <p class="tagline">Tools, workflows, and patterns I actually use</p>
-          <p class="description">
-            Not tutorials. Not docs. What I'd tell a senior dev in 5 minutes before they start using this.
-          </p>
-        </header>
-        
         <section class="tools-grid">
           {tools.map(tool => (
             <article class={`tool-card ${tool.status}`}>
@@ -80,7 +87,12 @@ const tools = [
               <p class="tool-tagline">{tool.tagline}</p>
               <p class="tool-posture">{tool.posture}</p>
               {tool.status === 'live' ? (
-                <a href={`/${tool.slug}`} class="tool-link">
+                <a
+                  href={tool.href ?? `/${tool.slug}`}
+                  class="tool-link"
+                  target={tool.href ? '_blank' : undefined}
+                  rel={tool.href ? 'noopener noreferrer' : undefined}
+                >
                   Explore
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -135,37 +147,14 @@ const tools = [
 
 <style>
   .dev-productivity-page {
-    padding: var(--space-xl) 0;
+    padding-bottom: var(--space-xl);
     min-height: 70vh;
   }
-  
-  .page-header {
-    text-align: center;
-    margin-bottom: var(--space-xl);
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
+
+  .wide-wrapper {
+    padding-top: var(--space-xl);
   }
-  
-  .page-header h1 {
-    font-size: 2.75rem;
-    margin-bottom: var(--space-sm);
-    color: var(--color-text);
-  }
-  
-  .tagline {
-    font-size: 1.25rem;
-    color: var(--color-accent);
-    font-weight: 500;
-    margin-bottom: var(--space-sm);
-  }
-  
-  .description {
-    font-size: 1.1rem;
-    line-height: 1.6;
-    color: var(--color-text-secondary);
-  }
-  
+
   /* Tools Grid */
   .tools-grid {
     display: grid;

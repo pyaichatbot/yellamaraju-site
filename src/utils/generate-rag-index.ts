@@ -12,10 +12,11 @@
  */
 
 import { getCollection } from 'astro:content';
-import { writeFile } from 'fs/promises';
+import { readdir, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import lunr from 'lunr';
 import { SITE } from '../config';
+import { isPublicPostData } from './helpers';
 
 // Token approximation: ~4 characters per token for English text
 const CHARS_PER_TOKEN = 4;
@@ -422,18 +423,27 @@ export async function generateRAGIndex(): Promise<void> {
   console.log('🔍 Generating per-post RAG indexes...');
   
   // Get all published blog posts
-  const posts = await getCollection('blog', ({ data }) => !data.draft && !data.hide);
+  const posts = await getCollection('blog', ({ data }) => isPublicPostData(data));
   
   console.log(`📝 Found ${posts.length} blog posts`);
   
-  // Create output directory
+  // Create output directories. Astro copies public/ before this endpoint runs during build,
+  // so keep dist/rag-index in sync when it already exists.
   const { mkdir } = await import('fs/promises');
-  const outputDir = join(process.cwd(), 'public', 'rag-index');
-  try {
-    await mkdir(outputDir, { recursive: true });
-  } catch (error) {
-    // Directory might already exist, that's fine
-  }
+  const publicOutputDir = join(process.cwd(), 'public', 'rag-index');
+  const distOutputDir = join(process.cwd(), 'dist', 'rag-index');
+  const outputDirs = [publicOutputDir, distOutputDir];
+
+  await Promise.all(outputDirs.map((dir) => mkdir(dir, { recursive: true }).catch(() => undefined)));
+
+  await Promise.all(outputDirs.map(async (dir) => {
+    const existingIndexFiles = await readdir(dir).catch(() => []);
+    await Promise.all(
+      existingIndexFiles
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => unlink(join(dir, file)).catch(() => undefined))
+    );
+  }));
   
   // Manifest to track all posts and their index files
   const manifest: {
@@ -478,9 +488,9 @@ export async function generateRAGIndex(): Promise<void> {
     
     // Write individual index file
     const indexFileName = `${postSlug}.json`;
-    const indexFilePath = join(outputDir, indexFileName);
+    const indexFilePath = join(publicOutputDir, indexFileName);
     const indexJson = JSON.stringify(ragIndex, null, 2);
-    await writeFile(indexFilePath, indexJson, 'utf-8');
+    await Promise.all(outputDirs.map((dir) => writeFile(join(dir, indexFileName), indexJson, 'utf-8')));
     
     // Calculate file size
     const { stat } = await import('fs/promises');
@@ -505,8 +515,9 @@ export async function generateRAGIndex(): Promise<void> {
   }
   
   // Write manifest file
-  const manifestPath = join(process.cwd(), 'public', 'rag-index', 'manifest.json');
-  await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  const manifestPath = join(publicOutputDir, 'manifest.json');
+  const manifestJson = JSON.stringify(manifest, null, 2);
+  await Promise.all(outputDirs.map((dir) => writeFile(join(dir, 'manifest.json'), manifestJson, 'utf-8')));
   
   console.log(`\n✅ Generated ${posts.length} per-post indexes`);
   console.log(`📦 Total chunks: ${totalChunks}`);

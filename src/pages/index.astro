@@ -3,36 +3,71 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import TagBadge from '../components/TagBadge.astro';
 import { getCollection } from 'astro:content';
-import { calculateReadingTime, sortPostsWithPinned, getUniqueTags } from '../utils/helpers';
+import { calculateReadingTime, getUniqueTags, isPublicPostData } from '../utils/helpers';
 
-const allPosts = await getCollection('blog', ({ data }) => !data.hide);
-const sortedPosts = sortPostsWithPinned(allPosts);
-// Show up to 3 posts: pinned posts first, then newest posts
-const featuredPosts = sortedPosts.slice(0, 3);
+const allPosts = await getCollection('blog', ({ data }) => isPublicPostData(data));
+const featuredPosts = allPosts
+  .filter((post) => post.data.pinned)
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 const popularTags = getUniqueTags(allPosts).slice(0, 8);
 ---
 
 <BaseLayout>
   <div class="home-page">
-    <section class="hero">
-      <div class="container">
+    <section class="hero" aria-labelledby="home-hero-title">
+      <div class="hero-backdrop" aria-hidden="true">
+        <div class="hero-grid-lines"></div>
+        <div class="hero-sweep"></div>
+      </div>
+      <div class="container hero-container">
         <div class="hero-content">
           <div class="hero-text animate-in">
-            <h1 class="hero-title">
-              Building Intelligent Systems<br />for Enterprise Scale
-            </h1>
+            <p class="hero-kicker">Praveen Srinag Yellamaraju</p>
+            <h1 id="home-hero-title" class="hero-title">Notes on building AI systems that hold up beyond the demo.</h1>
             <p class="hero-description">
-              AI Advisor with 17+ years of experience, specializing in architecting agentic AI systems, 
-              LLM-based solutions, and cloud-native architectures. Writing about the intersection of AI, 
-              enterprise systems, and practical implementation strategies.
+              I am an Acting AI Advisor and enterprise systems specialist with 17+ years of experience. This site is where I turn production lessons into field guides, eval patterns, agent architecture notes, and operating checklists for teams building AI systems that must survive real users.
             </p>
             <div class="hero-cta">
-              <a href="/blog" class="primary-button">Read the Blog</a>
-              <a href="/about" class="secondary-button">About Me</a>
+              <a href="/blog" class="primary-button">Start with the Field Guide</a>
+              <a href="/topics" class="secondary-button">Browse Topics</a>
+              <a href="/templates" class="secondary-button">Use Practitioner Assets</a>
+            </div>
+            <div class="hero-proof" aria-label="Experience and focus areas">
+              <span>
+                <strong>17+ yrs</strong>
+                <small>enterprise systems</small>
+              </span>
+              <span>
+                <strong>AI systems</strong>
+                <small>agent harnesses and evals</small>
+              </span>
+              <span>
+                <strong>Practical</strong>
+                <small>templates, maps, checklists</small>
+              </span>
             </div>
           </div>
-          <div class="hero-image animate-in animate-delay-1">
-            <img src="/images/praveen.jpg" alt="Praveen Srinag Yellamaraju" />
+          <div class="hero-visual animate-in animate-delay-1" aria-label="Praveen portrait with a production AI systems map">
+            <div class="portrait-shell">
+              <img src="/images/praveen.jpg" alt="Praveen Srinag Yellamaraju" />
+              <div class="portrait-caption">
+                <span>Acting AI Advisor</span>
+                <strong>Production AI systems, evals, and agent architecture</strong>
+              </div>
+            </div>
+            <div class="system-panel">
+              <p>Field guide map</p>
+              <ol>
+                <li><span>01</span> Define the task and risk</li>
+                <li><span>02</span> Build the harness</li>
+                <li><span>03</span> Measure behavior</li>
+                <li><span>04</span> Operate the loop</li>
+              </ol>
+            </div>
+            <div class="signal-card eval-card">
+              <span>Eval signal</span>
+              <strong>Drift caught before release</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -41,9 +76,9 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
     <section class="featured-posts">
       <div class="container">
         <div class="wide-wrapper">
-          <h2 class="section-title">Featured Writing</h2>
+          <h2 class="section-title">Start Here</h2>
           <div class="posts-grid">
-            {featuredPosts.map((post, index) => (
+            {featuredPosts.map((post, index) => post && (
               <div class={`animate-in animate-delay-${index + 1}`}>
                 <PostCard
                   title={post.data.title}
@@ -60,7 +95,7 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
             ))}
           </div>
           <div class="view-all">
-            <a href="/blog" class="text-link">View all posts →</a>
+            <a href="/blog" class="text-link">View all field notes →</a>
           </div>
         </div>
       </div>
@@ -69,8 +104,9 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
     <section class="topics">
       <div class="container">
         <div class="content-wrapper">
-          <h2 class="section-title">Topics I Write About</h2>
+          <h2 class="section-title">Field Guide Topics</h2>
           <div class="topics-grid">
+            <a href="/topics" class="topic-link">Curated Topic Hubs</a>
             {popularTags.map(tag => (
               <TagBadge tag={tag} />
             ))}
@@ -82,89 +118,312 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
 </BaseLayout>
 
 <style>
+  :global(.main-content:has(.home-page)) {
+    padding-top: 0;
+  }
+
   .home-page {
     padding-bottom: var(--space-xl);
   }
   
   /* Hero Section */
   .hero {
-    padding: var(--space-xl) 0;
-    margin-bottom: var(--space-xl);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    padding: clamp(3rem, 5vw, 5rem) 0 clamp(3.25rem, 5vw, 5rem);
+    margin-bottom: clamp(3rem, 6vw, 5rem);
+    background:
+      radial-gradient(circle at 70% 18%, rgba(227, 197, 125, 0.18), transparent 28%),
+      linear-gradient(135deg, #11100f 0%, #181716 48%, #090a0c 100%);
+    color: #f8f2e6;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(248, 242, 230, 0.32), transparent);
+    z-index: -1;
+  }
+
+  .hero-backdrop,
+  .hero-grid-lines,
+  .hero-sweep {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+  }
+
+  .hero-grid-lines {
+    opacity: 0.23;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(90deg, transparent, black 18%, black 82%, transparent);
+  }
+
+  .hero-sweep {
+    width: 38%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: skewX(-18deg) translateX(-140%);
+    animation: heroSweep 7s ease-in-out infinite;
+  }
+
+  .hero-container {
+    position: relative;
   }
   
   .hero-content {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: var(--space-lg);
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.82fr);
+    gap: clamp(2rem, 4vw, 4rem);
     align-items: center;
+  }
+
+  .hero-kicker {
+    color: #d8bd7a;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    margin: 0 0 var(--space-sm);
+    text-transform: uppercase;
   }
   
   .hero-title {
-    font-size: 3rem;
-    line-height: 1.1;
-    margin-bottom: var(--space-sm);
-    font-weight: 900;
+    color: #fffaf0;
+    font-family: var(--font-serif);
+    font-size: clamp(3rem, 4.75vw, 5.2rem);
+    line-height: 0.98;
+    margin-bottom: var(--space-md);
+    max-width: 820px;
+    font-weight: 800;
   }
   
   .hero-description {
-    font-size: 1.25rem;
-    line-height: 1.6;
-    color: var(--color-text-secondary);
-    margin-bottom: var(--space-md);
-    max-width: 600px;
+    font-size: clamp(1.05rem, 1.6vw, 1.28rem);
+    line-height: 1.7;
+    color: rgba(248, 242, 230, 0.76);
+    margin-bottom: var(--space-lg);
+    max-width: 720px;
   }
   
   .hero-cta {
     display: flex;
-    gap: var(--space-md);
+    gap: var(--space-sm);
     flex-wrap: wrap;
   }
   
   .primary-button {
-    display: inline-block;
-    padding: 0.875rem 2rem;
-    background: var(--color-accent);
-    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.9rem;
+    padding: 0.8rem 1.25rem;
+    background: #f8f2e6;
+    color: #11100f;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 999px;
     text-decoration: none;
     transition: all var(--transition-base);
   }
   
   .primary-button:hover {
-    background: var(--color-accent-hover);
+    background: #ffffff;
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
   }
   
   .secondary-button {
-    display: inline-block;
-    padding: 0.875rem 2rem;
-    border: 2px solid var(--color-accent);
-    color: var(--color-accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.9rem;
+    padding: 0.78rem 1.2rem;
+    border: 1px solid rgba(248, 242, 230, 0.24);
+    color: #f8f2e6;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 999px;
     text-decoration: none;
     transition: all var(--transition-base);
   }
   
   .secondary-button:hover {
-    background: var(--color-accent);
-    color: white;
+    background: rgba(248, 242, 230, 0.1);
+    border-color: rgba(248, 242, 230, 0.5);
     transform: translateY(-2px);
   }
   
-  .hero-image {
+  .hero-proof {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    max-width: 720px;
+    margin-top: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid rgba(248, 242, 230, 0.16);
+    background: rgba(248, 242, 230, 0.08);
+  }
+
+  .hero-proof span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 1rem;
+    background: rgba(17, 16, 15, 0.72);
+  }
+
+  .hero-proof strong {
+    color: #fffaf0;
+    font-size: 1rem;
+  }
+
+  .hero-proof small {
+    color: rgba(248, 242, 230, 0.62);
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .hero-visual {
     position: relative;
+    min-height: 500px;
+  }
+
+  .portrait-shell {
+    position: absolute;
+    top: 4%;
+    right: 0;
+    width: min(50%, 280px);
+    padding: 0.55rem;
+    border: 1px solid rgba(248, 242, 230, 0.2);
+    background: rgba(248, 242, 230, 0.08);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.32);
+    animation: floatPanel 8s ease-in-out infinite;
+    z-index: 3;
   }
   
-  .hero-image img {
+  .portrait-shell img {
     width: 100%;
-    max-width: 320px;
-    height: auto;
-    border-radius: 12px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    margin-left: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.88) contrast(1.05);
+  }
+
+  .portrait-caption {
+    padding: 0.8rem 0.7rem 0.35rem;
+  }
+
+  .portrait-caption span,
+  .system-panel p,
+  .signal-card span {
+    display: block;
+    color: #d8bd7a;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .portrait-caption strong {
+    display: block;
+    color: #fffaf0;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    margin-top: 0.3rem;
+  }
+
+  .system-panel {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: min(64%, 360px);
+    padding: 1.1rem;
+    border: 1px solid rgba(248, 242, 230, 0.18);
+    background: rgba(12, 12, 12, 0.72);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.26);
+    z-index: 1;
+  }
+
+  .system-panel ol {
+    display: grid;
+    gap: 0.7rem;
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+  }
+
+  .system-panel li {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    color: rgba(248, 242, 230, 0.82);
+    font-size: 0.95rem;
+  }
+
+  .system-panel li span {
+    display: inline-grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 1px solid rgba(216, 189, 122, 0.4);
+    color: #d8bd7a;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .signal-card {
+    position: absolute;
+    width: min(46%, 240px);
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(248, 242, 230, 0.16);
+    background: rgba(248, 242, 230, 0.08);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    z-index: 2;
+  }
+
+  .signal-card strong {
+    display: block;
+    color: #fffaf0;
+    font-size: 0.95rem;
+    line-height: 1.3;
+    margin-top: 0.32rem;
+  }
+
+  .eval-card {
+    top: 0;
+    left: 0;
+    animation: floatPanel 9s ease-in-out infinite reverse;
+  }
+
+  @keyframes heroSweep {
+    0%, 35% {
+      transform: skewX(-18deg) translateX(-140%);
+      opacity: 0;
+    }
+    48% {
+      opacity: 1;
+    }
+    70%, 100% {
+      transform: skewX(-18deg) translateX(310%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes floatPanel {
+    0%, 100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -10px, 0);
+    }
   }
   
   /* Featured Posts */
@@ -215,6 +474,25 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
     gap: var(--space-sm);
     justify-content: center;
   }
+
+  .topic-link {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    color: white;
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all var(--transition-fast);
+  }
+
+  .topic-link:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    transform: translateY(-1px);
+  }
   
   /* Responsive */
   @media (max-width: 1024px) {
@@ -223,23 +501,77 @@ const popularTags = getUniqueTags(allPosts).slice(0, 8);
       gap: var(--space-lg);
     }
     
-    .hero-image img {
-      max-width: 280px;
-      margin: 0 auto;
+    .hero-visual {
+      min-height: 480px;
+      max-width: 640px;
     }
   }
   
   @media (max-width: 768px) {
     .hero-title {
-      font-size: 2rem;
+      font-size: clamp(2.6rem, 12vw, 4rem);
     }
     
     .hero-description {
       font-size: 1.1rem;
     }
+
+    .hero-proof {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-visual {
+      min-height: 520px;
+    }
+
+    .portrait-shell {
+      right: 0;
+      width: min(72%, 280px);
+    }
+
+    .system-panel {
+      width: min(88%, 380px);
+    }
+
+    .signal-card {
+      width: min(62%, 250px);
+    }
     
     .section-title {
       font-size: 1.5rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .hero {
+      padding-top: 3.25rem;
+    }
+
+    .hero-cta {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .primary-button,
+    .secondary-button {
+      width: 100%;
+    }
+
+    .hero-visual {
+      min-height: 560px;
+    }
+
+    .eval-card {
+      left: 0;
+    }
+
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-sweep,
+    .portrait-shell,
+    .eval-card {
+      animation: none;
     }
   }
 </style>

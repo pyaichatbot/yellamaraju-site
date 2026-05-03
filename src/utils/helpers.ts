@@ -66,3 +66,12 @@ export function filterPostsByTag(posts: any[], tag: string): any[] {
     post.data.tags?.map((t: string) => t.toLowerCase()).includes(tag.toLowerCase())
   );
 }
+
+// Shared visibility rule for public blog surfaces
+export function isPublicPostData(data: { draft?: boolean; hide?: boolean }): boolean {
+  return !data.draft && !data.hide;
+}
+
+export function isPublicPost(post: { data: { draft?: boolean; hide?: boolean } }): boolean {
+  return isPublicPostData(post.data);
+}

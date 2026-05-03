@@ -4,39 +4,32 @@ import PostCard from '../../components/PostCard.astro';
 import TagBadge from '../../components/TagBadge.astro';
 import SearchInput from '../../components/SearchInput.astro';
 import NewsletterSignup from '../../components/NewsletterSignup.astro';
+import PageHero from '../../components/PageHero.astro';
 import { getCollection } from 'astro:content';
-import { calculateReadingTime, sortPostsByDate, getUniqueTags } from '../../utils/helpers';
+import { calculateReadingTime, sortPostsByDate, getUniqueTags, isPublicPostData } from '../../utils/helpers';
 
-const allPosts = await getCollection('blog', ({ data }) => !data.hide);
+const allPosts = await getCollection('blog', ({ data }) => isPublicPostData(data));
 const sortedPosts = sortPostsByDate(allPosts);
 const allTags = getUniqueTags(allPosts);
 ---
 
-<BaseLayout title="Blog" description="Insights on AI/ML, agentic systems, prompt engineering, and building intelligent enterprise solutions.">
+<BaseLayout
+  title="Production AI Systems Field Guide"
+  description="A production AI systems field guide for practitioners: architecture decisions, eval design, agent reliability, failure modes, and operational guardrails."
+>
   <div class="blog-page">
+    <PageHero
+      kicker="Field Guide"
+      title="Production AI Systems Field Guide"
+      description="Practical notes for building, evaluating, and operating AI systems beyond demos."
+    />
     <div class="container">
       <div class="wide-wrapper">
-        <header class="page-header">
-          <h1>Blog</h1>
-          <p class="page-description">
-            Thoughts on building intelligent systems, AI architecture, and the future of enterprise technology.
-          </p>
-        </header>
-
-        <section class="newsletter-band" aria-label="Newsletter signup">
-          <div class="newsletter-band-content">
-            <p class="newsletter-kicker">Stay in the loop</p>
-            <h2>Subscribe for AI notes, tools, and new posts</h2>
-            <NewsletterSignup
-              compact={true}
-              source="blog-index"
-              title=""
-              description=""
-              showPrivacyNote={true}
-              showPoweredBy={false}
-            />
-          </div>
-        </section>
+        <NewsletterSignup
+          source="blog-index"
+          compact={true}
+          showPrivacyNote={true}
+        />
         
         <div class="search-section">
           <SearchInput />
@@ -75,79 +68,17 @@ const allTags = getUniqueTags(allPosts);
 
 <style>
   .blog-page {
-    padding: var(--space-lg) 0 var(--space-xl);
+    padding-bottom: var(--space-xl);
   }
-  
-  .page-header {
-    text-align: center;
-    margin-bottom: var(--space-xl);
-    padding-bottom: var(--space-lg);
-    border-bottom: 1px solid var(--color-border);
+
+  .wide-wrapper {
+    padding-top: var(--space-lg);
   }
-  
-  .page-header h1 {
-    font-size: 3rem;
-    margin-bottom: var(--space-xs);
-  }
-  
-  .page-description {
-    font-size: 1.25rem;
-    color: var(--color-text-secondary);
-    max-width: 600px;
-    margin: 0 auto;
-  }
-  
+
   .search-section {
     margin-bottom: var(--space-lg);
-    padding: 0 var(--space-md);
   }
 
-  .newsletter-band {
-    margin-bottom: var(--space-lg);
-    padding: var(--space-md);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background:
-      radial-gradient(circle at top right, rgba(37, 99, 235, 0.14), transparent 42%),
-      linear-gradient(145deg, var(--color-surface), var(--color-code-bg));
-  }
-
-  .newsletter-band-content {
-    max-width: 760px;
-    margin: 0 auto;
-    text-align: center;
-  }
-
-  .newsletter-kicker {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.78rem;
-    color: var(--color-accent);
-    font-weight: 700;
-  }
-
-  .newsletter-band h2 {
-    margin-top: var(--space-xs);
-    margin-bottom: 0.35rem;
-    font-size: 1.2rem;
-    line-height: 1.3;
-  }
-
-  .newsletter-band :global(.newsletter-signup.compact) {
-    margin-top: 0.35rem;
-    padding: 0;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .newsletter-band :global(.privacy-note) {
-    margin-top: 0.35rem;
-    font-size: 0.76rem;
-    line-height: 1.35;
-  }
-  
   .filters {
     margin-bottom: var(--space-lg);
   }
@@ -198,14 +129,6 @@ const allTags = getUniqueTags(allPosts);
   }
   
   @media (max-width: 768px) {
-    .page-header h1 {
-      font-size: 2rem;
-    }
-    
-    .page-description {
-      font-size: 1.1rem;
-    }
-
     .newsletter-band {
       padding: 0.85rem;
     }

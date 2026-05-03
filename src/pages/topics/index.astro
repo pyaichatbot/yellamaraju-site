@@ -1,0 +1,56 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TopicHubCard from '../../components/TopicHubCard.astro';
+import PageHero from '../../components/PageHero.astro';
+import { topicHubs } from '../../data/topic-hubs';
+---
+
+<BaseLayout
+  title="Production AI Topic Hubs"
+  description="Curated field guides for production LLM systems, agentic AI, evaluation, reliability, security, and AI-assisted engineering."
+>
+  <div class="topics-page">
+    <PageHero
+      kicker="Production AI Field Guide"
+      title="Topic hubs for building AI systems that survive contact with production"
+      description="Curated reading paths across agent harnesses, LLM APIs, evals, reliability, security, and AI-assisted engineering."
+    />
+    <div class="container">
+      <div class="wide-wrapper">
+        <div class="topic-grid">
+          {topicHubs.map((hub) => (
+            <TopicHubCard
+              slug={hub.slug}
+              title={hub.title}
+              description={hub.description}
+              postCount={hub.posts.length}
+              templateCount={hub.templates?.length}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .topics-page {
+    padding-bottom: var(--space-xl);
+  }
+
+  .wide-wrapper {
+    padding-top: var(--space-xl);
+  }
+
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-md);
+  }
+
+  @media (max-width: 760px) {
+    .topic-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

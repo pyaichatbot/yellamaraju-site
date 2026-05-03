@@ -17,6 +17,9 @@ interface Props {
   tags: string[];
   image?: string;
   socialImage?: string;
+  socialImageWidth?: number;
+  socialImageHeight?: number;
+  socialImageType?: string;
   readingTime: string;
   series?: string;
   seriesPart?: number;
@@ -36,6 +39,9 @@ const {
   tags,
   image,
   socialImage,
+  socialImageWidth,
+  socialImageHeight,
+  socialImageType,
   readingTime,
   series,
   seriesPart,
@@ -60,6 +66,7 @@ const premiumStyle = [
 ].filter(Boolean).join('; ');
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
+const modifiedDate = post?.data.dateModified ?? date;
 
 // Generate structured data
 let articleSchema = null;
@@ -86,9 +93,12 @@ const keywords = tags && tags.length > 0 ? tags.join(', ') : undefined;
   description={description}
   image={image}
   socialImage={socialImage}
+  socialImageWidth={socialImageWidth}
+  socialImageHeight={socialImageHeight}
+  socialImageType={socialImageType}
   article={true}
   publishedTime={date.toISOString()}
-  modifiedTime={date.toISOString()}
+  modifiedTime={modifiedDate.toISOString()}
   keywords={keywords}
   noindex={post?.data.hide ?? false}
 >

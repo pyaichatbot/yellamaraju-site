@@ -42,7 +42,7 @@ export function generatePersonSchema(): StructuredData {
     name: SITE.author,
     url: SITE.url,
     image: new URL(SITE.image, SITE.url).toString(),
-    jobTitle: 'AI Advisor',
+    jobTitle: 'Acting AI Advisor',
     description: SITE.description,
     sameAs: [
       SITE.twitter ? `https://twitter.com/${SITE.twitter.replace('@', '')}` : null,
@@ -62,18 +62,27 @@ export function generateArticleSchema(
     ? new URL(post.data.socialImage || post.data.image || SITE.image, SITE.url).toString()
     : new URL(SITE.image, SITE.url).toString();
 
+  const image = post.data.socialImageWidth && post.data.socialImageHeight
+    ? {
+        '@type': 'ImageObject',
+        url: imageUrl,
+        width: post.data.socialImageWidth,
+        height: post.data.socialImageHeight,
+      }
+    : imageUrl;
+
   const articleSchema: StructuredData = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: post.data.title,
     description: post.data.description,
-    image: imageUrl,
+    image,
     datePublished: post.data.date.toISOString(),
-    dateModified: post.data.date.toISOString(),
+    dateModified: (post.data.dateModified ?? post.data.date).toISOString(),
     author: {
       '@type': 'Person',
       name: SITE.author,
-      url: SITE.url,
+      url: new URL('/about/', SITE.url).toString(),
     },
     publisher: {
       '@type': 'Person',

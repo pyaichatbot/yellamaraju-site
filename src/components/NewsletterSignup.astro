@@ -5,158 +5,115 @@ interface Props {
   title?: string;
   description?: string;
   compact?: boolean;
-  source?: string;
   showPrivacyNote?: boolean;
-  showPoweredBy?: boolean;
+  source?: string;
 }
 
 const {
-  title = 'Subscribe to the Newsletter',
-  description = 'Get notified when I publish new articles on AI, architecture, and building intelligent systems.',
+  title = '',
+  description = '',
   compact = false,
-  source = 'site',
   showPrivacyNote = true,
-  showPoweredBy = true,
+  source = 'site',
 } = Astro.props;
 
 const isConfigured = SITE.newsletter.enabled;
-const provider = SITE.newsletter.provider;
-const buttondownUsername = SITE.newsletter.username;
-
-const formAction =
-  provider === 'buttondown' && buttondownUsername
-    ? `https://buttondown.com/api/emails/embed-subscribe/${buttondownUsername}`
-    : '';
+const formId = SITE.newsletter.formId;
 ---
 
 <section class={`newsletter-signup ${compact ? 'compact' : ''}`} aria-label="Newsletter signup">
-  {title?.trim() && <h3>{title}</h3>}
-  {description?.trim() && <p>{description}</p>}
+  <div class="signup-grid-texture" aria-hidden="true"></div>
 
-  {isConfigured && formAction ? (
-    <>
-      <form
-        action={formAction}
-        method="post"
-        class="newsletter-form embeddable-buttondown-form"
-      >
-        <label for={`newsletter-email-${source}`} class="email-label">Enter your email</label>
-        <input
-          id={`newsletter-email-${source}`}
-          class="email-input"
-          type="email"
-          name="email"
-          placeholder="you@company.com"
-          autocomplete="email"
-          required
-          aria-required="true"
-        />
-        <input type="hidden" name="embed" value="1" />
-        <input type="hidden" name="tag" value={source} />
-        <button type="submit" class="submit-button">Subscribe</button>
-      </form>
-      {showPoweredBy && (
-        <p class="powered-by">
-          <a href={`https://buttondown.com/refer/${buttondownUsername}`} target="_blank" rel="noopener noreferrer">
-            Powered by Buttondown.
-          </a>
-        </p>
-      )}
-    </>
-  ) : (
-    <div class="newsletter-fallback">
-      <p class="status-message">
-        Newsletter signup is not configured yet. Follow via <a href="/blog/rss.xml">RSS</a> in the meantime.
-      </p>
-      <a href="/contact" class="fallback-link">Contact me for updates</a>
+  {(title?.trim() || description?.trim()) && (
+    <div class="signup-header">
+      {title?.trim() && <h3 class="signup-title">{title}</h3>}
+      {description?.trim() && <p class="signup-description">{description}</p>}
     </div>
   )}
 
+  <div class="signup-body">
+    {isConfigured && formId ? (
+      <div class="beehiiv-embed">
+        <script
+          async
+          src="https://subscribe-forms.beehiiv.com/v3/loader.js"
+          data-beehiiv-form={formId}
+        />
+      </div>
+    ) : (
+      <div class="newsletter-fallback">
+        <p class="fallback-message">
+          Follow via <a href="/blog/rss.xml">RSS</a> while newsletter setup is in progress.
+        </p>
+        <a href="/contact" class="fallback-link">Get in touch for updates</a>
+      </div>
+    )}
+  </div>
+
   {showPrivacyNote && (
     <p class="privacy-note">
-      No spam. Unsubscribe anytime. Read the <a href="/privacy">privacy policy</a>.
+      No spam. Unsubscribe anytime.{' '}
+      <a href="/privacy">Privacy policy</a>.
     </p>
   )}
 </section>
 
 <style>
   .newsletter-signup {
+    position: relative;
     margin-top: var(--space-xl);
     padding: var(--space-lg);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
+    background: linear-gradient(135deg, #11100f 0%, #181716 48%, #090a0c 100%);
+    border: 1px solid rgba(216, 189, 122, 0.18);
+    border-radius: 12px;
+    overflow: hidden;
     text-align: center;
   }
 
   .newsletter-signup.compact {
     margin-top: var(--space-md);
-    padding: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
   }
 
-  .newsletter-signup h3 {
-    margin-bottom: var(--space-sm);
-    color: var(--color-text);
+  /* Subtle grid texture matching the hero */
+  .signup-grid-texture {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.025) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.025) 40px);
+    pointer-events: none;
   }
 
-  .newsletter-signup > p {
-    color: var(--color-text-secondary);
+  .signup-header {
+    position: relative;
     margin-bottom: var(--space-md);
   }
 
-  .newsletter-form {
-    max-width: 460px;
+  .signup-title {
+    color: #fffaf0;
+    font-size: clamp(1.1rem, 2vw, 1.35rem);
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .signup-description {
+    color: rgba(248, 242, 230, 0.68);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+    max-width: 44ch;
+    margin-inline: auto;
+  }
+
+  .signup-body {
+    position: relative;
+  }
+
+  .beehiiv-embed {
+    max-width: 540px;
     margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-    align-items: stretch;
-    justify-content: center;
-  }
-
-  .email-label {
-    width: 100%;
-    text-align: left;
-    font-size: 0.9rem;
-    color: var(--color-text-secondary);
-  }
-
-  .email-input {
-    flex: 1;
-    min-width: 0;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    color: var(--color-text);
-    background: var(--color-bg);
-    font-family: var(--font-sans);
-    font-size: 1rem;
-  }
-
-  .email-input:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-  }
-
-  .submit-button,
-  .fallback-link {
-    display: inline-block;
-    padding: 0.75rem 1.25rem;
-    border: none;
-    border-radius: 6px;
-    background: var(--color-accent);
-    color: white;
-    text-decoration: none;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-base);
-  }
-
-  .submit-button:hover,
-  .fallback-link:hover {
-    background: var(--color-accent-hover);
-    transform: translateY(-1px);
   }
 
   .newsletter-fallback {
@@ -166,41 +123,54 @@ const formAction =
     gap: var(--space-sm);
   }
 
-  .status-message {
+  .fallback-message {
     margin: 0;
-    color: var(--color-text-secondary);
+    color: rgba(248, 242, 230, 0.68);
+    font-size: 0.95rem;
+  }
+
+  .fallback-message a {
+    color: #d8bd7a;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .fallback-link {
+    display: inline-block;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid rgba(216, 189, 122, 0.35);
+    border-radius: 6px;
+    background: transparent;
+    color: #d8bd7a;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+  }
+
+  .fallback-link:hover {
+    background: rgba(216, 189, 122, 0.1);
+    border-color: rgba(216, 189, 122, 0.6);
   }
 
   .privacy-note {
+    position: relative;
     margin-top: var(--space-sm);
     margin-bottom: 0;
-    font-size: 0.875rem;
-    color: var(--color-text-tertiary);
+    font-size: 0.78rem;
+    color: rgba(248, 242, 230, 0.38);
+    letter-spacing: 0.01em;
   }
 
-  .powered-by {
-    margin-top: var(--space-sm);
-    margin-bottom: 0;
-    font-size: 0.8rem;
-    color: var(--color-text-tertiary);
+  .privacy-note a {
+    color: rgba(216, 189, 122, 0.6);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(216, 189, 122, 0.25);
+    transition: color var(--transition-fast);
   }
 
-  .privacy-note a,
-  .status-message a {
-    color: var(--color-accent);
-  }
-
-  @media (max-width: 768px) {
-    .newsletter-form {
-      flex-direction: column;
-    }
-
-    .email-label {
-      text-align: center;
-    }
-
-    .submit-button {
-      width: 100%;
-    }
+  .privacy-note a:hover {
+    color: rgba(216, 189, 122, 0.9);
   }
 </style>

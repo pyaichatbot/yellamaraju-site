@@ -5,6 +5,7 @@ import { join } from 'path';
 import { marked } from 'marked';
 import { getTemplateBySlug, getCategoryById, categories } from '../../../data/templates';
 import { getCollection } from 'astro:content';
+import { isPublicPostData } from '../../../utils/helpers';
 
 export async function getStaticPaths() {
   const paths = [];
@@ -64,7 +65,7 @@ try {
 // Get related blog post if available
 let relatedBlogPost = null;
 if (template.relatedBlogPost) {
-  const blogPosts = await getCollection('blog', ({ data }) => !data.draft && !data.hide);
+  const blogPosts = await getCollection('blog', ({ data }) => isPublicPostData(data));
   relatedBlogPost = blogPosts.find(p => p.slug === template.relatedBlogPost);
 }
 ---
@@ -304,4 +305,3 @@ if (template.relatedBlogPost) {
     }
   }
 </style>
-

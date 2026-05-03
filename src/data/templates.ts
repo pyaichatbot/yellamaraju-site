@@ -26,6 +26,11 @@ export const categories: TemplateCategory[] = [
     name: 'Ralph Wiggum',
     description: 'Production-ready templates, checklists, and guides for implementing autonomous AI coding with Ralph Wiggum loops.',
   },
+  {
+    id: 'production-ai-systems',
+    name: 'Production AI Systems',
+    description: 'Operating checklists, eval plans, and readiness reviews for AI systems that need to survive real users.',
+  },
 ];
 
 export const templates: Template[] = [
@@ -107,6 +112,25 @@ export const templates: Template[] = [
     relatedBlogPost: 'how-ralph-wiggum-became-biggest-name-in-ai',
     tags: ['implementation', 'skills', 'tutorial'],
   },
+  // Production AI Systems Templates
+  {
+    slug: 'production-ai-readiness-review',
+    title: 'Production AI Readiness Review',
+    description: 'A practical readiness review for AI systems before they reach real users, covering ownership, evals, fallback paths, cost, and observability.',
+    category: 'production-ai-systems',
+    relatedBlogPost: 'why-ai-systems-quietly-degrade',
+    tags: ['production-ai', 'readiness', 'reliability'],
+    featured: true,
+  },
+  {
+    slug: 'agent-harness-eval-plan',
+    title: 'Agent Harness Eval Plan',
+    description: 'A worksheet for defining tool boundaries, failure cases, regression datasets, escalation paths, and release gates for AI agents.',
+    category: 'production-ai-systems',
+    relatedBlogPost: 'agent-harness-explained-missing-layer-ai-systems',
+    tags: ['agents', 'evaluation', 'harness'],
+    featured: true,
+  },
 ];
 
 export function getTemplatesByCategory(categoryId: string): Template[] {
@@ -128,4 +152,3 @@ export function getAllCategories(): TemplateCategory[] {
 export function getFeaturedTemplates(): Template[] {
   return templates.filter(t => t.featured);
 }
-

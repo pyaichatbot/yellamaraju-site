@@ -1,0 +1,89 @@
+---
+interface Props {
+  kicker?: string;
+  title: string;
+  description?: string;
+}
+const { kicker, title, description } = Astro.props;
+---
+
+<section class="page-hero">
+  <div class="hero-grid-bg" aria-hidden="true"></div>
+  <div class="container">
+    <div class="page-hero-inner">
+      {kicker && <p class="page-hero-kicker">{kicker}</p>}
+      <h1 class="page-hero-title">{title}</h1>
+      {description && <p class="page-hero-description">{description}</p>}
+      <slot />
+    </div>
+  </div>
+</section>
+
+<style>
+  :global(.main-content:has(.page-hero)) {
+    padding-top: 0;
+  }
+
+  .page-hero {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    padding: clamp(2.5rem, 4.5vw, 4.5rem) 0;
+    background:
+      radial-gradient(circle at 70% 18%, rgba(227, 197, 125, 0.14), transparent 28%),
+      linear-gradient(135deg, #11100f 0%, #181716 48%, #090a0c 100%);
+    color: #f8f2e6;
+  }
+
+  .hero-grid-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.18;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(90deg, transparent, black 18%, black 82%, transparent);
+  }
+
+  .page-hero::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(248, 242, 230, 0.28), transparent);
+    pointer-events: none;
+  }
+
+  .page-hero-inner {
+    max-width: 860px;
+  }
+
+  .page-hero-kicker {
+    color: #d8bd7a;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin: 0 0 var(--space-sm);
+  }
+
+  .page-hero-title {
+    color: #fffaf0;
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 3.8vw, 3.4rem);
+    line-height: 1.06;
+    font-weight: 800;
+    margin: 0 0 var(--space-sm);
+  }
+
+  .page-hero-description {
+    color: rgba(248, 242, 230, 0.72);
+    font-size: clamp(1rem, 1.4vw, 1.15rem);
+    line-height: 1.65;
+    max-width: 680px;
+    margin: 0;
+  }
+</style>

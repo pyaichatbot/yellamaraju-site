@@ -4,10 +4,10 @@ import PostCard from '../../components/PostCard.astro';
 import TagBadge from '../../components/TagBadge.astro';
 import SearchInput from '../../components/SearchInput.astro';
 import { getCollection } from 'astro:content';
-import { calculateReadingTime, sortPostsByDate, getUniqueTags, filterPostsByTag } from '../../utils/helpers';
+import { calculateReadingTime, sortPostsByDate, getUniqueTags, filterPostsByTag, isPublicPostData } from '../../utils/helpers';
 
 export async function getStaticPaths() {
-  const allPosts = await getCollection('blog', ({ data }) => !data.draft && !data.hide);
+  const allPosts = await getCollection('blog', ({ data }) => isPublicPostData(data));
   const uniqueTags = getUniqueTags(allPosts);
   
   return uniqueTags.map(tag => {
@@ -20,7 +20,7 @@ export async function getStaticPaths() {
 }
 
 const { tag, posts } = Astro.props;
-const allPosts = await getCollection('blog', ({ data }) => !data.draft && !data.hide);
+const allPosts = await getCollection('blog', ({ data }) => isPublicPostData(data));
 const allTags = getUniqueTags(allPosts);
 ---
 

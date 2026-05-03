@@ -1,7 +1,7 @@
 /// <reference path="../.astro/types.d.ts" />
 
 interface ImportMetaEnv {
-  readonly PUBLIC_BUTTONDOWN_USERNAME?: string;
+  readonly PUBLIC_BEEHIIV_FORM_ID?: string;
 }
 
 interface ImportMeta {

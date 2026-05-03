@@ -2,6 +2,7 @@ import { getCollection } from 'astro:content';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { templates } from '../data/templates';
+import { isPublicPostData } from './helpers';
 
 export interface SearchIndexItem {
   title: string;
@@ -19,7 +20,7 @@ export async function generateSearchIndex(): Promise<SearchIndexItem[]> {
   const items: SearchIndexItem[] = [];
   
   // Add blog posts
-  const blogPosts = await getCollection('blog', ({ data }) => !data.draft && !data.hide);
+  const blogPosts = await getCollection('blog', ({ data }) => isPublicPostData(data));
   
   for (const post of blogPosts) {
     // Extract text content from MDX (remove markdown syntax)
@@ -82,4 +83,3 @@ export async function generateSearchIndex(): Promise<SearchIndexItem[]> {
   
   return items;
 }
-

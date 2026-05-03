@@ -30,7 +30,7 @@ This guide outlines the SEO implementation and best practices for improving sear
 ### Content Strategy
 
 #### 1. Keyword Research & Optimization
-- **Primary Keywords**: Focus on "AI advisor", "enterprise AI", "LLM architecture", "agentic AI systems"
+- **Primary Keywords**: Focus on "Acting AI advisor", "enterprise AI", "LLM architecture", "agentic AI systems"
 - **Long-tail Keywords**: Target specific queries like "how to build production LLM systems", "enterprise AI architecture patterns"
 - **Content Gaps**: Identify topics competitors cover that you don't
 - **Tools**: Use Google Keyword Planner, Ahrefs, or SEMrush

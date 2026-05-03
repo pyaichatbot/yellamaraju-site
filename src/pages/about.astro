@@ -1,20 +1,24 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BlogDisclaimer from '../components/BlogDisclaimer.astro';
+import PageHero from '../components/PageHero.astro';
 ---
 
-<BaseLayout title="About" description="Learn about Praveen Srinag Yellamaraju - AI Advisor and enterprise systems specialist.">
+<BaseLayout title="About" description="Learn about Praveen Srinag Yellamaraju - Acting AI Advisor and enterprise systems specialist.">
   <div class="about-page">
+    <PageHero
+      kicker="Acting AI Advisor & Enterprise Systems"
+      title="About Me"
+      description="Acting AI Advisor focused on agent architecture, evals, and the operational side of production AI systems."
+    />
     <div class="container">
       <div class="content-wrapper">
         <article class="prose">
-          <h1>About Me</h1>
-          
           <div class="intro-section">
             <img src="/images/praveen.jpg" alt="Praveen Srinag Yellamaraju" class="profile-image" />
             <div class="intro-text">
               <p class="lead">
-                I'm an AI Advisor and enterprise systems specialist with 17+ years of experience 
+                I'm an Acting AI Advisor and enterprise systems specialist with 17+ years of experience 
                 building intelligent, scalable solutions. In my current role, I perform architecture 
                 and design responsibilities for AI systems.
               </p>
@@ -23,7 +27,7 @@ import BlogDisclaimer from '../components/BlogDisclaimer.astro';
           
           <h2>What I Do</h2>
           <p>
-            In my role as an AI Advisor, I specialize in designing and implementing AI-powered systems 
+            In my role as an Acting AI Advisor, I specialize in designing and implementing AI-powered systems 
             for enterprise environments. My responsibilities include architecting solutions for agentic AI, 
             multi-agent orchestration, RAG systems, and LLM-based applications using platforms like OpenAI, 
             Anthropic Claude, and Google ADK.
@@ -34,6 +38,15 @@ import BlogDisclaimer from '../components/BlogDisclaimer.astro';
             Confluence, ServiceNow, and various database systems. Through my work, I've designed and 
             architected production-ready solutions including automated code reviewers, change request creators, 
             and intelligent chatbots that enhance developer productivity and operational efficiency.
+          </p>
+
+          <h2>Projects</h2>
+          <p>
+            I also build public tools around the same problems I write about. One of them is
+            <a href="https://pyaichatbot.github.io/subagent-evals/" target="_blank" rel="noopener noreferrer">subagent-evals</a>,
+            an open-source quality index for markdown-defined AI agents. It lint-checks, scores, and
+            replays agent instructions across tools like Claude Code, Codex, GitHub Copilot, Cursor,
+            and Windsurf, with CI-style feedback for teams treating agents as maintained engineering assets.
           </p>
           
           <h2>Knowledge Sharing</h2>
@@ -94,7 +107,7 @@ import BlogDisclaimer from '../components/BlogDisclaimer.astro';
 
 <style>
   .about-page {
-    padding: var(--space-lg) 0;
+    padding-bottom: var(--space-lg);
   }
   
   .prose {
