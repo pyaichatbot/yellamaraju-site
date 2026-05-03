@@ -39,6 +39,12 @@ const formId = SITE.newsletter.formId;
           src="https://subscribe-forms.beehiiv.com/v3/loader.js"
           data-beehiiv-form={formId}
         />
+        <noscript>
+          <p class="fallback-message">
+            JavaScript is required for the newsletter form. You can still follow via
+            <a href="/blog/rss.xml">RSS</a>.
+          </p>
+        </noscript>
       </div>
     ) : (
       <div class="newsletter-fallback">
