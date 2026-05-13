@@ -42,3 +42,9 @@ Thumbs.db
 
 docs/superpowers
 .venv
+
+research-notes/
+self-healing-rag/
+
+
+.state/

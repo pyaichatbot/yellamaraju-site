@@ -131,6 +131,14 @@ export const templates: Template[] = [
     tags: ['agents', 'evaluation', 'harness'],
     featured: true,
   },
+  {
+    slug: 'eu-ai-act-assessment-notebook',
+    title: 'EU AI Act Assessment Notebook',
+    description: 'Enterprise-ready worksheet for classifying AI systems, mapping EU AI Act obligations, and tracking risk, data governance, oversight, and monitoring evidence.',
+    category: 'production-ai-systems',
+    tags: ['compliance', 'governance', 'risk-management'],
+    featured: true,
+  },
 ];
 
 export function getTemplatesByCategory(categoryId: string): Template[] {
