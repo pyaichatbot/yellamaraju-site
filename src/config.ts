@@ -17,6 +17,7 @@ export const SITE = {
 export const NAV_ITEMS = [
   { label: 'Home', href: '/' },
   { label: 'Field Guide', href: '/blog' },
+  { label: 'Tutorials', href: '/tutorials' },
   { label: 'Topics', href: '/topics' },
   { label: 'Developer Productivity', href: '/developer-productivity' },
   { 
