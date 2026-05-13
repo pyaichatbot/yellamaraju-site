@@ -1,0 +1,62 @@
+---
+interface Props {
+  module: number;
+  totalModules: number;
+  level: 'beginner' | 'intermediate' | 'advanced';
+  trackTitle: string;
+}
+
+const { module, totalModules, level, trackTitle } = Astro.props;
+const percent = Math.round((module / totalModules) * 100);
+
+const levelColors = {
+  beginner: 'var(--tut-beginner)',
+  intermediate: 'var(--tut-intermediate)',
+  advanced: 'var(--tut-advanced)',
+};
+---
+
+<div class="tutorial-progress" aria-label={`Tutorial ${module} of ${totalModules}`}>
+  <div class="progress-meta">
+    <span class="progress-track">{trackTitle}</span>
+    <span class="progress-count">Module {module} / {totalModules}</span>
+  </div>
+  <div class="progress-bar-wrapper" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+    <div
+      class="progress-bar-fill"
+      style={`width: ${percent}%; background: ${levelColors[level]}`}
+    />
+  </div>
+</div>
+
+<style>
+  .tutorial-progress {
+    margin-bottom: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary);
+    font-family: var(--font-sans);
+  }
+
+  .progress-track { font-weight: 600; color: var(--color-text-secondary); }
+
+  .progress-bar-wrapper {
+    height: 4px;
+    background: var(--color-border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+</style>
