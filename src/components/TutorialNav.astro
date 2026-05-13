@@ -1,0 +1,115 @@
+---
+interface NavItem {
+  title: string;
+  href: string;
+  module: number;
+}
+
+interface Props {
+  prev?: NavItem;
+  next?: NavItem;
+  trackTitle: string;
+  trackHref: string;
+}
+
+const { prev, next, trackTitle, trackHref } = Astro.props;
+---
+
+<nav class="tutorial-nav" aria-label="Tutorial navigation">
+  <a href={trackHref} class="tutorial-nav-track">
+    ← Back to {trackTitle}
+  </a>
+  <div class="tutorial-nav-arrows">
+    {prev ? (
+      <a href={prev.href} class="tutorial-nav-link tutorial-nav-prev">
+        <span class="nav-arrow">←</span>
+        <span class="nav-content">
+          <span class="nav-label">Previous</span>
+          <span class="nav-title">{prev.module}. {prev.title}</span>
+        </span>
+      </a>
+    ) : <div />}
+    {next ? (
+      <a href={next.href} class="tutorial-nav-link tutorial-nav-next">
+        <span class="nav-content" style="text-align:right">
+          <span class="nav-label">Next</span>
+          <span class="nav-title">{next.module}. {next.title}</span>
+        </span>
+        <span class="nav-arrow">→</span>
+      </a>
+    ) : <div />}
+  </div>
+</nav>
+
+<style>
+  .tutorial-nav {
+    margin: var(--space-xl) 0 var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .tutorial-nav-track {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .tutorial-nav-track:hover { color: var(--color-accent); }
+
+  .tutorial-nav-arrows {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  .tutorial-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .tutorial-nav-link:hover {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 4%, var(--color-surface));
+  }
+
+  .tutorial-nav-next { justify-content: flex-end; }
+
+  .nav-arrow {
+    font-size: 1.2rem;
+    color: var(--color-accent);
+    flex-shrink: 0;
+  }
+
+  .nav-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .nav-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-tertiary);
+    font-family: var(--font-sans);
+  }
+
+  .nav-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+  }
+
+  @media (max-width: 640px) {
+    .tutorial-nav-arrows { grid-template-columns: 1fr; }
+  }
+</style>
