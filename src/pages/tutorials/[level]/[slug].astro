@@ -1,0 +1,99 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TutorialProgress from '../../../components/TutorialProgress.astro';
+import TutorialNav from '../../../components/TutorialNav.astro';
+
+export async function getStaticPaths() {
+  const tutorials = await getCollection('tutorials', ({ data }) => !data.draft);
+  return tutorials.map(tutorial => {
+    const slugParts = tutorial.slug.split('/');
+    const level = slugParts[0];
+    const slug = slugParts[1];
+    return { params: { level, slug }, props: { tutorial, tutorials } };
+  });
+}
+
+const { tutorial, tutorials } = Astro.props;
+const { Content } = await tutorial.render();
+const { level, module: mod, totalModules, title, description, estimatedTime, roles } = tutorial.data;
+
+const trackTitle = { beginner: 'Beginner Track', intermediate: 'Intermediate Track', advanced: 'Advanced Track' }[level];
+
+const siblings = tutorials
+  .filter(t => t.data.level === level && !t.data.draft)
+  .sort((a, b) => a.data.module - b.data.module);
+
+const idx = siblings.findIndex(t => t.data.module === mod);
+const prevTutorial = idx > 0 ? siblings[idx - 1] : undefined;
+const nextTutorial = idx < siblings.length - 1 ? siblings[idx + 1] : undefined;
+
+function tutorialHref(t: typeof tutorial) {
+  const [lvl, sl] = t.slug.split('/');
+  return `/tutorials/${lvl}/${sl}`;
+}
+---
+
+<BaseLayout title={title} description={description}>
+  <article class="tutorial-article">
+    <TutorialProgress module={mod} totalModules={totalModules} level={level} trackTitle={trackTitle} />
+
+    <header class="tutorial-header">
+      <div class="tutorial-header-meta">
+        <span class="tut-level-label" data-level={level}>{level}</span>
+        <span class="tut-time">⏱ {estimatedTime}</span>
+        <div class="tut-roles">
+          {roles.map(r => <span class="tut-role-chip" data-role={r}>{r.toUpperCase()}</span>)}
+        </div>
+      </div>
+      <h1>{title}</h1>
+      <p class="tutorial-description">{description}</p>
+    </header>
+
+    <TutorialNav
+      prev={prevTutorial ? { title: prevTutorial.data.title, href: tutorialHref(prevTutorial), module: prevTutorial.data.module } : undefined}
+      next={nextTutorial ? { title: nextTutorial.data.title, href: tutorialHref(nextTutorial), module: nextTutorial.data.module } : undefined}
+      trackTitle={trackTitle}
+      trackHref={`/tutorials/${level}`}
+    />
+
+    <div class="tutorial-content">
+      <Content />
+    </div>
+
+    <TutorialNav
+      prev={prevTutorial ? { title: prevTutorial.data.title, href: tutorialHref(prevTutorial), module: prevTutorial.data.module } : undefined}
+      next={nextTutorial ? { title: nextTutorial.data.title, href: tutorialHref(nextTutorial), module: nextTutorial.data.module } : undefined}
+      trackTitle={trackTitle}
+      trackHref={`/tutorials/${level}`}
+    />
+  </article>
+</BaseLayout>
+
+<style>
+  .tutorial-article { max-width: 800px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
+
+  .tutorial-header { margin: var(--space-lg) 0; }
+  .tutorial-header-meta { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; margin-bottom: var(--space-md); }
+  .tutorial-header h1 { font-size: 2rem; margin-bottom: var(--space-sm); }
+  .tutorial-description { font-size: 1.1rem; color: var(--color-text-secondary); margin: 0; line-height: 1.6; }
+
+  .tut-level-label {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 0.2rem 0.7rem; border-radius: 4px;
+  }
+  [data-level="beginner"]     { background: color-mix(in srgb, var(--tut-beginner) 12%, transparent); color: var(--tut-beginner); }
+  [data-level="intermediate"] { background: color-mix(in srgb, var(--tut-intermediate) 12%, transparent); color: var(--tut-intermediate); }
+  [data-level="advanced"]     { background: color-mix(in srgb, var(--tut-advanced) 12%, transparent); color: var(--tut-advanced); }
+
+  .tut-time { font-size: 0.85rem; color: var(--color-text-tertiary); }
+
+  .tut-roles { display: flex; gap: 0.4rem; }
+  .tut-role-chip { font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 3px; font-family: var(--font-mono); }
+  [data-role="dev"] { background: #dbeafe; color: #1d4ed8; }
+  [data-role="qa"]  { background: #dcfce7; color: #15803d; }
+  [data-role="ba"]  { background: #fef3c7; color: #b45309; }
+  [data-role="pm"]  { background: #f3e8ff; color: #7c3aed; }
+
+  .tutorial-content { line-height: 1.75; font-size: var(--text-base); }
+</style>

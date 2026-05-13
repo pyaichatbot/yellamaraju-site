@@ -1,0 +1,65 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TutorialCard from '../../../components/TutorialCard.astro';
+
+export async function getStaticPaths() {
+  const levels = ['beginner', 'intermediate', 'advanced'] as const;
+  return levels.map(level => ({ params: { level } }));
+}
+
+const { level } = Astro.params as { level: 'beginner' | 'intermediate' | 'advanced' };
+
+const allTutorials = await getCollection('tutorials', ({ data }) => !data.draft && data.level === level);
+const tutorials = allTutorials.sort((a, b) => a.data.module - b.data.module);
+
+const trackInfo = {
+  beginner: { title: 'Beginner Track', subtitle: 'From Zero to First AI App', time: '15–20 min each', color: 'var(--tut-beginner)', description: 'No prior AI knowledge needed. Start here if you\'re new to generative AI and want practical understanding fast.' },
+  intermediate: { title: 'Intermediate Track', subtitle: 'Build Real AI Features', time: '25–30 min each', color: 'var(--tut-intermediate)', description: 'Build real working AI features including RAG systems, agents, and eval pipelines. Requires basic programming knowledge.' },
+  advanced: { title: 'Advanced Track', subtitle: 'Production-Grade AI Systems', time: '35–45 min each', color: 'var(--tut-advanced)', description: 'Ship production AI systems that are observable, secure, and cost-optimized. For experienced builders.' },
+};
+
+const info = trackInfo[level];
+---
+
+<BaseLayout title={info.title} description={info.description}>
+  <div class="level-page">
+    <header class="level-header" style={`--track-color: ${info.color}`}>
+      <a href="/tutorials" class="back-link">← All Tracks</a>
+      <div class="level-badge" style={`background: color-mix(in srgb, ${info.color} 12%, transparent); color: ${info.color}; border: 1px solid color-mix(in srgb, ${info.color} 30%, transparent)`}>
+        {level.charAt(0).toUpperCase() + level.slice(1)}
+      </div>
+      <h1>{info.title}</h1>
+      <p class="level-subtitle">{info.subtitle} · {tutorials.length} tutorials · {info.time}</p>
+      <p class="level-description">{info.description}</p>
+    </header>
+
+    <div class="tutorials-grid">
+      {tutorials.map(t => (
+        <TutorialCard
+          title={t.data.title}
+          description={t.data.description}
+          level={t.data.level}
+          module={t.data.module}
+          totalModules={t.data.totalModules}
+          roles={t.data.roles}
+          estimatedTime={t.data.estimatedTime}
+          href={`/tutorials/${t.data.level}/${t.slug.replace(`${t.data.level}/`, '')}`}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .level-page { max-width: 1100px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
+  .level-header { margin-bottom: var(--space-xl); }
+  .back-link { font-size: 0.875rem; color: var(--color-text-tertiary); text-decoration: none; display: inline-block; margin-bottom: var(--space-md); }
+  .back-link:hover { color: var(--color-accent); }
+  .level-badge { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.7rem; border-radius: 4px; margin-bottom: var(--space-sm); }
+  .level-header h1 { font-size: 2.2rem; margin: 0 0 var(--space-sm); }
+  .level-subtitle { font-size: 1rem; color: var(--color-text-secondary); margin: 0 0 var(--space-sm); }
+  .level-description { font-size: 1rem; color: var(--color-text-secondary); max-width: 680px; line-height: 1.6; margin: 0; }
+  .tutorials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); }
+  @media (max-width: 640px) { .tutorials-grid { grid-template-columns: 1fr; } }
+</style>
