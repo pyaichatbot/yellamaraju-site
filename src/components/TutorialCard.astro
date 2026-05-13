@@ -1,0 +1,165 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  level: 'beginner' | 'intermediate' | 'advanced';
+  module: number;
+  totalModules: number;
+  roles: string[];
+  estimatedTime: string;
+  href: string;
+  tags?: string[];
+}
+
+const { title, description, level, module, totalModules, roles, estimatedTime, href, tags = [] } = Astro.props;
+
+const levelConfig = {
+  beginner: { color: 'var(--tut-beginner)', label: 'Beginner' },
+  intermediate: { color: 'var(--tut-intermediate)', label: 'Intermediate' },
+  advanced: { color: 'var(--tut-advanced)', label: 'Advanced' },
+};
+
+const roleConfig: Record<string, { label: string; short: string }> = {
+  dev: { label: 'Developer', short: 'DEV' },
+  qa: { label: 'QA Engineer', short: 'QA' },
+  ba: { label: 'Business Analyst', short: 'BA' },
+  pm: { label: 'Product Manager', short: 'PM' },
+};
+
+const cfg = levelConfig[level];
+---
+
+<a href={href} class="tutorial-card" data-level={level}>
+  <div class="tutorial-card-header">
+    <span class="tutorial-level-badge" style={`--badge-color: ${cfg.color}`}>
+      {cfg.label}
+    </span>
+    <span class="tutorial-module-label">{module} of {totalModules}</span>
+  </div>
+  <h3 class="tutorial-card-title">{title}</h3>
+  <p class="tutorial-card-desc">{description}</p>
+  <div class="tutorial-card-footer">
+    <div class="tutorial-roles">
+      {roles.map(r => (
+        <span class="tutorial-role-pill" data-role={r}>
+          {roleConfig[r]?.short ?? r.toUpperCase()}
+        </span>
+      ))}
+    </div>
+    <span class="tutorial-time">⏱ {estimatedTime}</span>
+  </div>
+</a>
+
+<style>
+  .tutorial-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tutorial-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--badge-color, var(--color-accent));
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .tutorial-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+
+  .tutorial-card:hover::before { opacity: 1; }
+
+  .tutorial-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+  }
+
+  .tutorial-level-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--badge-color) 12%, transparent);
+    color: var(--badge-color);
+    border: 1px solid color-mix(in srgb, var(--badge-color) 30%, transparent);
+  }
+
+  .tutorial-module-label {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    font-family: var(--font-mono);
+  }
+
+  .tutorial-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+    line-height: 1.3;
+    font-family: var(--font-sans);
+  }
+
+  .tutorial-card-desc {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .tutorial-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+    margin-top: auto;
+    padding-top: var(--space-xs);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .tutorial-roles { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+  .tutorial-role-pill {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+  }
+
+  [data-role="dev"]  { background: #dbeafe; color: #1d4ed8; }
+  [data-role="qa"]   { background: #dcfce7; color: #15803d; }
+  [data-role="ba"]   { background: #fef3c7; color: #b45309; }
+  [data-role="pm"]   { background: #f3e8ff; color: #7c3aed; }
+
+  [data-theme="dark"] [data-role="dev"]  { background: #1e3a5f; color: #93c5fd; }
+  [data-theme="dark"] [data-role="qa"]   { background: #14532d; color: #86efac; }
+  [data-theme="dark"] [data-role="ba"]   { background: #451a03; color: #fcd34d; }
+  [data-theme="dark"] [data-role="pm"]   { background: #2e1065; color: #c4b5fd; }
+
+  .tutorial-time {
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    font-family: var(--font-sans);
+  }
+</style>

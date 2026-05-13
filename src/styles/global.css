@@ -11,6 +11,11 @@
   --color-accent-hover: #1d4ed8;
   --color-border: #e5e5e5;
   --color-code-bg: #f5f5f5;
+
+  /* Tutorial level colors */
+  --tut-beginner: #16a34a;
+  --tut-intermediate: #d97706;
+  --tut-advanced: #dc2626;
 }
 
 /* Dark mode color palette */
