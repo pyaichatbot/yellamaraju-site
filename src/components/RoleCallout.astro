@@ -1,0 +1,67 @@
+---
+interface Props {
+  role: 'dev' | 'qa' | 'ba' | 'pm';
+  title?: string;
+}
+
+const { role, title } = Astro.props;
+
+const roleConfig = {
+  dev: { label: 'For Developers', icon: '⚙️', color: '#2563eb' },
+  qa: { label: 'For QA Engineers', icon: '🧪', color: '#16a34a' },
+  ba: { label: 'For Business Analysts', icon: '📊', color: '#d97706' },
+  pm: { label: 'For Product Managers', icon: '🎯', color: '#7c3aed' },
+};
+
+const cfg = roleConfig[role];
+const displayTitle = title || cfg.label;
+---
+
+<div class="role-callout" data-role={role}>
+  <div class="role-callout-header">
+    <span class="role-icon">{cfg.icon}</span>
+    <span class="role-label">{displayTitle}</span>
+  </div>
+  <div class="role-callout-body">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .role-callout {
+    margin: var(--space-lg) 0;
+    border-radius: 8px;
+    border-left: 4px solid currentColor;
+    overflow: hidden;
+  }
+
+  [data-role="dev"] { color: #2563eb; background: color-mix(in srgb, #2563eb 6%, var(--color-background)); }
+  [data-role="qa"]  { color: #16a34a; background: color-mix(in srgb, #16a34a 6%, var(--color-background)); }
+  [data-role="ba"]  { color: #d97706; background: color-mix(in srgb, #d97706 6%, var(--color-background)); }
+  [data-role="pm"]  { color: #7c3aed; background: color-mix(in srgb, #7c3aed 6%, var(--color-background)); }
+
+  .role-callout-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem var(--space-md);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+    font-family: var(--font-sans);
+  }
+
+  .role-icon { font-size: 1rem; }
+
+  .role-callout-body {
+    padding: var(--space-md);
+    font-size: 0.95rem;
+    color: var(--color-text);
+    line-height: 1.6;
+  }
+
+  .role-callout-body :global(p:last-child) { margin-bottom: 0; }
+  .role-callout-body :global(ul) { padding-left: 1.5rem; margin: 0.5rem 0; }
+</style>
