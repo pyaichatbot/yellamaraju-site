@@ -24,7 +24,7 @@ Imagine asking a colleague for a project status update. They might say:
 
 That's useful for a conversation. It's useless for a dashboard.
 
-If your application needs to update a progress bar, log a completion percentage, or send a status email — you need the data in a form your code can actually read. You need the equivalent of a form, not a monologue.
+If your application needs to update a progress bar, log a completion percentage, or send a status email  -  you need the data in a form your code can actually read. You need the equivalent of a form, not a monologue.
 
 This is the fundamental tension in AI applications: **LLMs are optimized to produce helpful human-readable text, but your code needs machine-readable data.**
 
@@ -34,12 +34,12 @@ This is the fundamental tension in AI applications: **LLMs are optimized to prod
   title="Unstructured vs Structured AI Output Pipelines"
   chart={`
 flowchart LR
-    subgraph Bad ["Unstructured — Brittle"]
+    subgraph Bad ["Unstructured  -  Brittle"]
         B1[Prompt] --> B2[Free text response]
         B2 --> B3[Regex parsing]
         B3 --> B4[Brittle code]
     end
-    subgraph Good ["Structured — Reliable"]
+    subgraph Good ["Structured  -  Reliable"]
         G1[Prompt + Schema] --> G2[JSON response]
         G2 --> G3[json.loads]
         G3 --> G4[Reliable code]
@@ -52,7 +52,7 @@ flowchart LR
 `}
 />
 
-The unstructured path requires fragile regex patterns like `r"(\d+)%"` that break whenever the model slightly changes its phrasing. The structured path uses `json.loads()` — a built-in function that either works or raises a clear exception.
+The unstructured path requires fragile regex patterns like `r"(\d+)%"` that break whenever the model slightly changes its phrasing. The structured path uses `json.loads()`  -  a built-in function that either works or raises a clear exception.
 
 ## What "Free Text" Looks Like in Practice
 
@@ -60,7 +60,7 @@ Here's the same question asked to the same model, three times, with no format co
 
 **Response 1:** "The sentiment is positive."
 **Response 2:** "I would classify this as a positive review."
-**Response 3:** "Positive — the customer seems satisfied with their purchase."
+**Response 3:** "Positive  -  the customer seems satisfied with their purchase."
 
 Three different formats for the same answer. Your regex has to handle all three. It won't. At least one will break in production.
 
@@ -243,17 +243,17 @@ Tutorial 6 shows how to replace this manual validation with Pydantic models that
 </RoleCallout>
 
 <RoleCallout role="qa">
-**What this means for testing:** Structured output gives you deterministic assertions. Instead of checking if a response "sounds right," you can assert `response["churn_risk"] in ["low", "medium", "high"]`. Schema violations become test failures. Write assertions against the schema — field presence, type correctness, enum values — not against the human-readable content inside those fields.
+**What this means for testing:** Structured output gives you deterministic assertions. Instead of checking if a response "sounds right," you can assert `response["churn_risk"] in ["low", "medium", "high"]`. Schema violations become test failures. Write assertions against the schema  -  field presence, type correctness, enum values  -  not against the human-readable content inside those fields.
 </RoleCallout>
 
 <RoleCallout role="ba">
-**What this means for data pipelines:** Structured AI output means AI analysis can feed directly into your existing databases, dashboards, and workflows — without a human parsing step. A churn risk score from an AI model can populate the same CRM field as a score from a traditional ML model. This is what makes AI features operationally viable at scale, not just impressive in demos.
+**What this means for data pipelines:** Structured AI output means AI analysis can feed directly into your existing databases, dashboards, and workflows  -  without a human parsing step. A churn risk score from an AI model can populate the same CRM field as a score from a traditional ML model. This is what makes AI features operationally viable at scale, not just impressive in demos.
 </RoleCallout>
 
 ## What's Next
 
-JSON mode gets you valid JSON. JSON schema mode gets you the right shape. But neither guarantees the right data types, valid enum values, or semantic correctness. That's where **Pydantic schemas** come in — and that's the subject of the next tutorial.
+JSON mode gets you valid JSON. JSON schema mode gets you the right shape. But neither guarantees the right data types, valid enum values, or semantic correctness. That's where **Pydantic schemas** come in  -  and that's the subject of the next tutorial.
 
 <Callout type="tip" title="The Rule of Thumb">
-Any AI output that your code will read — not just display — must be structured. If a human is the consumer, free text is fine. If code is the consumer, use JSON mode at minimum, JSON schema mode for production.
+Any AI output that your code will read  -  not just display  -  must be structured. If a human is the consumer, free text is fine. If code is the consumer, use JSON mode at minimum, JSON schema mode for production.
 </Callout>

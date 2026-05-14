@@ -20,12 +20,12 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 Every LLM processes a fixed-size window of tokens at once. GPT-4o supports 128K tokens; Claude supports up to 200K. These numbers sound large until you realize:
 
-- A system prompt: 500–2,000 tokens
-- A 10-turn conversation: 2,000–8,000 tokens
-- A single PDF document: 5,000–50,000 tokens
-- A code file: 1,000–20,000 tokens
+- A system prompt: 500-2,000 tokens
+- A 10-turn conversation: 2,000-8,000 tokens
+- A single PDF document: 5,000-50,000 tokens
+- A code file: 1,000-20,000 tokens
 
-Add them together for a real-world application and the window fills up fast. And you need to leave room for the **response** — the model can't generate tokens it has no room for.
+Add them together for a real-world application and the window fills up fast. And you need to leave room for the **response**  -  the model can't generate tokens it has no room for.
 
 ## Context Budget Planning
 
@@ -55,10 +55,10 @@ flowchart LR
 
 | Component | Typical Allocation |
 |---|---|
-| System prompt | 1,000–2,000 tokens (fixed) |
-| Conversation history | 8,000–16,000 tokens (managed) |
+| System prompt | 1,000-2,000 tokens (fixed) |
+| Conversation history | 8,000-16,000 tokens (managed) |
 | Retrieved documents | Up to 50% of remaining budget |
-| Response headroom | 2,000–4,000 tokens (reserved) |
+| Response headroom | 2,000-4,000 tokens (reserved) |
 
 If any component exceeds its allocation, you need a truncation strategy.
 
@@ -91,11 +91,11 @@ flowchart TD
 `}
 />
 
-**Sliding window** — keep only the last N messages. Simple to implement and reason about. The downside: the model loses early context that might be critical (e.g., the user's initial goal stated in message 1).
+**Sliding window**  -  keep only the last N messages. Simple to implement and reason about. The downside: the model loses early context that might be critical (e.g., the user's initial goal stated in message 1).
 
-**Summarization** — when history gets too long, have the LLM summarize older messages into a compact paragraph. Replace the old messages with the summary. Keeps key facts at the cost of detail.
+**Summarization**  -  when history gets too long, have the LLM summarize older messages into a compact paragraph. Replace the old messages with the summary. Keeps key facts at the cost of detail.
 
-**Importance-based** — assign a score to each message (recency, explicit importance markers, user-flagged content) and keep the highest-scoring messages. Most powerful but most complex to maintain.
+**Importance-based**  -  assign a score to each message (recency, explicit importance markers, user-flagged content) and keep the highest-scoring messages. Most powerful but most complex to maintain.
 
 Most production systems use a hybrid: sliding window for short sessions, summarization when sessions exceed a threshold.
 
@@ -287,13 +287,13 @@ def truncate_with_summary(cm: ContextManager, client) -> None:
 ```
 
 <RoleCallout role="dev">
-**Token counting should be a first-class concern in your architecture, not an afterthought.** Build it into your request layer so that every message going out has had its token budget validated. The few milliseconds it takes to count tokens is trivial compared to the cost of an API error or a truncated response. Use `tiktoken` directly — API token counts in response objects tell you what you already spent, not what you're about to spend.
+**Token counting should be a first-class concern in your architecture, not an afterthought.** Build it into your request layer so that every message going out has had its token budget validated. The few milliseconds it takes to count tokens is trivial compared to the cost of an API error or a truncated response. Use `tiktoken` directly  -  API token counts in response objects tell you what you already spent, not what you're about to spend.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-**Context window overflow is silent in many APIs — the model just ignores earlier content without warning.** Older OpenAI API versions return a `context_length_exceeded` error. Newer ones silently truncate from the beginning. In both cases, your application gets degraded behavior with no visible error. Always count tokens before sending, not after. Set up an alert if any request exceeds 80% of your context budget — that's your signal to improve your truncation strategy.
+**Context window overflow is silent in many APIs  -  the model just ignores earlier content without warning.** Older OpenAI API versions return a `context_length_exceeded` error. Newer ones silently truncate from the beginning. In both cases, your application gets degraded behavior with no visible error. Always count tokens before sending, not after. Set up an alert if any request exceeds 80% of your context budget  -  that's your signal to improve your truncation strategy.
 </Callout>
 
 ## What's Next
 
-Managing context windows is about controlling what the model remembers within a single request. In the next tutorial you'll tackle long-term memory across sessions — the patterns that let your AI remember users across conversations.
+Managing context windows is about controlling what the model remembers within a single request. In the next tutorial you'll tackle long-term memory across sessions  -  the patterns that let your AI remember users across conversations.

@@ -23,7 +23,7 @@ A standard LLM call is a one-shot transaction: you send a prompt, you get a resp
 1. Receives a goal ("find the total of these three invoices and email a summary")
 2. Decides what tool to call to make progress
 3. Calls the tool and observes the result
-4. Decides whether the goal is complete — or what to do next
+4. Decides whether the goal is complete  -  or what to do next
 5. Loops until the goal is met (or it gives up)
 
 The key difference: **an agent loops**. It can call multiple tools in sequence, revise its approach based on results, and handle multi-step tasks that no single LLM call can solve.
@@ -54,11 +54,11 @@ flowchart TD
 
 Each iteration produces a **Thought** (the model's reasoning, not visible to the user) and an **Action** (the structured tool call). The tool runs and returns an **Observation**. The model adds this observation to its context and reasons again.
 
-This continues until the model decides it has enough information to produce the final answer — or until a safety limit stops it.
+This continues until the model decides it has enough information to produce the final answer  -  or until a safety limit stops it.
 
 ## Agent Harness Architecture
 
-The agent loop runs inside a **harness** — your code that manages the conversation, routes tool calls to the right functions, and enforces safety limits.
+The agent loop runs inside a **harness**  -  your code that manages the conversation, routes tool calls to the right functions, and enforces safety limits.
 
 <Mermaid
   title="Agent Harness Architecture"
@@ -85,9 +85,9 @@ flowchart LR
 />
 
 The harness has three responsibilities:
-- **Loop controller** — stop after N iterations no matter what
-- **Tool router** — map the model's tool call name to the actual Python function
-- **Message history** — accumulate the full conversation so the model has context for each decision
+- **Loop controller**  -  stop after N iterations no matter what
+- **Tool router**  -  map the model's tool call name to the actual Python function
+- **Message history**  -  accumulate the full conversation so the model has context for each decision
 
 ## Build It: Tool-Using Agent from Scratch
 
@@ -258,30 +258,30 @@ def real_llm_step(history: list[dict]) -> dict:
     return {"action": "final_answer", "content": msg.content}
 ```
 
-The harness loop stays identical — you're just swapping out the decision-making function.
+The harness loop stays identical  -  you're just swapping out the decision-making function.
 
 ## When Agents Go Wrong
 
 Agents fail in two common ways:
 
-**Infinite loops** — The model keeps calling tools without converging on an answer. This is why `max_iterations` is non-negotiable.
+**Infinite loops**  -  The model keeps calling tools without converging on an answer. This is why `max_iterations` is non-negotiable.
 
-**Tool call hallucination** — The model invents tool names or argument schemas that don't exist. Always validate tool names against your registry before executing.
+**Tool call hallucination**  -  The model invents tool names or argument schemas that don't exist. Always validate tool names against your registry before executing.
 
 ```python
 if tool_name not in TOOLS:
     observation = f"Error: tool '{tool_name}' does not exist. Available: {list(TOOLS.keys())}"
-    # Feed this back to the LLM — it will usually self-correct
+    # Feed this back to the LLM  -  it will usually self-correct
 ```
 
 <RoleCallout role="dev">
-**Start with two tools, not twenty.** Every tool you add increases the probability that the model will misuse one. Build with the minimum tool set that solves your problem. Add tools incrementally only when you have evidence that the agent is failing because a tool is missing — not preemptively. Agents with 3 well-designed tools outperform agents with 15 mediocre ones.
+**Start with two tools, not twenty.** Every tool you add increases the probability that the model will misuse one. Build with the minimum tool set that solves your problem. Add tools incrementally only when you have evidence that the agent is failing because a tool is missing  -  not preemptively. Agents with 3 well-designed tools outperform agents with 15 mediocre ones.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-**Agents can loop forever. Always set a `max_iterations` limit (10–20).** Without it, a confused agent will exhaust your token budget and your patience. A well-designed agent should rarely need more than 5–7 iterations for most tasks. If your agent consistently hits the iteration limit, the problem is your tool design or your system prompt — not the limit itself.
+**Agents can loop forever. Always set a `max_iterations` limit (10-20).** Without it, a confused agent will exhaust your token budget and your patience. A well-designed agent should rarely need more than 5-7 iterations for most tasks. If your agent consistently hits the iteration limit, the problem is your tool design or your system prompt  -  not the limit itself.
 </Callout>
 
 ## What's Next
 
-You've built a tool-using agent. In the next tutorial you'll go deeper on the **function calling protocol** itself — how to define tools as JSON schemas, handle parallel tool calls, and build robust error recovery into the tool execution loop.
+You've built a tool-using agent. In the next tutorial you'll go deeper on the **function calling protocol** itself  -  how to define tools as JSON schemas, handle parallel tool calls, and build robust error recovery into the tool execution loop.

@@ -82,33 +82,34 @@ const diagramId = id || `diagram-${Math.random().toString(36).substring(2, 9)}`;
       }
     }
     
-    function initializeMermaid() {
+    async function initializeMermaid() {
       const colors = getThemeColors();
-      const script = document.createElement('script');
-      script.type = 'module';
-      script.textContent = `
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-        mermaid.initialize({ 
-          startOnLoad: true,
+      try {
+        if (!window.__mermaidLoaderPromise) {
+          window.__mermaidLoaderPromise = import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs')
+            .then((mod) => {
+              const mermaid = mod.default || mod.mermaid || mod;
+              window.mermaid = mermaid;
+              window.mermaidLoaded = true;
+              return mermaid;
+            });
+        }
+
+        const mermaid = await window.__mermaidLoaderPromise;
+        mermaid.initialize({
+          startOnLoad: false,
           theme: 'neutral',
-          themeVariables: ${JSON.stringify(colors)}
+          themeVariables: colors
         });
-        mermaid.run();
-        window.mermaidLoaded = true;
-      `;
-      document.head.appendChild(script);
+        await mermaid.run({
+          querySelector: '.mermaid'
+        });
+      } catch (error) {
+        console.error('Mermaid failed to initialize:', error);
+      }
     }
     
-    if (!window.mermaidLoaded) {
-      initializeMermaid();
-    } else {
-      setTimeout(function() {
-        var mermaid = window.mermaid;
-        if (mermaid && typeof mermaid.run === 'function') {
-          mermaid.run();
-        }
-      }, 100);
-    }
+    initializeMermaid();
     
     // Reinitialize on theme change
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');

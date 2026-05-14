@@ -3,7 +3,7 @@ title: "Multi-Agent Systems and Orchestration Patterns"
 description: "Supervisor, parallel, and sequential multi-agent patterns. Design systems where specialized agents collaborate, with state management and failure handling."
 level: advanced
 module: 2
-totalModules: 8
+totalModules: 15
 roles: ["dev"]
 tags: ["Multi-Agent", "Orchestration", "Supervisor Pattern", "Agent Networks"]
 date: 2026-05-14
@@ -32,7 +32,7 @@ Multi-agent systems are genuinely harder to build, debug, and operate than singl
 
 The supervisor pattern is the most common and most flexible. One orchestrator agent receives the user request, decides which specialist agents to invoke, passes them tasks, collects their outputs, and assembles the final response.
 
-The orchestrator is stateful — it knows what has been done and what remains. The specialist agents are stateless — they receive a task, return a result.
+The orchestrator is stateful  -  it knows what has been done and what remains. The specialist agents are stateless  -  they receive a task, return a result.
 
 <Mermaid
   title="Supervisor Pattern: Orchestrator Dispatches to Specialists"
@@ -63,7 +63,7 @@ flowchart TD
 
 **Key design decisions for the supervisor:**
 - The orchestrator prompt must include the list of available agents, their capabilities, and when to use each
-- The orchestrator decides the order of operations — it should be explicit in its plan before dispatching
+- The orchestrator decides the order of operations  -  it should be explicit in its plan before dispatching
 - The orchestrator should validate each specialist's output before proceeding
 
 ## Pattern 2: Parallel Dispatch with Merge
@@ -99,7 +99,7 @@ The merge agent is often the most complex. It must:
 - Produce a coherent unified output, not a concatenation
 
 <Callout type="info" title="asyncio for Parallel Agents">
-In Python, run parallel agents with `asyncio.gather()`. Each agent call becomes a coroutine. `await asyncio.gather(task_a(), task_b(), task_c())` runs all three concurrently. For CPU-bound work, use `concurrent.futures.ThreadPoolExecutor` instead — asyncio is for I/O-bound (network) tasks.
+In Python, run parallel agents with `asyncio.gather()`. Each agent call becomes a coroutine. `await asyncio.gather(task_a(), task_b(), task_c())` runs all three concurrently. For CPU-bound work, use `concurrent.futures.ThreadPoolExecutor` instead  -  asyncio is for I/O-bound (network) tasks.
 </Callout>
 
 ## Pattern 3: Sequential Pipeline with Handoffs
@@ -141,9 +141,9 @@ flowchart LR
 In a multi-agent system, state is the shared ground truth that all agents read from and write to. Without explicit state management, agents work with inconsistent views of the world.
 
 **State schema design principles:**
-- Use a typed dictionary or Pydantic model — never a plain dict with string keys
-- Make state **append-only where possible** — agents add results, never delete previous results
-- Store the agent name and timestamp with each result — know who wrote what when
+- Use a typed dictionary or Pydantic model  -  never a plain dict with string keys
+- Make state **append-only where possible**  -  agents add results, never delete previous results
+- Store the agent name and timestamp with each result  -  know who wrote what when
 - Include a `status` field that tracks task completion
 
 ```python
@@ -155,7 +155,7 @@ class AgentResult(BaseModel):
     task: str
     output: str
     timestamp: datetime
-    confidence: float  # 0.0–1.0
+    confidence: float  # 0.0-1.0
 
 class PipelineState(BaseModel):
     original_query: str
@@ -176,7 +176,7 @@ Multi-agent systems fail in more ways than single agents. Design your failure mo
 | Orchestrator loop exceeds max steps | Halt, return best-effort result |
 
 <RoleCallout role="dev">
-Implement a maximum step count on your orchestrator. An orchestrator that loops — calling agents, evaluating results, deciding to call agents again — can run indefinitely if no clear completion condition is met. Set `max_iterations = 10` and enforce it. Log a warning when the limit is hit so you can investigate whether your orchestrator's reasoning is cycling.
+Implement a maximum step count on your orchestrator. An orchestrator that loops  -  calling agents, evaluating results, deciding to call agents again  -  can run indefinitely if no clear completion condition is met. Set `max_iterations = 10` and enforce it. Log a warning when the limit is hit so you can investigate whether your orchestrator's reasoning is cycling.
 </RoleCallout>
 
 ## Code: Simple Supervisor with Researcher and Writer
@@ -280,7 +280,7 @@ async def supervisor(query: str) -> str:
 
     if state.research.get("confidence", 0) < 0.5:
         state.status = "failed"
-        return "Research confidence too low — cannot proceed."
+        return "Research confidence too low  -  cannot proceed."
 
     print(f"[Researcher] Found {len(state.research['findings'])} findings")
 

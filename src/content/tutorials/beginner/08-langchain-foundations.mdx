@@ -27,7 +27,7 @@ response = client.chat.completions.create(model="gpt-4o", messages=[{"role": "us
 result = SentimentResult.model_validate_json(response.choices[0].message.content)
 ```
 
-That's fine for one use case. But when you have dozens of different AI pipelines in the same application — each with different templates, models, parsers, and retry logic — you end up with a lot of boilerplate that's hard to read, hard to test, and hard to extend.
+That's fine for one use case. But when you have dozens of different AI pipelines in the same application  -  each with different templates, models, parsers, and retry logic  -  you end up with a lot of boilerplate that's hard to read, hard to test, and hard to extend.
 
 **LangChain is glue.** It's a framework that standardizes how you connect prompts, models, and output parsers, so you can focus on the logic instead of the plumbing.
 
@@ -97,9 +97,9 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
 
 The output parser transforms the model's raw text output into a structured Python object. LangChain provides several:
 
-- `StrOutputParser` — returns the string content
-- `JsonOutputParser` — parses JSON
-- `PydanticOutputParser` — validates against a Pydantic model
+- `StrOutputParser`  -  returns the string content
+- `JsonOutputParser`  -  parses JSON
+- `PydanticOutputParser`  -  validates against a Pydantic model
 
 ```python
 from langchain_core.output_parsers import JsonOutputParser
@@ -165,7 +165,7 @@ chain = prompt | llm | parser
 result = chain.invoke({
     "product_name": "DataSync Pro",
     "review_text": """I have been using DataSync Pro for 3 months. The API performance
-    is excellent — sync jobs that took 2 hours with our old tool now take 20 minutes.
+    is excellent  -  sync jobs that took 2 hours with our old tool now take 20 minutes.
     However, the documentation is seriously lacking. I spent 2 days figuring out
     webhook configuration that should have taken 30 minutes with proper docs."""
 })
@@ -177,7 +177,7 @@ for point in result["key_points"]:
     print(f"  - {point}")
 print("Action:", result["recommended_action"])
 
-# The chain is reusable — run a second review with the same chain
+# The chain is reusable  -  run a second review with the same chain
 result_2 = chain.invoke({
     "product_name": "DataSync Pro",
     "review_text": "Works as advertised. Nothing special, nothing broken. Gets the job done."
@@ -220,13 +220,13 @@ Each chunk is a partial result as tokens arrive from the model. This lets you sh
 ## When to Use LangChain (and When Not To)
 
 <RoleCallout role="dev">
-**The honest assessment:** LangChain adds abstraction overhead. For a simple single-call scenario — one prompt, one model, one response — the raw OpenAI SDK is cleaner and easier to debug. You get direct control and can see exactly what's happening.
+**The honest assessment:** LangChain adds abstraction overhead. For a simple single-call scenario  -  one prompt, one model, one response  -  the raw OpenAI SDK is cleaner and easier to debug. You get direct control and can see exactly what's happening.
 
 Use LangChain when you need: (1) chains with multiple steps, (2) retrieval-augmented generation (RAG) with a vector database, (3) agents that use tools, (4) batch processing with concurrency, or (5) streaming with structured parsing. For everything else, the raw SDK is the right choice.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha: Log Your Rendered Prompts">
-LangChain's abstractions can hide what's actually being sent to the model. A bug in your template or unexpected variable values might produce a malformed prompt — and you won't see it unless you log it explicitly.
+LangChain's abstractions can hide what's actually being sent to the model. A bug in your template or unexpected variable values might produce a malformed prompt  -  and you won't see it unless you log it explicitly.
 
 In development, add a callback to print what LangChain is actually sending:
 
@@ -253,7 +253,7 @@ export LANGCHAIN_API_KEY=your_langsmith_api_key
 
 ## What's Next
 
-You've now built all the core components of an AI application: API calls, prompt engineering, structured output, schemas, templates, and pipelines. The final tutorial brings it all together — showing you how real-world production AI applications are structured and what fails at each layer.
+You've now built all the core components of an AI application: API calls, prompt engineering, structured output, schemas, templates, and pipelines. The final tutorial brings it all together  -  showing you how real-world production AI applications are structured and what fails at each layer.
 
 <Callout type="tip" title="The One-Line Summary">
 LangChain's value is the pipe operator: `chain = prompt | llm | parser`. If you find yourself writing that wiring manually for every AI call in your app, LangChain will save you significant time. If you only have one or two AI calls, the raw SDK is simpler.

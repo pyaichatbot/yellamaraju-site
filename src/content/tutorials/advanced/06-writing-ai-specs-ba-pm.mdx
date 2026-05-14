@@ -3,7 +3,7 @@ title: "Writing AI Specifications for Engineers"
 description: "The BA/PM guide to writing AI feature specs that engineers can actually implement. Eval criteria as acceptance criteria, prompt requirements, and edge case handling."
 level: advanced
 module: 6
-totalModules: 8
+totalModules: 15
 roles: ["ba", "pm", "dev"]
 tags: ["AI Specs", "Product Management", "Business Analysis", "Requirements", "Acceptance Criteria"]
 date: 2026-05-14
@@ -24,14 +24,14 @@ Engineers can implement that deterministically. There's one correct behavior.
 An AI feature spec that says "The AI shall accurately summarize customer feedback" is not implementable. What does "accurately" mean? How do you test it? When do you ship?
 
 AI features require a fundamentally different spec format because:
-- **Outputs are probabilistic** — "correct" is a distribution, not a value
-- **Quality is measurable** — you need eval criteria, not just descriptions
-- **Failure modes matter** — the AI will sometimes be wrong; the spec must address this
-- **Model behavior evolves** — a model update can silently change behavior
+- **Outputs are probabilistic**  -  "correct" is a distribution, not a value
+- **Quality is measurable**  -  you need eval criteria, not just descriptions
+- **Failure modes matter**  -  the AI will sometimes be wrong; the spec must address this
+- **Model behavior evolves**  -  a model update can silently change behavior
 
 ## From Requirements to Evals
 
-The key insight: **your acceptance criteria ARE your eval test cases**. They're not narrative descriptions — they're machine-verifiable assertions.
+The key insight: **your acceptance criteria ARE your eval test cases**. They're not narrative descriptions  -  they're machine-verifiable assertions.
 
 <Mermaid
   title="AI Spec to Eval Mapping"
@@ -97,7 +97,7 @@ As a [role], I want [capability] so that [outcome].
 
 **Degradation Clause:**
 If AI is unavailable or fails threshold:
-→ [fallback behavior — show cached result / surface error / disable feature]
+→ [fallback behavior  -  show cached result / surface error / disable feature]
 
 **Prompt Owner:** [engineer name]
 **Eval Owner:** [QA name]
@@ -149,17 +149,17 @@ If AI unavailable → flag record for manual review, don't block CRM save
 This spec can be directly converted into 7 automated eval test cases.
 
 <RoleCallout role="ba">
-Your domain knowledge is the secret ingredient. Engineers can build the pipeline — only you know what "good" looks like for the business. The eval criteria you write become the automated tests that gate every deployment. If you write vague AC, you'll get vague AI behavior with no way to measure improvement. Specificity is the whole job here.
+Your domain knowledge is the secret ingredient. Engineers can build the pipeline  -  only you know what "good" looks like for the business. The eval criteria you write become the automated tests that gate every deployment. If you write vague AC, you'll get vague AI behavior with no way to measure improvement. Specificity is the whole job here.
 </RoleCallout>
 
 <RoleCallout role="pm">
-The degradation clause is the most commonly skipped section — and the most important for incident response. When the AI feature breaks (it will), what does the user experience? A confusing error? A fallback to manual process? Decide this in the spec, not during an incident. Also: AI specs need a "model version" owner — someone who reviews the eval suite every time the provider updates the underlying model.
+The degradation clause is the most commonly skipped section  -  and the most important for incident response. When the AI feature breaks (it will), what does the user experience? A confusing error? A fallback to manual process? Decide this in the spec, not during an incident. Also: AI specs need a "model version" owner  -  someone who reviews the eval suite every time the provider updates the underlying model.
 </RoleCallout>
 
 <RoleCallout role="dev">
-Treat the eval criteria as automated tests — code them before shipping, not as documentation. A spec with 7 eval criteria = 7 test cases in your CI pipeline. The spec owner (BA/PM) writes the WHAT; you write the HOW (the assertion code). This division of ownership works well in practice.
+Treat the eval criteria as automated tests  -  code them before shipping, not as documentation. A spec with 7 eval criteria = 7 test cases in your CI pipeline. The spec owner (BA/PM) writes the WHAT; you write the HOW (the assertion code). This division of ownership works well in practice.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-Specs that say "AI will summarize accurately" are not testable and will cause endless scope debates. Specs that say "AI summary will contain all 5 key entities from the source document, verified by entity extraction" are testable and shippable. Write specs as if they'll be used as automated test assertions — because they will be.
+Specs that say "AI will summarize accurately" are not testable and will cause endless scope debates. Specs that say "AI summary will contain all 5 key entities from the source document, verified by entity extraction" are testable and shippable. Write specs as if they'll be used as automated test assertions  -  because they will be.
 </Callout>

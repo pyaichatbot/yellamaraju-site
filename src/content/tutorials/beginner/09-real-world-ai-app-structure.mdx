@@ -21,10 +21,10 @@ Every production AI application has the same underlying structure, regardless of
 
 The four layers:
 
-1. **UI Layer** — how users interact (chat interface, form, API endpoint)
-2. **API Layer** — your backend: authentication, rate limiting, business logic
-3. **AI Engine Layer** — prompt construction, model calls, output validation
-4. **Data Layer** — vector stores, document repositories, caches, databases
+1. **UI Layer**  -  how users interact (chat interface, form, API endpoint)
+2. **API Layer**  -  your backend: authentication, rate limiting, business logic
+3. **AI Engine Layer**  -  prompt construction, model calls, output validation
+4. **Data Layer**  -  vector stores, document repositories, caches, databases
 
 <Mermaid
   title="The 4-Layer AI Application Architecture"
@@ -58,8 +58,8 @@ Understanding failure modes is the most important thing you can do before buildi
 - No graceful handling when AI returns an error
 
 **API Layer failures:**
-- Rate limiting — your users hit provider limits you didn't anticipate
-- Timeouts — LLM calls take 5-30 seconds; your API timeout was set to 10s
+- Rate limiting  -  your users hit provider limits you didn't anticipate
+- Timeouts  -  LLM calls take 5-30 seconds; your API timeout was set to 10s
 - Auth errors cascading into confusing UI states
 
 **AI Engine Layer failures:**
@@ -78,7 +78,7 @@ Understanding failure modes is the most important thing you can do before buildi
 This is the most important architectural insight: **the AI is one component in a larger system**, not the system itself.
 
 <Callout type="info" title="The Key Principle">
-The best AI applications are the ones where you could swap out the model and the rest of the app keeps working. Design for model independence — your prompt builder, validator, and business logic should be model-agnostic.
+The best AI applications are the ones where you could swap out the model and the rest of the app keeps working. Design for model independence  -  your prompt builder, validator, and business logic should be model-agnostic.
 </Callout>
 
 This means:
@@ -97,11 +97,11 @@ Assign explicit ownership:
 - **Data Layer** → Data/Platform team
 
 <RoleCallout role="dev">
-Own the AI Engine Layer explicitly. This means: prompt versioning in code (not a Notion doc), output validation before any response hits the API layer, and a fallback for every model call. The AI Engine Layer is where the most subtle bugs live — treat it with the same rigor as your payment processing code.
+Own the AI Engine Layer explicitly. This means: prompt versioning in code (not a Notion doc), output validation before any response hits the API layer, and a fallback for every model call. The AI Engine Layer is where the most subtle bugs live  -  treat it with the same rigor as your payment processing code.
 </RoleCallout>
 
 <RoleCallout role="qa">
-Test each layer independently. Mock the AI Engine Layer (return a fixed response) to test the API and UI layers. Test the AI Engine Layer in isolation against your eval suite. End-to-end tests that go through all 4 layers are valuable but expensive — don't make them your only testing strategy.
+Test each layer independently. Mock the AI Engine Layer (return a fixed response) to test the API and UI layers. Test the AI Engine Layer in isolation against your eval suite. End-to-end tests that go through all 4 layers are valuable but expensive  -  don't make them your only testing strategy.
 </RoleCallout>
 
 <RoleCallout role="ba">
@@ -114,7 +114,7 @@ When an AI feature breaks in production, this diagram is your incident response 
 
 ## You're Ready for the Intermediate Track
 
-You now have the mental models to build real AI features. The Beginner track gave you the fundamentals — how AI works, how to call APIs, how to structure prompts, and how applications are built.
+You now have the mental models to build real AI features. The Beginner track gave you the fundamentals  -  how AI works, how to call APIs, how to structure prompts, and how applications are built.
 
 The Intermediate track takes you into implementation: building a RAG system, creating agents, evaluating your AI, and managing production concerns like context windows and memory.
 

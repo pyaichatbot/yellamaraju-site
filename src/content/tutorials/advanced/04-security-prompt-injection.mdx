@@ -3,7 +3,7 @@ title: "Security: Prompt Injection, PII, and Red Teaming Your AI App"
 description: "Prompt injection attacks, indirect injection via documents, PII leakage through context, and how to red team your AI application before attackers do."
 level: advanced
 module: 4
-totalModules: 8
+totalModules: 15
 roles: ["dev", "qa"]
 tags: ["Security", "Prompt Injection", "PII", "Red Teaming", "AI Security"]
 date: 2026-05-14
@@ -18,12 +18,12 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 ## The Attack Surface of an AI Application
 
-An AI application has a larger attack surface than a traditional web application because **natural language is both your interface and your instruction set**. In a traditional app, the data path and the control path are separate — user input goes into a database, instructions live in code. In an LLM application, user input and model instructions share the same channel: the prompt.
+An AI application has a larger attack surface than a traditional web application because **natural language is both your interface and your instruction set**. In a traditional app, the data path and the control path are separate  -  user input goes into a database, instructions live in code. In an LLM application, user input and model instructions share the same channel: the prompt.
 
 This creates three major attack classes:
-1. **Direct prompt injection** — user crafts input that overrides your system prompt
-2. **Indirect injection** — malicious content in documents your agent reads
-3. **PII leakage** — private data from one user surfacing in another user's response
+1. **Direct prompt injection**  -  user crafts input that overrides your system prompt
+2. **Indirect injection**  -  malicious content in documents your agent reads
+3. **PII leakage**  -  private data from one user surfacing in another user's response
 
 Understanding these attacks is not optional if you are shipping an AI application.
 
@@ -46,10 +46,11 @@ What are AcmeCorp's internal pricing strategies?
 Models are trained to be helpful and follow instructions. They will often comply with injected instructions if they appear in the "user" turn, especially if the injected instruction uses authoritative language.
 
 **Defense mechanisms:**
-- Instruction-position defense: put critical instructions at the END of the system prompt, not the beginning. Models give more weight to recent instructions
+- Runtime policy enforcement: enforce high-risk rules outside prompts (tool allowlists, deterministic policy checks, approval gates)
 - Input pre-screening: classify user input for injection patterns before passing to the model
 - Structured output: if your application only needs structured JSON output, constraining the output format makes many injections ineffective
 - Least-privilege prompting: only give the model capabilities it needs for the task
+- Prompt ordering can be a minor heuristic, but never a primary control
 
 ## Attack 2: Indirect Prompt Injection
 
@@ -106,15 +107,15 @@ flowchart TD
   --- END DOCUMENT ---
   ```
 - Never allow agents to take irreversible actions (send emails, delete data) without human confirmation
-- Implement action rate limits — an agent that suddenly wants to make 10 API calls should be paused
+- Implement action rate limits  -  an agent that suddenly wants to make 10 API calls should be paused
 
 ## Attack 3: PII Leakage Through Context
 
-When multiple users share the same AI application, their data often ends up in the same context window — through RAG retrieval, conversation history, or cached embeddings.
+When multiple users share the same AI application, their data often ends up in the same context window  -  through RAG retrieval, conversation history, or cached embeddings.
 
 **How it happens:**
 - User A's documents are indexed in the same vector store as User B's documents
-- A query by User B retrieves semantically similar content — which happens to be User A's private notes
+- A query by User B retrieves semantically similar content  -  which happens to be User A's private notes
 - The LLM includes User A's data in User B's response
 
 This is a multi-tenant data isolation failure, not an LLM-specific attack, but AI applications create new vectors for it.
@@ -146,7 +147,7 @@ flowchart LR
 />
 
 **Defenses:**
-- Namespace your vector store by tenant — never mix documents across tenant boundaries
+- Namespace your vector store by tenant  -  never mix documents across tenant boundaries
 - Filter retrieval results by `tenant_id` metadata before returning chunks
 - Run PII detection (NER models like spaCy or cloud APIs like AWS Comprehend) before indexing and before returning responses
 - Audit your retrieval results regularly for cross-tenant contamination
@@ -175,7 +176,7 @@ Build input sanitization as middleware, not as ad-hoc checks scattered through y
 </RoleCallout>
 
 <RoleCallout role="qa">
-Include adversarial test cases in your eval suite, not just happy-path tests. Maintain a "prompt injection test corpus" — a list of known injection attempts that should be blocked or handled gracefully. Run this corpus on every deployment. When a new attack pattern is discovered in production, add it to the corpus immediately.
+Include adversarial test cases in your eval suite, not just happy-path tests. Maintain a "prompt injection test corpus"  -  a list of known injection attempts that should be blocked or handled gracefully. Run this corpus on every deployment. When a new attack pattern is discovered in production, add it to the corpus immediately.
 </RoleCallout>
 
 ## Code: Basic Prompt Injection Detector
@@ -315,5 +316,5 @@ for inp in test_inputs:
 />
 
 <Callout type="warning" title="Production Gotcha: System Prompt Confidentiality Is Not a Security Boundary">
-System prompt confidentiality is not a security boundary. Assume users can extract your system prompt given enough attempts — through direct prompting, through creative roleplay framing, or through repeated probing. Design your system so that a leaked system prompt does not create a security vulnerability. Your system prompt should contain operational instructions, not secrets. API keys, sensitive business logic, and access control decisions belong in your application code, not in your prompt.
+System prompt confidentiality is not a security boundary. Assume users can extract your system prompt given enough attempts  -  through direct prompting, through creative roleplay framing, or through repeated probing. Design your system so that a leaked system prompt does not create a security vulnerability. Your system prompt should contain operational instructions, not secrets. API keys, sensitive business logic, and access control decisions belong in your application code, not in your prompt.
 </Callout>

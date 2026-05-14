@@ -1,0 +1,57 @@
+---
+title: "Context and Memory Engineering for Enterprise Agents"
+description: "Design memory layers and context budgets that improve quality and lower cost in long-running enterprise workflows."
+level: advanced
+module: 11
+totalModules: 15
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["Context Engineering", "Memory", "Prompt Caching", "Cost"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["intermediate/05-context-window-management", "intermediate/06-memory-patterns"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import Callout from '../../../components/Callout.astro';
+
+## Memory is a System, Not a Feature
+
+Enterprise agents need multiple memory types with explicit retention and retrieval rules.
+
+<Mermaid
+  title="Memory Stack"
+  chart={`
+flowchart LR
+  U[User Turn] --> STM[Short-Term Session Memory]
+  U --> LT[Long-Term Memory Store]
+  U --> RET[RAG Retrieval Context]
+  STM --> C[Context Assembler]
+  LT --> C
+  RET --> C
+  C --> M[Model Call]
+`}
+/>
+
+## Practical Budgeting Model
+
+- Reserve tokens for policy/system instructions.
+- Reserve tokens for tool outputs.
+- Allocate dynamic budget for retrieval chunks.
+- Persist summaries, not raw transcript dumps.
+
+<RoleCallout role="dev">
+Introduce a context assembler layer that enforces budgets by policy. Don’t let arbitrary callers append context directly.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Run controlled tests with stale memory records to ensure the agent prefers fresh, trusted retrieval when conflicts appear.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Set memory retention windows by user impact and compliance needs. Infinite retention is usually a liability.
+</RoleCallout>
+
+<Callout type="tip" title="Cost Lever">
+Prompt caching and reusable system blocks often reduce cost more than switching to a cheaper model tier.
+</Callout>

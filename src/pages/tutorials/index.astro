@@ -12,24 +12,31 @@ const byLevel = {
 };
 
 const levels = [
-  { key: 'beginner', label: 'Beginner', subtitle: 'From Zero to First AI App', color: 'var(--tut-beginner)', time: '15–20 min each' },
-  { key: 'intermediate', label: 'Intermediate', subtitle: 'Build Real AI Features', color: 'var(--tut-intermediate)', time: '25–30 min each' },
-  { key: 'advanced', label: 'Advanced', subtitle: 'Production-Grade AI Systems', color: 'var(--tut-advanced)', time: '35–45 min each' },
+  { key: 'beginner', label: 'Beginner', subtitle: 'From Zero to First AI App', color: 'var(--tut-beginner)', time: '15-20 min each' },
+  { key: 'intermediate', label: 'Intermediate', subtitle: 'Build Real AI Features', color: 'var(--tut-intermediate)', time: '25-30 min each' },
+  { key: 'advanced', label: 'Advanced', subtitle: 'Production-Grade AI Systems', color: 'var(--tut-advanced)', time: '35-45 min each' },
 ] as const;
 ---
 
-<BaseLayout title="GenAI Tutorials" description="Progressive GenAI tutorials for DEVs, QAs, BAs, and PMs — from zero to production AI systems.">
+<BaseLayout title="GenAI Tutorials" description="Progressive GenAI tutorials for DEVs, QAs, BAs, and PMs  -  from zero to production AI systems.">
   <div class="tutorials-hub">
     <header class="hub-header">
       <h1>GenAI Tutorials</h1>
       <p class="hub-subtitle">
-        Practical, progressive tutorials for everyone building with AI — developers, QA engineers,
+        Practical, progressive tutorials for everyone building with AI  -  developers, QA engineers,
         business analysts, and product managers.
       </p>
       <div class="hub-roles">
         {['DEV', 'QA', 'BA', 'PM'].map(r => (
           <span class="hub-role-pill" data-role={r.toLowerCase()}>{r}</span>
         ))}
+      </div>
+      <div class="role-filters" aria-label="Filter tutorials by role">
+        <button class="role-filter-btn active" data-filter-role="all" aria-pressed="true">All Roles</button>
+        <button class="role-filter-btn" data-filter-role="dev" aria-pressed="false">DEV</button>
+        <button class="role-filter-btn" data-filter-role="qa" aria-pressed="false">QA</button>
+        <button class="role-filter-btn" data-filter-role="ba" aria-pressed="false">BA</button>
+        <button class="role-filter-btn" data-filter-role="pm" aria-pressed="false">PM</button>
       </div>
     </header>
 
@@ -64,6 +71,41 @@ const levels = [
   </div>
 </BaseLayout>
 
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const buttons = document.querySelectorAll('.role-filter-btn');
+    const cards = document.querySelectorAll('.tutorial-card');
+    const sections = document.querySelectorAll('.track-section');
+
+    function applyFilter(role) {
+      cards.forEach((card) => {
+        const roles = (card.getAttribute('data-roles') || '').split(',');
+        const show = role === 'all' || roles.includes(role);
+        card.style.display = show ? '' : 'none';
+      });
+
+      sections.forEach((section) => {
+        const sectionCards = Array.from(section.querySelectorAll('.tutorial-card'));
+        const hasVisible = sectionCards.some((card) => card.style.display !== 'none');
+        section.style.display = hasVisible ? '' : 'none';
+      });
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const role = btn.getAttribute('data-filter-role') || 'all';
+        buttons.forEach((b) => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        applyFilter(role);
+      });
+    });
+  });
+</script>
+
 <style>
   .tutorials-hub { max-width: 1100px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
 
@@ -73,6 +115,23 @@ const levels = [
 
   .hub-roles { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
   .hub-role-pill { font-size: 0.8rem; font-weight: 700; padding: 0.3rem 0.8rem; border-radius: 999px; font-family: var(--font-mono); border: 1px solid var(--color-border); }
+  .role-filters { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin-top: var(--space-sm); }
+  .role-filter-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-mono);
+  }
+  .role-filter-btn.active {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  }
 
   .track-section { margin-bottom: var(--space-xl); }
 

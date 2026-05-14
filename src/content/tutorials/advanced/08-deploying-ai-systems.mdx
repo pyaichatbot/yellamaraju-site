@@ -3,12 +3,12 @@ title: "Deploying AI Systems: CI/CD, Eval Gates, and Rollbacks"
 description: "AI deployments need eval gates, not just unit tests. Build the CI/CD pipeline that validates AI quality before every deploy and rolls back on degradation."
 level: advanced
 module: 8
-totalModules: 8
+totalModules: 15
 roles: ["dev", "qa"]
 tags: ["CI/CD", "Deployment", "Eval Gates", "Canary Deployment", "AI Ops"]
 date: 2026-05-14
 estimatedTime: "40 min"
-prerequisites: ["intermediate/04-evaluating-ai-apps", "03-ai-observability"]
+prerequisites: ["intermediate/04-evaluating-ai-apps", "advanced/03-ai-observability"]
 ---
 
 import Mermaid from '../../../components/Mermaid.astro';
@@ -25,10 +25,10 @@ AI CI/CD: merge code → run unit tests → run eval suite → check eval gate �
 The difference: **AI behavior can regress without any code change**. A prompt update, a model version change, or a data drift can silently degrade quality that your unit tests will never catch.
 
 Every AI deployment needs:
-1. **Eval gate** — automated quality check before any deploy
-2. **Model version pinning** — explicit model versions in config, not "latest"
-3. **Canary strategy** — gradual traffic shift with eval monitoring
-4. **Rollback trigger** — automatic rollback when eval scores drop
+1. **Eval gate**  -  automated quality check before any deploy
+2. **Model version pinning**  -  explicit model versions in config, not "latest"
+3. **Canary strategy**  -  gradual traffic shift with eval monitoring
+4. **Rollback trigger**  -  automatic rollback when eval scores drop
 
 ## The AI CI/CD Pipeline
 
@@ -74,7 +74,7 @@ flowchart LR
 ## Eval Gate Script for CI
 
 <CodePlayground
-  title="CI Eval Gate — Returns Pass/Fail for Pipeline"
+  title="CI Eval Gate  -  Returns Pass/Fail for Pipeline"
   language="python"
   code={`#!/usr/bin/env python3
 """
@@ -169,7 +169,7 @@ def run_eval_gate(threshold: float = 0.85) -> bool:
     print(f"Overall: {overall_rate*100:.1f}% ({overall_pass}/{overall_total} checks passed)")
     
     gate_passed = overall_rate >= threshold
-    print(f"Gate: {'✅ PASS — proceed to deploy' if gate_passed else '❌ FAIL — block deployment'}")
+    print(f"Gate: {'✅ PASS  -  proceed to deploy' if gate_passed else '❌ FAIL  -  block deployment'}")
     
     return gate_passed
 
@@ -184,7 +184,7 @@ if __name__ == "__main__":
 
 ## Model Version Pinning
 
-Never use `"gpt-4o"` in production — always pin to a specific version:
+Never use `"gpt-4o"` in production  -  always pin to a specific version:
 
 ```python
 # ❌ Bad: "latest" means unpredictable behavior
@@ -199,21 +199,21 @@ ai:
   fallback_model: gpt-4o-mini-2024-07-18
 ```
 
-Model version updates are deployments — they require eval gate passage, not just a config file edit.
+Model version updates are deployments  -  they require eval gate passage, not just a config file edit.
 
 <RoleCallout role="qa">
-Own the eval gate configuration — the threshold value (85%? 90%?) is a quality decision, not an engineering decision. You know what pass rate represents acceptable user experience. Set it too low and you deploy regressions; too high and you block shipping. The threshold should be reviewed quarterly as your eval suite matures.
+Own the eval gate configuration  -  the threshold value (85%? 90%?) is a quality decision, not an engineering decision. You know what pass rate represents acceptable user experience. Set it too low and you deploy regressions; too high and you block shipping. The threshold should be reviewed quarterly as your eval suite matures.
 </RoleCallout>
 
 <RoleCallout role="dev">
-Pin model versions in deployment config and treat model version updates as deployments — with their own PR, eval run, and canary. When an AI provider releases a new model version, do NOT just update the config. Run your full eval suite first. Model updates break things in ways you cannot predict.
+Pin model versions in deployment config and treat model version updates as deployments  -  with their own PR, eval run, and canary. When an AI provider releases a new model version, do NOT just update the config. Run your full eval suite first. Model updates break things in ways you cannot predict.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-Never deploy a prompt change and a model version change in the same deployment. When something breaks — and something will break — you need to know which change caused it. Deploy prompt changes first (eval gate), then model version changes (separate PR, separate eval gate, separate canary). Treating them as one change is the source of the most painful AI incident investigations.
+Never deploy a prompt change and a model version change in the same deployment. When something breaks  -  and something will break  -  you need to know which change caused it. Deploy prompt changes first (eval gate), then model version changes (separate PR, separate eval gate, separate canary). Treating them as one change is the source of the most painful AI incident investigations.
 </Callout>
 
-## Congratulations — You've Completed the Advanced Track
+## Congratulations  -  You've Completed the Advanced Track
 
 You now have the full production AI engineering playbook:
 - Production RAG with self-healing

@@ -18,7 +18,7 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 ## How Function Calling Works
 
-In a standard chat completion, the model outputs text. With function calling, the model can instead output a **structured tool call** — a JSON object specifying which function to run and with what arguments. Your code runs the function and sends the result back. The model then continues from there.
+In a standard chat completion, the model outputs text. With function calling, the model can instead output a **structured tool call**  -  a JSON object specifying which function to run and with what arguments. Your code runs the function and sends the result back. The model then continues from there.
 
 This is not magic. The model has been trained to recognize when a task requires a tool and to output a specific JSON schema instead of prose. You define what tools are available. The model decides when and how to use them.
 
@@ -42,7 +42,7 @@ sequenceDiagram
 `}
 />
 
-The critical thing: **you run the function, not the model.** The model only outputs a structured request. This is intentional — it gives you full control over what tools can actually do, their side effects, and their failure modes.
+The critical thing: **you run the function, not the model.** The model only outputs a structured request. This is intentional  -  it gives you full control over what tools can actually do, their side effects, and their failure modes.
 
 ## Defining Tools as JSON Schema
 
@@ -81,7 +81,7 @@ The `description` fields matter enormously. The model uses them to decide when t
 
 ## Parallel vs. Sequential Tool Calls
 
-Modern models can issue **parallel tool calls** in a single response — multiple tool call objects returned at once. This is much faster than sequential calls when the tools are independent.
+Modern models can issue **parallel tool calls** in a single response  -  multiple tool call objects returned at once. This is much faster than sequential calls when the tools are independent.
 
 <Mermaid
   title="Parallel vs Sequential Tool Calls"
@@ -103,7 +103,7 @@ flowchart TD
 `}
 />
 
-Sequential is fine when tool B depends on tool A's result. Parallel is correct when both tools can run independently. Most APIs return all parallel tool calls in one response object — you run them concurrently, collect results, and send all results back in one follow-up message.
+Sequential is fine when tool B depends on tool A's result. Parallel is correct when both tools can run independently. Most APIs return all parallel tool calls in one response object  -  you run them concurrently, collect results, and send all results back in one follow-up message.
 
 ## Build It: Multi-Tool Agent with Weather and Calculator
 
@@ -160,7 +160,7 @@ TOOL_SCHEMAS = [
 # --- TOOL IMPLEMENTATIONS ---
 
 def get_weather(city: str) -> dict:
-    """Mock weather data — replace with a real weather API."""
+    """Mock weather data  -  replace with a real weather API."""
     mock_data = {
         "london": {"temp_c": 14, "conditions": "cloudy"},
         "tokyo": {"temp_c": 22, "conditions": "sunny"},
@@ -211,7 +211,7 @@ def run_tool_agent(user_message: str, max_iterations: int = 10) -> str:
         )
         msg = response.choices[0].message
 
-        # No tool calls — we have the final answer
+        # No tool calls  -  we have the final answer
         if not msg.tool_calls:
             print(f"Assistant: {msg.content}")
             return msg.content
@@ -251,7 +251,7 @@ def execute_tool_call_safe(tool_call) -> str:
         result = execute_tool_call(tool_call)
         return result
     except Exception as e:
-        # Return the error as a tool result — the model will handle it
+        # Return the error as a tool result  -  the model will handle it
         return json.dumps({
             "error": str(e),
             "tool": tool_call.function.name,
@@ -280,13 +280,13 @@ response = client.chat.completions.create(
 This is useful for structured extraction tasks where you always want a specific output format.
 
 <RoleCallout role="dev">
-**Validate tool call arguments before executing.** The model will occasionally produce arguments that don't match your schema — especially for optional parameters or enum values. Use Pydantic or simple assertion checks to validate arguments before running the function. A validation error returned as a tool result is safer than an exception crashing your agent loop.
+**Validate tool call arguments before executing.** The model will occasionally produce arguments that don't match your schema  -  especially for optional parameters or enum values. Use Pydantic or simple assertion checks to validate arguments before running the function. A validation error returned as a tool result is safer than an exception crashing your agent loop.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-**Tool definitions consume tokens. 10 tools with verbose descriptions equals roughly 2,000 tokens gone before the user's message even starts.** Keep tool descriptions concise — one sentence for the function, one sentence per parameter. Only send the tools relevant to the current context rather than the full registry for every request. A task management agent doesn't need the database migration tool available during a casual lookup.
+**Tool definitions consume tokens. 10 tools with verbose descriptions equals roughly 2,000 tokens gone before the user's message even starts.** Keep tool descriptions concise  -  one sentence for the function, one sentence per parameter. Only send the tools relevant to the current context rather than the full registry for every request. A task management agent doesn't need the database migration tool available during a casual lookup.
 </Callout>
 
 ## What's Next
 
-Tool use is how agents act on the world. But how do you know if your agents are acting *correctly*? The next tutorial covers building an eval suite that actually catches problems — the foundation of every reliable AI application.
+Tool use is how agents act on the world. But how do you know if your agents are acting *correctly*? The next tutorial covers building an eval suite that actually catches problems  -  the foundation of every reliable AI application.

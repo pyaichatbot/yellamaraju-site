@@ -1,0 +1,58 @@
+---
+title: "Agent Interoperability and A2A Patterns"
+description: "Design multi-agent systems with clear contracts so teams can mix runtimes and frameworks without brittle rewrites."
+level: advanced
+module: 14
+totalModules: 15
+roles: ["dev", "qa", "pm"]
+tags: ["Multi-Agent", "Interoperability", "A2A", "Architecture"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["advanced/02-multi-agent-orchestration", "advanced/09-enterprise-mcp-tool-architecture"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import Callout from '../../../components/Callout.astro';
+
+## Protocols Over Frameworks
+
+Interoperability comes from stable contracts, not shared libraries.
+
+<Mermaid
+  title="A2A-Oriented Multi-Agent Topology"
+  chart={`
+flowchart TD
+  S[Supervisor Agent] --> D1[Domain Agent: Support]
+  S --> D2[Domain Agent: Billing]
+  S --> D3[Domain Agent: Risk]
+  D1 --> X[Shared Contract Layer]
+  D2 --> X
+  D3 --> X
+  X --> O[Observability + Policy]
+`}
+/>
+
+## Contract Essentials
+
+- Task envelope schema
+- Capability advertisement
+- Timeout and cancellation semantics
+- Error taxonomy
+- Trace correlation IDs
+
+<RoleCallout role="dev">
+Define protocol schemas first, then adapter layers per framework. This prevents framework lock-in.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Interoperability tests should include mixed-version agents and partial outages.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Use capability contracts to decide ownership boundaries across teams and vendors.
+</RoleCallout>
+
+<Callout type="tip" title="Migration Strategy">
+Start with one delegated domain flow and enforce contract compatibility in CI before broad rollout.
+</Callout>

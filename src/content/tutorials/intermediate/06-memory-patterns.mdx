@@ -1,6 +1,6 @@
 ---
 title: "Memory Patterns for Conversational AI"
-description: "Stateless LLMs need explicit memory management. Buffer memory, summary memory, and entity memory — when to use each and how to implement them."
+description: "Stateless LLMs need explicit memory management. Buffer memory, summary memory, and entity memory  -  when to use each and how to implement them."
 level: intermediate
 module: 6
 totalModules: 8
@@ -20,7 +20,7 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 Every call to an LLM API is stateless. The model has no idea you talked to it yesterday. It doesn't remember your name, your preferences, or what you asked last week. Each API call starts completely fresh.
 
-This is by design — statelessness makes the API horizontally scalable. But it creates a problem for conversational applications: users expect continuity.
+This is by design  -  statelessness makes the API horizontally scalable. But it creates a problem for conversational applications: users expect continuity.
 
 The solution is explicit memory management. You store what the model needs to remember and inject it into each request. You are the memory system. The model just processes whatever you give it.
 
@@ -52,7 +52,7 @@ flowchart TD
 
 Keep the last N message pairs verbatim. Inject them into every new request as conversation history.
 
-**When to use:** Short-session applications. Customer support chats that last 5–15 exchanges. Anywhere simplicity matters more than long-term recall.
+**When to use:** Short-session applications. Customer support chats that last 5-15 exchanges. Anywhere simplicity matters more than long-term recall.
 
 **The limit:** At N=20 messages, you're spending ~6,000 tokens on history before the user says anything new.
 
@@ -139,7 +139,7 @@ class SummaryMemory:
             f"{existing}"
             f"New conversation to add to summary:\n{conversation_text}\n\n"
             "Update the summary to include all key facts, decisions, and context. "
-            "Be concise — under 150 words."
+            "Be concise  -  under 150 words."
         )
 
         response = client.chat.completions.create(
@@ -264,13 +264,13 @@ Store extracted entities in a database keyed by user ID. On each new conversatio
 ```
 
 <RoleCallout role="dev">
-**Memory is state. State causes bugs.** The most common memory bug: storing the memory object in a Python variable, then the web server restarts (deploy, crash, scale event) and the user's context is gone. Always serialize memory to a database — Redis for fast access, PostgreSQL for persistence. Treat memory like session data: stateless server, stateful storage.
+**Memory is state. State causes bugs.** The most common memory bug: storing the memory object in a Python variable, then the web server restarts (deploy, crash, scale event) and the user's context is gone. Always serialize memory to a database  -  Redis for fast access, PostgreSQL for persistence. Treat memory like session data: stateless server, stateful storage.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-**Memory is state. State causes bugs. Always serialize memory to a database, never to in-process variables.** Your server will restart — on deploys, crashes, and scale-in events. When it does, any in-memory state is gone and your users lose their context silently. Use Redis or a database table from day one. The `save()` / `load()` methods in the example above should write to a database, not a local file. The file approach is for demos only.
+**Memory is state. State causes bugs. Always serialize memory to a database, never to in-process variables.** Your server will restart  -  on deploys, crashes, and scale-in events. When it does, any in-memory state is gone and your users lose their context silently. Use Redis or a database table from day one. The `save()` / `load()` methods in the example above should write to a database, not a local file. The file approach is for demos only.
 </Callout>
 
 ## What's Next
 
-You've now built the three fundamental memory patterns. In the next tutorial you'll take a step back and think about cost — not every question needs your most expensive model. Multi-model routing can cut your AI bill by 60–80% without users noticing.
+You've now built the three fundamental memory patterns. In the next tutorial you'll take a step back and think about cost  -  not every question needs your most expensive model. Multi-model routing can cut your AI bill by 60-80% without users noticing.

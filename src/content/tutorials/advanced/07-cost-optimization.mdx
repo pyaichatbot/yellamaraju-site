@@ -3,7 +3,7 @@ title: "AI Cost Optimization at Scale"
 description: "Token costs, prompt caching, batching, model routing, and response caching. Techniques that turn a $50K/month AI bill into $12K without sacrificing quality."
 level: advanced
 module: 7
-totalModules: 8
+totalModules: 15
 roles: ["dev", "pm"]
 tags: ["Cost Optimization", "Token Costs", "Prompt Caching", "Batching", "Model Routing"]
 date: 2026-05-14
@@ -54,11 +54,11 @@ Prompt caching lets you pay input token costs only once for repeated prefixes. T
 1. First call: full input token cost
 2. Subsequent calls with same prefix: 80-90% discount on cached portion
 
-**Requirements:**
-- OpenAI: prefix caching is automatic for prompts >1024 tokens
+**Requirements (provider-dependent):**
+- OpenAI: prefix caching behavior depends on model and current platform rules
 - Anthropic: use `cache_control: {"type": "ephemeral"}` on content blocks
-- Minimum cacheable prefix: 1024 tokens (OpenAI), 1024 tokens (Anthropic)
-- Cache TTL: 5 minutes (OpenAI), 5 minutes (Anthropic)
+- Minimum cacheable prefix and TTL vary by provider/model/version
+- Always verify current limits in provider docs before rollout
 
 **Practical impact example:**
 
@@ -75,7 +75,7 @@ At 100K calls/day: ~$2,000/day saved
 
 ## Output Length Control
 
-The most underused optimization — and the fastest to implement:
+The most underused optimization  -  and the fastest to implement:
 
 ```python
 # Bad: no max_tokens set, model writes essays
@@ -102,7 +102,7 @@ Also: explicitly ask for concise output in your prompt.
 
 ## Response Caching
 
-For deterministic queries (temperature=0), identical inputs produce identical outputs — cache them.
+For deterministic queries (temperature=0), identical inputs produce identical outputs  -  cache them.
 
 ```python
 import hashlib
@@ -212,18 +212,19 @@ for label, model, cache, routing in scenarios:
         baseline = cost
     savings = (baseline - cost) / baseline * 100
     print(f"{label}")
-    print(f"  Monthly cost: ${cost:,.0f}  (savings: {savings:.0f}%)")
+    dollar = "$"
+    print(f"  Monthly cost: {dollar}{cost:,.0f}  (savings: {savings:.0f}%)")
     print()`}
 />
 
 <RoleCallout role="dev">
-Instrument every LLM call with token counts in your logging middleware — not as an afterthought. You cannot optimize what you don't measure. Log: model used, input tokens, output tokens, cache hit/miss, latency, and whether routing applied. Build a cost dashboard before you build advanced features.
+Instrument every LLM call with token counts in your logging middleware  -  not as an afterthought. You cannot optimize what you don't measure. Log: model used, input tokens, output tokens, cache hit/miss, latency, and whether routing applied. Build a cost dashboard before you build advanced features.
 </RoleCallout>
 
 <RoleCallout role="pm">
-Set cost budgets per feature — not just a global AI budget. "$X per 1,000 API calls" per feature. Alert when a feature exceeds its budget by 20%. This surfaces misuse patterns (users triggering expensive calls unexpectedly) and model behavior changes (output suddenly getting longer) before they become budget surprises.
+Set cost budgets per feature  -  not just a global AI budget. "$X per 1,000 API calls" per feature. Alert when a feature exceeds its budget by 20%. This surfaces misuse patterns (users triggering expensive calls unexpectedly) and model behavior changes (output suddenly getting longer) before they become budget surprises.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-Prompt caching requires your cacheable prefix to be byte-for-byte identical across calls. A single changed character — a timestamp, a user ID, a dynamic greeting — invalidates the entire cache. Structure your prompt as: [static system prompt] then [dynamic user content]. Put ALL dynamic content at the end, never mixed into the cached prefix. Many teams discover this the hard way after seeing 0% cache hit rates.
+Prompt caching requires your cacheable prefix to be byte-for-byte identical across calls. A single changed character  -  a timestamp, a user ID, a dynamic greeting  -  invalidates the entire cache. Structure your prompt as: [static system prompt] then [dynamic user content]. Put ALL dynamic content at the end, never mixed into the cached prefix. Many teams discover this the hard way after seeing 0% cache hit rates.
 </Callout>

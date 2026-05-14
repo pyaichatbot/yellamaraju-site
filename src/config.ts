@@ -19,23 +19,45 @@ export const NAV_ITEMS = [
   { label: 'Field Guide', href: '/blog' },
   { label: 'Tutorials', href: '/tutorials' },
   { label: 'Topics', href: '/topics' },
-  { label: 'Developer Productivity', href: '/developer-productivity' },
-  { 
-    label: 'Assets', 
+  {
+    label: 'Build',
     href: '#',
     children: [
-      { label: 'Templates', href: '/templates' }
-    ]
+      {
+        label: 'Developer Productivity',
+        href: '/developer-productivity',
+        description: 'Engineering workflows, tooling, and execution systems',
+      },
+      {
+        label: 'Templates',
+        href: '/templates',
+        description: 'Reusable checklists, docs, and operating artifacts',
+      },
+    ],
   },
-  { label: 'AI Playground', href: 'https://pyaichatbot.github.io/ai-learning-playground/' },
-  { label: 'Subagent Evals', href: 'https://pyaichatbot.github.io/subagent-evals/' },
+  {
+    label: 'Labs',
+    href: '#',
+    children: [
+      {
+        label: 'AI Playground',
+        href: 'https://pyaichatbot.github.io/ai-learning-playground/',
+        description: 'Interactive learning labs and runnable examples',
+      },
+      {
+        label: 'Subagent Evals',
+        href: 'https://pyaichatbot.github.io/subagent-evals/',
+        description: 'Evaluation harnesses for multi-agent behavior',
+      },
+    ],
+  },
   { 
     label: 'About', 
     href: '#',
     children: [
-      { label: 'About Me', href: '/about' },
-      { label: 'Resume', href: '/resume' },
-      { label: 'Contact', href: '/contact' }
+      { label: 'About Me', href: '/about', description: 'Profile, focus areas, and projects' },
+      { label: 'Resume', href: '/resume', description: 'Experience and background' },
+      { label: 'Contact', href: '/contact', description: 'Start a conversation' }
     ]
   }
 ];

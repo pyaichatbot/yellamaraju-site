@@ -3,7 +3,7 @@ title: "AI System Observability and Monitoring"
 description: "What to log, how to trace, and how to detect drift before users do. Build the observability stack that turns AI black boxes into diagnosable systems."
 level: advanced
 module: 3
-totalModules: 8
+totalModules: 15
 roles: ["dev", "qa"]
 tags: ["Observability", "Monitoring", "Tracing", "Drift Detection", "LLM Ops"]
 date: 2026-05-14
@@ -20,12 +20,12 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 Traditional software observability answers: "Did the code do what it was supposed to do?" AI observability answers a harder question: "Did the AI *behave* the way we intended, across the distribution of inputs we actually see?"
 
-An LLM call can succeed (HTTP 200, valid JSON response) while failing silently — producing a hallucinated answer, ignoring an instruction, or degrading in quality because a model version changed upstream. Traditional uptime monitoring won't catch any of this.
+An LLM call can succeed (HTTP 200, valid JSON response) while failing silently  -  producing a hallucinated answer, ignoring an instruction, or degrading in quality because a model version changed upstream. Traditional uptime monitoring won't catch any of this.
 
 You need three layers of observability:
-1. **Infrastructure metrics** — latency, errors, token costs (same as any API)
-2. **Behavioral traces** — what prompt went in, what came out, eval scores
-3. **Drift signals** — is quality trending down over time?
+1. **Infrastructure metrics**  -  latency, errors, token costs (same as any API)
+2. **Behavioral traces**  -  what prompt went in, what came out, eval scores
+3. **Drift signals**  -  is quality trending down over time?
 
 ## What to Log on Every LLM Call
 
@@ -36,13 +36,13 @@ Every call to an LLM should produce a structured log record containing:
 | `request_id` | Correlate logs across services |
 | `session_id` | Group a user's conversation |
 | `model` | Exact model version (`gpt-4o-2024-11-20`, not just `gpt-4o`) |
-| `prompt_hash` | SHA-256 of the rendered prompt — detect when templates change |
+| `prompt_hash` | SHA-256 of the rendered prompt  -  detect when templates change |
 | `input_tokens` | Cost accounting |
 | `output_tokens` | Cost accounting |
 | `latency_ms` | Performance tracking |
-| `temperature` | Reproducibility — affects quality variance |
+| `temperature` | Reproducibility  -  affects quality variance |
 | `eval_scores` | Your automated quality scores |
-| `finish_reason` | `stop` vs `length` — `length` means you truncated the response |
+| `finish_reason` | `stop` vs `length`  -  `length` means you truncated the response |
 | `error` | Error type and message if the call failed |
 | `timestamp` | When the call happened |
 
@@ -57,11 +57,11 @@ Log the actual prompt sent to the model, not the template string. Template varia
 Distributed tracing for LLM applications follows the same span model as regular distributed tracing, with LLM-specific fields added.
 
 A trace for a RAG query has spans:
-- `rag.query` — root span, covers end-to-end
-  - `rag.embed_query` — embedding the user query
-  - `rag.retrieve` — vector search
-  - `rag.rerank` — cross-encoder reranking
-  - `llm.generate` — the actual LLM call
+- `rag.query`  -  root span, covers end-to-end
+  - `rag.embed_query`  -  embedding the user query
+  - `rag.retrieve`  -  vector search
+  - `rag.rerank`  -  cross-encoder reranking
+  - `llm.generate`  -  the actual LLM call
 
 Each `llm.generate` span carries: model, prompt hash, input tokens, output tokens, latency, finish reason, eval scores.
 
@@ -95,15 +95,15 @@ flowchart TD
 
 ## Metrics to Track
 
-**Latency** — measure at p50, p95, and p99. p50 tells you the typical experience. p95 and p99 tell you how bad the tail is. LLM latency distributions are extremely fat-tailed — a p95 of 8 seconds with a p50 of 2 seconds is normal.
+**Latency**  -  measure at p50, p95, and p99. p50 tells you the typical experience. p95 and p99 tell you how bad the tail is. LLM latency distributions are extremely fat-tailed  -  a p95 of 8 seconds with a p50 of 2 seconds is normal.
 
-**Token usage** — input tokens, output tokens, and total. Track per endpoint, per user segment, and per model. Token usage is your cost driver and your capacity signal.
+**Token usage**  -  input tokens, output tokens, and total. Track per endpoint, per user segment, and per model. Token usage is your cost driver and your capacity signal.
 
-**Eval pass rate** — your automated quality checks, expressed as the fraction of calls that pass. This is the most important metric you track. Everything else is infrastructure.
+**Eval pass rate**  -  your automated quality checks, expressed as the fraction of calls that pass. This is the most important metric you track. Everything else is infrastructure.
 
-**Error rate** — HTTP errors, timeouts, JSON parse failures, schema validation failures. Track separately by error type.
+**Error rate**  -  HTTP errors, timeouts, JSON parse failures, schema validation failures. Track separately by error type.
 
-**Finish reason distribution** — what fraction of responses end with `length` (truncated) vs `stop` (natural completion)? A rising `length` rate means your output is being cut off.
+**Finish reason distribution**  -  what fraction of responses end with `length` (truncated) vs `stop` (natural completion)? A rising `length` rate means your output is being cut off.
 
 ## Drift Detection
 
@@ -140,10 +140,10 @@ flowchart LR
 `}
 />
 
-A 5% drop in eval pass rate over 7 days should trigger an investigation. A 10% drop should trigger an incident. These thresholds are starting points — calibrate them to your application's sensitivity.
+A 5% drop in eval pass rate over 7 days should trigger an investigation. A 10% drop should trigger an incident. These thresholds are starting points  -  calibrate them to your application's sensitivity.
 
 <RoleCallout role="dev">
-Build your logging middleware before you ship your first LLM feature, not after. Retrofitting observability into an LLM application is significantly harder than instrumenting from the start. Every LLM call should go through a single logging wrapper — this is also the right place to add retry logic, timeout handling, and cost tracking.
+Build your logging middleware before you ship your first LLM feature, not after. Retrofitting observability into an LLM application is significantly harder than instrumenting from the start. Every LLM call should go through a single logging wrapper  -  this is also the right place to add retry logic, timeout handling, and cost tracking.
 </RoleCallout>
 
 <RoleCallout role="qa">
@@ -191,7 +191,7 @@ def make_log_record(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "model": model,
         "prompt_hash": prompt_hash,
-        "rendered_prompt": rendered_prompt,  # FULL rendered prompt — not template
+        "rendered_prompt": rendered_prompt,  # FULL rendered prompt  -  not template
         "response": response_text,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
@@ -329,5 +329,5 @@ print(f"\\nResponse: {response}")
 />
 
 <Callout type="warning" title="Production Gotcha: Log the Actual Rendered Prompt">
-Log the ACTUAL prompt sent to the model, not the template. Template variables can render to unexpected values in edge cases, and without the rendered prompt you will never debug them. A `context` variable that renders as an empty string, a `None` that stringifies as "None", a date that formats incorrectly — these are real bugs that are completely invisible if you only log the template. The rendered prompt is your ground truth.
+Log the ACTUAL prompt sent to the model, not the template. Template variables can render to unexpected values in edge cases, and without the rendered prompt you will never debug them. A `context` variable that renders as an empty string, a `None` that stringifies as "None", a date that formats incorrectly  -  these are real bugs that are completely invisible if you only log the template. The rendered prompt is your ground truth.
 </Callout>

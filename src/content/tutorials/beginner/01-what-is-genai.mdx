@@ -1,6 +1,6 @@
 ---
 title: "What is Generative AI and How It Works"
-description: "Understand what generative AI actually does — not the hype, but the mechanism. How text, images, and code come out of a model and why it matters for your role."
+description: "Understand what generative AI actually does  -  not the hype, but the mechanism. How text, images, and code come out of a model and why it matters for your role."
 level: beginner
 module: 1
 totalModules: 9
@@ -17,7 +17,7 @@ import RoleCallout from '../../../components/RoleCallout.astro';
 
 ## The 30-Second Version
 
-Generative AI is software that **predicts what comes next**. Give it a question, it predicts the most likely helpful answer. Give it half a sentence, it predicts the rest. That's genuinely all it is at the core — a very sophisticated autocomplete.
+Generative AI is software that **predicts what comes next**. Give it a question, it predicts the most likely helpful answer. Give it half a sentence, it predicts the rest. That's genuinely all it is at the core  -  a very sophisticated autocomplete.
 
 The "generative" part means it creates new content (text, images, code, audio) rather than retrieving stored answers.
 
@@ -52,22 +52,22 @@ The model has seen so much human text during training that predicting "what come
 
 Not all generative AI is the same. The field has three major branches you'll encounter:
 
-**Language models (LLMs)** — GPT-4, Claude, Gemini. Take text in, produce text out. This is where most business applications live.
+**Language models (LLMs)**  -  GPT-4, Claude, Gemini. Take text in, produce text out. This is where most business applications live.
 
-**Image models** — DALL-E, Midjourney, Stable Diffusion. Take a text description, produce an image.
+**Image models**  -  DALL-E, Midjourney, Stable Diffusion. Take a text description, produce an image.
 
-**Multimodal models** — Can handle text, images, audio, and code together. GPT-4o and Gemini Ultra are examples.
+**Multimodal models**  -  Can handle text, images, audio, and code together. GPT-4o and Gemini Ultra are examples.
 
 This tutorial series focuses on LLMs because they power 90% of business AI applications.
 
 ## Why It Hallucinates
 
-The model doesn't have a "facts database" it looks up. It predicts based on patterns. If it's never seen reliable data about a niche topic, it will still generate a confident-sounding response — because that's what it's optimized to do.
+The model doesn't have a "facts database" it looks up. It predicts based on patterns. If it's never seen reliable data about a niche topic, it will still generate a confident-sounding response  -  because that's what it's optimized to do.
 
 This is not a bug to be fixed. It's a consequence of how the system works. Your architecture needs to account for it.
 
 <RoleCallout role="dev">
-**What this means for your code:** Every AI response needs validation. Don't pipe AI output directly into your database, your UI, or your logic without checking it. Hallucinations are real and consistent — plan for them with evals, structured output, and fallback handling.
+**What this means for your code:** Every AI response needs validation. Don't pipe AI output directly into your database, your UI, or your logic without checking it. Hallucinations are real and consistent  -  plan for them with evals, structured output, and fallback handling.
 </RoleCallout>
 
 <RoleCallout role="qa">
@@ -108,7 +108,7 @@ The model is just one component. The prompt builder, validator, and application 
 
 ## What's Next
 
-In the next tutorial, you'll go deeper into how LLMs specifically work — tokens, context windows, temperature settings, and why model choice matters.
+In the next tutorial, you'll go deeper into how LLMs specifically work  -  tokens, context windows, temperature settings, and why model choice matters.
 
 <Callout type="tip" title="Before You Continue">
 You don't need to understand the math behind transformers to build with AI effectively. Focus on the mental model: inputs in, outputs out, validate everything.

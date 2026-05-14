@@ -18,7 +18,7 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 ## What a Schema Does
 
-In the previous tutorial, you learned that JSON mode guarantees valid JSON, but not the specific fields your code needs. A schema goes further: it defines the **exact shape** of the data — which fields exist, what types they are, which are required, and what values are allowed.
+In the previous tutorial, you learned that JSON mode guarantees valid JSON, but not the specific fields your code needs. A schema goes further: it defines the **exact shape** of the data  -  which fields exist, what types they are, which are required, and what values are allowed.
 
 Think of it as the difference between "fill out any form" and "fill out this specific form with these specific fields." The form constrains the space of valid responses.
 
@@ -67,7 +67,7 @@ This model says: "A `CodeReviewResult` must have a list of issues (each with a s
 
 ## From Pydantic Model to JSON Schema
 
-Pydantic models can export themselves as JSON Schema — the same format that OpenAI's `json_schema` mode accepts:
+Pydantic models can export themselves as JSON Schema  -  the same format that OpenAI's `json_schema` mode accepts:
 
 ```python
 schema = CodeReviewResult.model_json_schema()
@@ -249,7 +249,7 @@ Key fields: `type`, `properties`, `required`, `enum` (allowed values), `minimum`
 <Callout type="warning" title="Production Gotcha: Schema Validates Structure, Not Semantics">
 LLMs can still hallucinate values that pass schema validation. An `email` field with type `string` will pass even if the model invents a plausible-looking but nonexistent email address. An `amount` field typed as `number` will pass even if the number is wrong.
 
-Schema validation catches structural problems (missing fields, wrong types, invalid enums). It does not catch semantic problems (wrong values that are structurally valid). You need separate business logic to validate semantic correctness — for example, checking that extracted totals match the sum of line items.
+Schema validation catches structural problems (missing fields, wrong types, invalid enums). It does not catch semantic problems (wrong values that are structurally valid). You need separate business logic to validate semantic correctness  -  for example, checking that extracted totals match the sum of line items.
 </Callout>
 
 ## Handling Validation Failures
@@ -271,11 +271,11 @@ except ValidationError as e:
 In production, validation failures should trigger alerts. They indicate either a prompt that needs refinement or a model behavior change that needs investigation.
 
 <RoleCallout role="qa">
-**What this means for testing:** Schema violations are the most testable kind of AI failure — they're binary pass/fail. Write test cases that assert your Pydantic model instantiates successfully from the AI response. For edge cases (unusual inputs, long documents, non-English text), run the full pipeline and assert the output validates. This gives you deterministic, automatable test assertions instead of "does this look right?" manual checks.
+**What this means for testing:** Schema violations are the most testable kind of AI failure  -  they're binary pass/fail. Write test cases that assert your Pydantic model instantiates successfully from the AI response. For edge cases (unusual inputs, long documents, non-English text), run the full pipeline and assert the output validates. This gives you deterministic, automatable test assertions instead of "does this look right?" manual checks.
 </RoleCallout>
 
 <RoleCallout role="dev">
-**What this means for your code:** `model_validate_json()` is your friend — it parses and validates in a single call, raising `ValidationError` with field-level detail when something is wrong. Never use `json.loads()` followed by manual key access for AI responses you've invested in schema-defining. Also: store your Pydantic models in a dedicated `schemas/` module. They are your API contracts, and they should be versioned and imported by both the AI call layer and the downstream data layer.
+**What this means for your code:** `model_validate_json()` is your friend  -  it parses and validates in a single call, raising `ValidationError` with field-level detail when something is wrong. Never use `json.loads()` followed by manual key access for AI responses you've invested in schema-defining. Also: store your Pydantic models in a dedicated `schemas/` module. They are your API contracts, and they should be versioned and imported by both the AI call layer and the downstream data layer.
 </RoleCallout>
 
 ## What's Next

@@ -17,7 +17,7 @@ import RoleCallout from '../../../components/RoleCallout.astro';
 
 ## What a Prompt Really Is
 
-You already know how to talk to people. Prompting is the same skill applied to AI models — with a few important differences.
+You already know how to talk to people. Prompting is the same skill applied to AI models  -  with a few important differences.
 
 When you tell a colleague "review this," they fill in the gaps from context: who you are, what project this is, what kind of review you want, and how to format their feedback. An AI model has none of that context unless you provide it explicitly.
 
@@ -44,7 +44,7 @@ flowchart TD
 `}
 />
 
-### 1. Role — Who is the AI?
+### 1. Role  -  Who is the AI?
 
 Setting a role tells the model what persona, expertise level, and perspective to adopt. It constrains the vocabulary and depth of the response.
 
@@ -53,21 +53,21 @@ Setting a role tells the model what persona, expertise level, and perspective to
 
 The role doesn't need to be elaborate. Even "You are a concise technical writer" dramatically improves consistency.
 
-### 2. Task — What do you want?
+### 2. Task  -  What do you want?
 
 Be specific about the action. Avoid ambiguous verbs like "help," "look at," or "talk about."
 
 **Weak:** "Help me with this code."
 **Strong:** "Identify all SQL injection vulnerabilities in the code below. For each one, explain why it's vulnerable and provide a corrected version."
 
-### 3. Context — What should the AI know?
+### 3. Context  -  What should the AI know?
 
 This is where your domain knowledge becomes the prompt's intelligence. The model knows general patterns; you know the specifics of your situation.
 
 **Weak:** "Summarize this document."
 **Strong:** "Summarize this document for a non-technical executive audience. The key decision they need to make is whether to approve a $50,000 AI tooling budget for Q3."
 
-### 4. Format — How should the output be structured?
+### 4. Format  -  How should the output be structured?
 
 Undefined format = unpredictable output. Defined format = parseable, reliable, consistent output.
 
@@ -76,7 +76,7 @@ Undefined format = unpredictable output. Defined format = parseable, reliable, c
 
 ## Before vs After: Seeing the Difference
 
-<Callout type="warning" title="Weak Prompt — What Not to Do">
+<Callout type="warning" title="Weak Prompt  -  What Not to Do">
 **System:** You are an assistant.
 
 **User:** Review my code and tell me if there are any problems.
@@ -84,7 +84,7 @@ Undefined format = unpredictable output. Defined format = parseable, reliable, c
 **Why it fails:** No role expertise, vague task ("problems" is undefined), no context about what the code does or what risks matter, no output format specified. The response will be generic, possibly unhelpful, and definitely unparseable by code.
 </Callout>
 
-<Callout type="tip" title="Strong Prompt — What to Do Instead">
+<Callout type="tip" title="Strong Prompt  -  What to Do Instead">
 **System:** You are a security-focused Python developer reviewing production code that handles financial transactions.
 
 **User:** Review the following Python function for SQL injection vulnerabilities, input validation issues, and improper exception handling. The function accepts user-submitted data from a public web form.
@@ -125,7 +125,7 @@ Sentiment:
 
 ### Few-Shot
 
-You give 3–5 examples. The most reliable approach for getting consistent output format and tone. Especially useful when your definition of "correct" is nuanced or domain-specific.
+You give 3-5 examples. The most reliable approach for getting consistent output format and tone. Especially useful when your definition of "correct" is nuanced or domain-specific.
 
 ```
 Classify each review using our internal categories: delighted / satisfied / neutral / frustrated / angry.
@@ -149,7 +149,7 @@ Use zero-shot for simple, clear tasks. Use one-shot when you need a specific out
 These are the mistakes that cause AI features to fail silently in production:
 
 **Anti-pattern 1: Vague instructions**
-"Make it better" — better by what measure? More concise? More formal? More detailed? Always specify the dimension.
+"Make it better"  -  better by what measure? More concise? More formal? More detailed? Always specify the dimension.
 
 **Anti-pattern 2: No format specification**
 If your code is going to parse the output, you must specify the format. "Tell me the issues" → free text. "Output a JSON array" → parseable. Never leave format to chance in production code.
@@ -164,11 +164,11 @@ Adding more and more to a prompt to fix edge cases until it becomes a 2,000-toke
 A prompt that works perfectly on one input can fail on 30% of real inputs. Always test against a representative sample before shipping.
 
 <RoleCallout role="ba">
-**What this means for requirements:** Your domain knowledge IS the context section of every prompt. When you brief developers on an AI feature, include specific examples of good and bad outputs — these become few-shot examples. The more precisely you can describe what "correct" looks like, the better the system will perform. Vague acceptance criteria produce vague AI outputs.
+**What this means for requirements:** Your domain knowledge IS the context section of every prompt. When you brief developers on an AI feature, include specific examples of good and bad outputs  -  these become few-shot examples. The more precisely you can describe what "correct" looks like, the better the system will perform. Vague acceptance criteria produce vague AI outputs.
 </RoleCallout>
 
 <RoleCallout role="dev">
-**What this means for your code:** Few-shot examples are the most reliable tool for shaping output format, especially when JSON mode isn't available. Store your examples in a separate file or database — not hardcoded in the function. That way they can be updated without a code deploy. Also: your system prompt is where you put the role and format instructions; your user prompt is where you put the dynamic content.
+**What this means for your code:** Few-shot examples are the most reliable tool for shaping output format, especially when JSON mode isn't available. Store your examples in a separate file or database  -  not hardcoded in the function. That way they can be updated without a code deploy. Also: your system prompt is where you put the role and format instructions; your user prompt is where you put the dynamic content.
 </RoleCallout>
 
 <RoleCallout role="qa">
@@ -176,12 +176,12 @@ A prompt that works perfectly on one input can fail on 30% of real inputs. Alway
 </RoleCallout>
 
 <RoleCallout role="pm">
-**What this means for your roadmap:** The quality of an AI feature is largely a function of prompt quality — not model quality. A well-crafted prompt on GPT-4o-mini often outperforms a vague prompt on GPT-4o, at 10x lower cost. Budget time for prompt iteration. The first version is never the best version. Plan for 3–5 refinement cycles before a prompt is production-ready.
+**What this means for your roadmap:** The quality of an AI feature is largely a function of prompt quality  -  not model quality. A well-crafted prompt on GPT-4o-mini often outperforms a vague prompt on GPT-4o, at 10x lower cost. Budget time for prompt iteration. The first version is never the best version. Plan for 3-5 refinement cycles before a prompt is production-ready.
 </RoleCallout>
 
 ## What's Next
 
-Great prompts produce useful text. But if your application needs to parse that text, "useful text" isn't enough — you need **structured output**. That's the subject of the next tutorial.
+Great prompts produce useful text. But if your application needs to parse that text, "useful text" isn't enough  -  you need **structured output**. That's the subject of the next tutorial.
 
 <Callout type="tip" title="Immediate Action">
 Take a prompt you're currently using (or one from ChatGPT) and rewrite it using all 4 parts: Role, Task, Context, Format. Compare the outputs side by side. The improvement is usually immediate and significant.

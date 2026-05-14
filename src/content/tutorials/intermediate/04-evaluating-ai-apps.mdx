@@ -20,7 +20,7 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 Standard software testing is deterministic: given input X, the correct output is always Y. You write `assert output == Y` and ship.
 
-AI outputs are **non-deterministic**. The same input can produce different outputs on every run. Even if the output is deterministic at temperature 0, it changes when the model is updated — and providers update models without asking you.
+AI outputs are **non-deterministic**. The same input can produce different outputs on every run. Even if the output is deterministic at temperature 0, it changes when the model is updated  -  and providers update models without asking you.
 
 This breaks every testing assumption you're used to:
 
@@ -52,11 +52,11 @@ flowchart TD
 `}
 />
 
-**Assertion-based evals** — the fastest tier. Check exact matches, substring contains, JSON structure, or response format. These run in milliseconds and are 100% reliable. Example: does the response contain a valid JSON object? Does it start with "I cannot"? These catch clear failures cheaply.
+**Assertion-based evals**  -  the fastest tier. Check exact matches, substring contains, JSON structure, or response format. These run in milliseconds and are 100% reliable. Example: does the response contain a valid JSON object? Does it start with "I cannot"? These catch clear failures cheaply.
 
-**Rubric-based evals (LLM-as-judge)** — a second LLM grades the first LLM's output against a defined rubric. "Is this response accurate, concise, and in the correct language? Score 1–5." These can scale to thousands of examples but require calibration against human labels to be trusted.
+**Rubric-based evals (LLM-as-judge)**  -  a second LLM grades the first LLM's output against a defined rubric. "Is this response accurate, concise, and in the correct language? Score 1-5." These can scale to thousands of examples but require calibration against human labels to be trusted.
 
-**Human evals** — a human reviewer reads the output and judges it. The gold standard. Too expensive to run on every commit, but necessary for high-stakes decisions and for calibrating your automated evals.
+**Human evals**  -  a human reviewer reads the output and judges it. The gold standard. Too expensive to run on every commit, but necessary for high-stakes decisions and for calibrating your automated evals.
 
 **In practice:** Use all three. Assertion evals gate CI/CD. Rubric evals run on every deploy. Human evals run quarterly and before major model upgrades.
 
@@ -108,7 +108,7 @@ flowchart TD
 `}
 />
 
-The judge LLM should be a **different model** from the system under test — ideally a stronger one. A GPT-4o judge evaluating GPT-4o-mini outputs works well. Using the same model to judge itself introduces bias.
+The judge LLM should be a **different model** from the system under test  -  ideally a stronger one. A GPT-4o judge evaluating GPT-4o-mini outputs works well. Using the same model to judge itself introduces bias.
 
 ## Build It: Eval Suite with Assertions and LLM-as-Judge
 
@@ -297,19 +297,19 @@ This runs three test cases against a live AI system, checks assertions, and gets
 </RoleCallout>
 
 <RoleCallout role="dev">
-**Store eval results in a database — never just in logs.** You need to track pass rate over model versions. When GPT-4o-mini is replaced by a new version, you need to know immediately if your pass rate dropped from 94% to 78%. Without historical data, you're flying blind. A simple table with columns (test_id, model, timestamp, assertion_passed, judge_score) is enough to start.
+**Store eval results in a database  -  never just in logs.** You need to track pass rate over model versions. When GPT-4o-mini is replaced by a new version, you need to know immediately if your pass rate dropped from 94% to 78%. Without historical data, you're flying blind. A simple table with columns (test_id, model, timestamp, assertion_passed, judge_score) is enough to start.
 </RoleCallout>
 
 ## Setting Your Pass Threshold
 
 What constitutes a passing eval suite? There's no universal answer, but these are reasonable starting points:
 
-- **Assertion pass rate** — should be 100%. Assertion failures indicate clear factual errors or format violations.
-- **LLM judge average** — 3.5/5 or above is a sensible minimum. Below 3 suggests systematic quality problems.
-- **Regression threshold** — if today's score is more than 10% lower than your baseline, block the deployment regardless of absolute score.
+- **Assertion pass rate**  -  should be 100%. Assertion failures indicate clear factual errors or format violations.
+- **LLM judge average**  -  3.5/5 or above is a sensible minimum. Below 3 suggests systematic quality problems.
+- **Regression threshold**  -  if today's score is more than 10% lower than your baseline, block the deployment regardless of absolute score.
 
 <Callout type="warning" title="Production Gotcha">
-**LLM-as-judge is biased toward verbose, confident-sounding responses.** A response that sounds authoritative but is factually wrong often scores higher than a brief, accurate, appropriately hedged response. Calibrate your judge by running it against 50–100 human-labeled examples and measuring how often it agrees with human raters. A judge with less than 80% agreement with human raters should not be used as a deployment gate.
+**LLM-as-judge is biased toward verbose, confident-sounding responses.** A response that sounds authoritative but is factually wrong often scores higher than a brief, accurate, appropriately hedged response. Calibrate your judge by running it against 50-100 human-labeled examples and measuring how often it agrees with human raters. A judge with less than 80% agreement with human raters should not be used as a deployment gate.
 </Callout>
 
 ## What's Next

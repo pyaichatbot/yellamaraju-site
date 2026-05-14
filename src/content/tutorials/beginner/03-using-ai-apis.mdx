@@ -26,7 +26,7 @@ AI APIs are drive-through windows to the world's most powerful language models.
 
 ## What "REST API" Actually Means
 
-When developers say "REST API," they mean a standardized way to make requests over the internet using HTTP — the same protocol your browser uses to load websites.
+When developers say "REST API," they mean a standardized way to make requests over the internet using HTTP  -  the same protocol your browser uses to load websites.
 
 Every AI API call is fundamentally:
 
@@ -43,7 +43,7 @@ API keys are passwords. Never put them directly in your code. Use environment va
 
 ## The Journey from Your Code to a Response
 
-Here is exactly what happens in the roughly 1–3 seconds between your code sending a request and receiving a response:
+Here is exactly what happens in the roughly 1-3 seconds between your code sending a request and receiving a response:
 
 <Mermaid
   title="From Code to AI Response: The Full Journey"
@@ -89,10 +89,10 @@ Every major AI API uses this same conceptual structure, regardless of provider:
 
 **What each field does:**
 
-- `model` — Which specific model to use (different models have different costs and capabilities)
-- `messages` — An array of conversation turns. The `system` message sets the AI's persona and rules. The `user` message is what you're asking.
-- `max_tokens` — Maximum length of the response. Prevents runaway costs and long waits.
-- `temperature` — Randomness setting from 0 to 2. Near 0 = deterministic and focused. Near 1 = creative and varied. Use 0 for structured data extraction, 0.7 for writing, 0 for classification.
+- `model`  -  Which specific model to use (different models have different costs and capabilities)
+- `messages`  -  An array of conversation turns. The `system` message sets the AI's persona and rules. The `user` message is what you're asking.
+- `max_tokens`  -  Maximum length of the response. Prevents runaway costs and long waits.
+- `temperature`  -  Randomness setting from 0 to 2. Near 0 = deterministic and focused. Near 1 = creative and varied. Use 0 for structured data extraction, 0.7 for writing, 0 for classification.
 
 ## Provider Comparison
 
@@ -108,7 +108,7 @@ All three major providers expose a similar API surface. Here's how they differ p
 | **Best For** | Broadest ecosystem, most tutorials | Long documents, nuanced reasoning | High volume, cost-sensitive workloads |
 
 <Callout type="info" title="Which Should I Use?">
-Start with OpenAI — it has the most documentation, tutorials, and community examples. Switch providers when you have a specific reason: cheaper at volume (Gemini), longer context (Anthropic Claude), or specific compliance requirements.
+Start with OpenAI  -  it has the most documentation, tutorials, and community examples. Switch providers when you have a specific reason: cheaper at volume (Gemini), longer context (Anthropic Claude), or specific compliance requirements.
 </Callout>
 
 ## Your First API Call
@@ -139,11 +139,11 @@ print(response.choices[0].message.content)
 
 **Breaking down `response.choices[0].message.content`:**
 
-- `response.choices` — A list of possible completions. Usually just one.
-- `[0]` — The first (and typically only) completion.
-- `.message.content` — The actual text the model generated.
+- `response.choices`  -  A list of possible completions. Usually just one.
+- `[0]`  -  The first (and typically only) completion.
+- `.message.content`  -  The actual text the model generated.
 
-The response object also contains `.usage.prompt_tokens` and `.usage.completion_tokens` — use these to track costs.
+The response object also contains `.usage.prompt_tokens` and `.usage.completion_tokens`  -  use these to track costs.
 
 ## What Happens When Things Go Wrong
 
@@ -160,20 +160,20 @@ API calls can fail. Common errors and what they mean:
 Always wrap API calls in try/except blocks in production code.
 
 <RoleCallout role="qa">
-**What this means for testing:** The API endpoint is your seam — the boundary between your code and the AI provider. For unit tests, mock the API client entirely (don't make real calls). For integration tests, call the real API with controlled prompts and assert on response structure, not exact content. Never let your unit tests run up an API bill.
+**What this means for testing:** The API endpoint is your seam  -  the boundary between your code and the AI provider. For unit tests, mock the API client entirely (don't make real calls). For integration tests, call the real API with controlled prompts and assert on response structure, not exact content. Never let your unit tests run up an API bill.
 </RoleCallout>
 
 <RoleCallout role="ba">
-**What this means for cost estimation:** AI APIs are priced per token (roughly per word). A typical document summary might cost $0.001–$0.01 per call. At 10,000 calls/day, that's $10–$100/day. Get usage estimates from your dev team and factor them into your business case. The pricing pages of each provider show exact rates per model.
+**What this means for cost estimation:** AI APIs are priced per token (roughly per word). A typical document summary might cost $0.001-$0.01 per call. At 10,000 calls/day, that's $10-$100/day. Get usage estimates from your dev team and factor them into your business case. The pricing pages of each provider show exact rates per model.
 </RoleCallout>
 
 <RoleCallout role="pm">
-**What this means for your roadmap:** Rate limits exist at every provider — typically 500–10,000 requests per minute depending on your tier. If your feature is expected to serve many concurrent users, design your UX to handle queuing and latency gracefully. A "thinking..." spinner is better than a broken interface. Also plan for the 99th percentile latency (2–10 seconds), not average latency.
+**What this means for your roadmap:** Rate limits exist at every provider  -  typically 500-10,000 requests per minute depending on your tier. If your feature is expected to serve many concurrent users, design your UX to handle queuing and latency gracefully. A "thinking..." spinner is better than a broken interface. Also plan for the 99th percentile latency (2-10 seconds), not average latency.
 </RoleCallout>
 
 ## What's Next
 
-Now that you can make an API call, the quality of your results depends almost entirely on what you put in the `messages` array. That's prompt engineering — and it's the subject of the next tutorial.
+Now that you can make an API call, the quality of your results depends almost entirely on what you put in the `messages` array. That's prompt engineering  -  and it's the subject of the next tutorial.
 
 <Callout type="tip" title="Practice Exercise">
 Set your `OPENAI_API_KEY` environment variable and run the code example above. Then change the system prompt to "You are a pirate" and observe how the response tone changes. This single experiment teaches you more about prompt engineering than most blog posts.

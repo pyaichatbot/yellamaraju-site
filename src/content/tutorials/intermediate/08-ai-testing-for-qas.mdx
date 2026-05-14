@@ -197,17 +197,17 @@ for tc in test_suite:
         total_fail += 1
 
 print(f"\\nResults: {total_pass} passed, {total_fail} failed")
-print("CI Gate: PASS" if total_fail == 0 else "CI Gate: FAIL — block deployment")`}
+print("CI Gate: PASS" if total_fail == 0 else "CI Gate: FAIL  -  block deployment")`}
 />
 
 <RoleCallout role="qa">
-Own the eval test suite the way you own the QA test suite — it's not the dev's job. You know the failure modes, the edge cases, and what "good enough" means for the business. Write the test cases before the feature ships. Run them in CI. Alert on regressions. This is your core deliverable for AI features.
+Own the eval test suite the way you own the QA test suite  -  it's not the dev's job. You know the failure modes, the edge cases, and what "good enough" means for the business. Write the test cases before the feature ships. Run them in CI. Alert on regressions. This is your core deliverable for AI features.
 </RoleCallout>
 
 <RoleCallout role="dev">
-Give QA direct access to the eval harness — they need to be able to run evals themselves without engineering help. Build a simple CLI or notebook interface. QA can spot failure modes you'll never think of. The best AI test suites are collaborative, not siloed.
+Give QA direct access to the eval harness  -  they need to be able to run evals themselves without engineering help. Build a simple CLI or notebook interface. QA can spot failure modes you'll never think of. The best AI test suites are collaborative, not siloed.
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-QA sign-off on AI features must include model version pinning. When OpenAI or Anthropic updates a model, behavior changes — sometimes subtly, sometimes dramatically. Your eval suite passing on gpt-4o-2024-08-06 doesn't mean it passes on gpt-4o-2024-11-20. Pin model versions in production configs, and treat model version updates as deployments that require a full eval run.
+QA sign-off on AI features must include model version pinning. When OpenAI or Anthropic updates a model, behavior changes  -  sometimes subtly, sometimes dramatically. Your eval suite passing on gpt-4o-2024-08-06 doesn't mean it passes on gpt-4o-2024-11-20. Pin model versions in production configs, and treat model version updates as deployments that require a full eval run.
 </Callout>

@@ -27,9 +27,10 @@ const roleConfig: Record<string, { label: string; short: string }> = {
 };
 
 const cfg = levelConfig[level];
+const roleList = roles.join(',');
 ---
 
-<a href={href} class="tutorial-card" data-level={level}>
+<a href={href} class="tutorial-card" data-level={level} data-roles={roleList}>
   <div class="tutorial-card-header">
     <span class="tutorial-level-badge" style={`--badge-color: ${cfg.color}`}>
       {cfg.label}

@@ -14,9 +14,9 @@ const allTutorials = await getCollection('tutorials', ({ data }) => !data.draft 
 const tutorials = allTutorials.sort((a, b) => a.data.module - b.data.module);
 
 const trackInfo = {
-  beginner: { title: 'Beginner Track', subtitle: 'From Zero to First AI App', time: '15–20 min each', color: 'var(--tut-beginner)', description: 'No prior AI knowledge needed. Start here if you\'re new to generative AI and want practical understanding fast.' },
-  intermediate: { title: 'Intermediate Track', subtitle: 'Build Real AI Features', time: '25–30 min each', color: 'var(--tut-intermediate)', description: 'Build real working AI features including RAG systems, agents, and eval pipelines. Requires basic programming knowledge.' },
-  advanced: { title: 'Advanced Track', subtitle: 'Production-Grade AI Systems', time: '35–45 min each', color: 'var(--tut-advanced)', description: 'Ship production AI systems that are observable, secure, and cost-optimized. For experienced builders.' },
+  beginner: { title: 'Beginner Track', subtitle: 'From Zero to First AI App', time: '15-20 min each', color: 'var(--tut-beginner)', description: 'No prior AI knowledge needed. Start here if you\'re new to generative AI and want practical understanding fast.' },
+  intermediate: { title: 'Intermediate Track', subtitle: 'Build Real AI Features', time: '25-30 min each', color: 'var(--tut-intermediate)', description: 'Build real working AI features including RAG systems, agents, and eval pipelines. Requires basic programming knowledge.' },
+  advanced: { title: 'Advanced Track', subtitle: 'Production-Grade AI Systems', time: '35-45 min each', color: 'var(--tut-advanced)', description: 'Ship production AI systems that are observable, secure, and cost-optimized. For experienced builders.' },
 };
 
 const info = trackInfo[level];
@@ -32,6 +32,13 @@ const info = trackInfo[level];
       <h1>{info.title}</h1>
       <p class="level-subtitle">{info.subtitle} · {tutorials.length} tutorials · {info.time}</p>
       <p class="level-description">{info.description}</p>
+      <div class="role-filters" aria-label="Filter tutorials by role">
+        <button class="role-filter-btn active" data-filter-role="all" aria-pressed="true">All Roles</button>
+        <button class="role-filter-btn" data-filter-role="dev" aria-pressed="false">DEV</button>
+        <button class="role-filter-btn" data-filter-role="qa" aria-pressed="false">QA</button>
+        <button class="role-filter-btn" data-filter-role="ba" aria-pressed="false">BA</button>
+        <button class="role-filter-btn" data-filter-role="pm" aria-pressed="false">PM</button>
+      </div>
     </header>
 
     <div class="tutorials-grid">
@@ -51,6 +58,34 @@ const info = trackInfo[level];
   </div>
 </BaseLayout>
 
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const buttons = document.querySelectorAll('.role-filter-btn');
+    const cards = document.querySelectorAll('.tutorial-card');
+
+    function applyFilter(role) {
+      cards.forEach((card) => {
+        const roles = (card.getAttribute('data-roles') || '').split(',');
+        const show = role === 'all' || roles.includes(role);
+        card.style.display = show ? '' : 'none';
+      });
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const role = btn.getAttribute('data-filter-role') || 'all';
+        buttons.forEach((b) => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        applyFilter(role);
+      });
+    });
+  });
+</script>
+
 <style>
   .level-page { max-width: 1100px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
   .level-header { margin-bottom: var(--space-xl); }
@@ -60,6 +95,23 @@ const info = trackInfo[level];
   .level-header h1 { font-size: 2.2rem; margin: 0 0 var(--space-sm); }
   .level-subtitle { font-size: 1rem; color: var(--color-text-secondary); margin: 0 0 var(--space-sm); }
   .level-description { font-size: 1rem; color: var(--color-text-secondary); max-width: 680px; line-height: 1.6; margin: 0; }
+  .role-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: var(--space-sm); }
+  .role-filter-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-mono);
+  }
+  .role-filter-btn.active {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  }
   .tutorials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); }
   @media (max-width: 640px) { .tutorials-grid { grid-template-columns: 1fr; } }
 </style>

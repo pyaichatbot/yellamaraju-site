@@ -1,0 +1,62 @@
+---
+title: "Long-Running Agents and Async Operations"
+description: "Build background agent workflows with polling, cancellation, retries, and user-visible progress for enterprise reliability."
+level: advanced
+module: 15
+totalModules: 15
+roles: ["dev", "qa", "pm"]
+tags: ["Async", "Background Jobs", "Reliability", "Operations"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["advanced/10-agent-runtime-durability-hitl", "advanced/12-agent-evaluation-harness-trace-grading"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import Callout from '../../../components/Callout.astro';
+
+## Why Async Matters
+
+Enterprise workflows often exceed one request window. Treat agent execution as a job lifecycle, not a single synchronous call.
+
+<Mermaid
+  title="Async Agent Job Lifecycle"
+  chart={`
+stateDiagram-v2
+  [*] --> queued
+  queued --> running
+  running --> waiting_approval
+  waiting_approval --> running
+  running --> succeeded
+  running --> failed
+  running --> cancelled
+`}
+/>
+
+## Operational Contract
+
+- Explicit job states and transitions
+- Polling endpoints with backoff
+- Cancellation and compensation behavior
+- SLA alerts for stuck jobs
+- Retention and privacy controls for job traces
+
+<RoleCallout role="dev">
+Expose stable job IDs and status APIs. Frontend should never infer state from logs or timing assumptions.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Test race conditions: cancel-while-running, retry-after-timeout, and duplicate client polling.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Define user-facing status language and escalation paths when jobs exceed expected duration.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+Without cancellation semantics, operators end up with orphaned workflows that still execute side effects after users abandon the task.
+</Callout>
+
+## You Now Have the Full Advanced Track
+
+You’ve progressed from production RAG through orchestration, governance, protocol interoperability, and async operations. This is the operational backbone of enterprise agentic systems.

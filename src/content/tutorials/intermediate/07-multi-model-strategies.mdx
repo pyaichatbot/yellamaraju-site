@@ -18,7 +18,7 @@ import CodePlayground from '../../../components/CodePlayground.astro';
 
 ## The Cost Case for Multi-Model
 
-Using GPT-4 for every request is like hiring a senior architect to answer "what's 2+2?" — expensive and unnecessary.
+Using GPT-4 for every request is like hiring a senior architect to answer "what's 2+2?"  -  expensive and unnecessary.
 
 Real-world AI cost breakdown for a typical application:
 - 70% of queries: simple classification, short extraction, yes/no decisions → cheap model
@@ -29,9 +29,9 @@ Routing intelligently can cut AI costs 60-80% with minimal quality impact.
 
 ## Three Routing Strategies
 
-**1. Complexity-based routing** — classify the query before sending it
-**2. Task-based routing** — route by task type (summarization → cheap, reasoning → premium)
-**3. Cascade routing** — try cheap model first, escalate if confidence is low
+**1. Complexity-based routing**  -  classify the query before sending it
+**2. Task-based routing**  -  route by task type (summarization → cheap, reasoning → premium)
+**3. Cascade routing**  -  try cheap model first, escalate if confidence is low
 
 <Mermaid
   title="Model Routing Decision Tree"
@@ -149,7 +149,7 @@ for query in test_queries:
 />
 
 <RoleCallout role="dev">
-Implement model routing as a strategy pattern — business logic never directly calls a specific model. Instead it calls a router that returns a model client. This makes it trivial to swap models, add new tiers, and A/B test routing strategies without touching feature code.
+Implement model routing as a strategy pattern  -  business logic never directly calls a specific model. Instead it calls a router that returns a model client. This makes it trivial to swap models, add new tiers, and A/B test routing strategies without touching feature code.
 </RoleCallout>
 
 <RoleCallout role="pm">
@@ -157,5 +157,5 @@ Multi-model routing is one of the highest-ROI investments in AI infrastructure. 
 </RoleCallout>
 
 <Callout type="warning" title="Production Gotcha">
-Fallback chains create debugging nightmares. When model B answers because model A failed, always log it explicitly — which model actually responded, why the primary failed, and the latency of the fallback. Without this logging, you'll spend hours debugging the wrong model's behavior and wondering why quality suddenly changed.
+Fallback chains create debugging nightmares. When model B answers because model A failed, always log it explicitly  -  which model actually responded, why the primary failed, and the latency of the fallback. Without this logging, you'll spend hours debugging the wrong model's behavior and wondering why quality suddenly changed.
 </Callout>

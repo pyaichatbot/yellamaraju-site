@@ -1,6 +1,6 @@
 ---
 title: "Understanding Large Language Models (LLMs)"
-description: "Tokens, context windows, temperature, and why hallucinations happen — the core mechanics every practitioner needs to know before building with AI."
+description: "Tokens, context windows, temperature, and why hallucinations happen  -  the core mechanics every practitioner needs to know before building with AI."
 level: beginner
 module: 2
 totalModules: 9
@@ -17,15 +17,15 @@ import RoleCallout from '../../../components/RoleCallout.astro';
 
 ## What Makes an LLM "Large"
 
-Imagine a person who has read every book, article, website, and forum post ever written — billions of pages of human knowledge. An LLM is like that person's statistical memory: it can't recall individual sentences, but it has absorbed the patterns, relationships, and knowledge from all that text.
+Imagine a person who has read every book, article, website, and forum post ever written  -  billions of pages of human knowledge. An LLM is like that person's statistical memory: it can't recall individual sentences, but it has absorbed the patterns, relationships, and knowledge from all that text.
 
-"Large" refers to the number of parameters — the learned numerical weights inside the model. GPT-4 has an estimated 1.8 trillion parameters. These parameters encode the statistical relationships between all the text it was trained on.
+"Large" refers to the number of parameters  -  the learned numerical weights inside the model. GPT-4 has an estimated 1.8 trillion parameters. These parameters encode the statistical relationships between all the text it was trained on.
 
 The result: when you give it a partial sentence, it can predict what comes next with remarkable accuracy.
 
 ## Tokens: The Atoms of LLM Communication
 
-LLMs don't read words. They read **tokens** — sub-word units that the model's vocabulary is built from.
+LLMs don't read words. They read **tokens**  -  sub-word units that the model's vocabulary is built from.
 
 - One token ≈ ¾ of a word in English
 - "chatbot" = 1 token
@@ -35,7 +35,7 @@ LLMs don't read words. They read **tokens** — sub-word units that the model's 
 
 Why this matters practically:
 - **You pay per token** (both input and output tokens)
-- **Context limits are in tokens**, not words — a 128K context window fits roughly 90,000 words
+- **Context limits are in tokens**, not words  -  a 128K context window fits roughly 90,000 words
 - **Output tokens are 2-3× more expensive** than input tokens at most providers
 
 <Mermaid
@@ -53,14 +53,14 @@ flowchart LR
 />
 
 <Callout type="info" title="Tokenization varies by language">
-English tokenizes efficiently. Code, JSON, and non-Latin scripts tokenize less efficiently — they use more tokens per character. A Python function that looks like 50 words might cost 120+ tokens.
+English tokenizes efficiently. Code, JSON, and non-Latin scripts tokenize less efficiently  -  they use more tokens per character. A Python function that looks like 50 words might cost 120+ tokens.
 </Callout>
 
 ## Context Window: The Model's Working Memory
 
 Think of a doctor who can only read the last 50 pages of a patient's notes. No matter how long the patient history is, only those 50 pages inform the diagnosis.
 
-The **context window** is the model's total working memory for a single conversation — everything the model can "see" at once.
+The **context window** is the model's total working memory for a single conversation  -  everything the model can "see" at once.
 
 Context window = system prompt + conversation history + your message + retrieved documents + the response
 
@@ -92,12 +92,12 @@ Temperature controls how the model selects the next token. At temperature 0, it 
 | Temperature | Behavior | Best For |
 |-------------|----------|----------|
 | 0.0 | Fully deterministic | Factual extraction, structured data, unit tests |
-| 0.1–0.3 | Mostly deterministic | Code generation, summarization, classification |
-| 0.5–0.7 | Balanced | Conversational AI, analysis |
-| 0.8–1.0 | Creative, varied | Copywriting, brainstorming, creative writing |
+| 0.1-0.3 | Mostly deterministic | Code generation, summarization, classification |
+| 0.5-0.7 | Balanced | Conversational AI, analysis |
+| 0.8-1.0 | Creative, varied | Copywriting, brainstorming, creative writing |
 
 <Callout type="tip" title="Temperature 0 ≠ perfect accuracy">
-Temperature 0 makes the model consistent and reproducible — it will give you the same wrong answer every time if the underlying prediction is wrong. Determinism is not the same as correctness.
+Temperature 0 makes the model consistent and reproducible  -  it will give you the same wrong answer every time if the underlying prediction is wrong. Determinism is not the same as correctness.
 </Callout>
 
 ## Why Hallucinations Are Inevitable
@@ -106,7 +106,7 @@ Here's the uncomfortable truth: LLMs are optimized to produce plausible-sounding
 
 When you ask "What is the capital of France?" the model outputs "Paris" not because it looked it up, but because "Paris" is the statistically most likely completion of that prompt based on training data. It happens to be correct.
 
-When you ask about a niche topic the model has little training data for, it applies the same mechanism — and confidently produces plausible-sounding nonsense.
+When you ask about a niche topic the model has little training data for, it applies the same mechanism  -  and confidently produces plausible-sounding nonsense.
 
 This is not a bug that will be fixed in the next model version. It's an architectural property of next-token prediction. Your system design must account for it.
 
@@ -122,28 +122,28 @@ Never trust a single LLM response for anything that matters. Verify with evals, 
 | Claude 3.5 Sonnet (Anthropic) | 200K | Long documents, instruction following | Document analysis, long context |
 | Gemini 1.5 Pro (Google) | 1M | Massive context, multimodal | Very long documents, video |
 
-Pricing varies significantly — always check current provider pricing before committing to a model for a production use case.
+Pricing varies significantly  -  always check current provider pricing before committing to a model for a production use case.
 
 <RoleCallout role="dev">
 Token counting matters in production. Use tiktoken (OpenAI) or provider SDKs to estimate costs before deployment. Budget your context deliberately: system prompt + RAG chunks + conversation + response headroom. A common mistake is not accounting for the response token budget and hitting context limits mid-conversation.
 </RoleCallout>
 
 <RoleCallout role="qa">
-Temperature 0 is your best friend for regression testing. Reproducible outputs mean testable outputs. For tests where you need variation coverage (testing that the model handles edge cases), bump to 0.3–0.5 and run multiple samples. Never test AI at high temperature for regression — you'll get flaky tests.
+Temperature 0 is your best friend for regression testing. Reproducible outputs mean testable outputs. For tests where you need variation coverage (testing that the model handles edge cases), bump to 0.3-0.5 and run multiple samples. Never test AI at high temperature for regression  -  you'll get flaky tests.
 </RoleCallout>
 
 <RoleCallout role="ba">
-Context window size is a key constraint for document-heavy use cases. If your requirement involves processing long contracts, meeting transcripts, or customer histories — the context window determines how much the AI can "see" at once. If the document exceeds the window, you'll need chunking strategies (covered in the Intermediate track). Include context window requirements in your AI feature specs.
+Context window size is a key constraint for document-heavy use cases. If your requirement involves processing long contracts, meeting transcripts, or customer histories  -  the context window determines how much the AI can "see" at once. If the document exceeds the window, you'll need chunking strategies (covered in the Intermediate track). Include context window requirements in your AI feature specs.
 </RoleCallout>
 
 <RoleCallout role="pm">
-Model selection is a cost/capability trade-off decision with budget implications. GPT-4o costs roughly 3× more per token than GPT-3.5 Turbo. Build cost modeling into your AI feature estimates from day one. A feature that processes 10,000 user requests per day at $0.01 per request = $3,000/month just in model costs — before engineering, hosting, or ops.
+Model selection is a cost/capability trade-off decision with budget implications. GPT-4o costs roughly 3× more per token than GPT-3.5 Turbo. Build cost modeling into your AI feature estimates from day one. A feature that processes 10,000 user requests per day at $0.01 per request = $3,000/month just in model costs  -  before engineering, hosting, or ops.
 </RoleCallout>
 
 ## What's Next
 
-In Tutorial 3, you'll make your first real API call to an AI model — seeing these mechanics in action with actual code.
+In Tutorial 3, you'll make your first real API call to an AI model  -  seeing these mechanics in action with actual code.
 
 <Callout type="tip" title="The most important takeaway">
-An LLM is a next-token predictor. Everything else — RAG, agents, evals, cost optimization — is engineering scaffolding built on top of that single truth. Keep this mental model and the rest of the series will click.
+An LLM is a next-token predictor. Everything else  -  RAG, agents, evals, cost optimization  -  is engineering scaffolding built on top of that single truth. Keep this mental model and the rest of the series will click.
 </Callout>

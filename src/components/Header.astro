@@ -4,10 +4,10 @@ import ThemeToggle from './ThemeToggle.astro';
 
 const currentPath = Astro.url.pathname;
 const navDescriptions: Record<string, string> = {
-  Templates: 'Reusable checklists and worksheets',
-  'About Me': 'Profile, focus areas, and projects',
-  Resume: 'Experience and background',
-  Contact: 'Start a conversation',
+  Home: 'Start here',
+  'Field Guide': 'Production patterns and case studies',
+  Tutorials: 'Step-by-step implementation tracks',
+  Topics: 'Curated deep dives by domain',
 };
 ---
 
@@ -94,7 +94,9 @@ const navDescriptions: Record<string, string> = {
                               {childIcon}
                               <span class="nav-submenu-copy">
                                 <strong>{child.label}</strong>
-                                {navDescriptions[child.label] && <small>{navDescriptions[child.label]}</small>}
+                                {(child.description || navDescriptions[child.label]) && (
+                                  <small>{child.description || navDescriptions[child.label]}</small>
+                                )}
                               </span>
                             </a>
                           </li>
@@ -110,7 +112,7 @@ const navDescriptions: Record<string, string> = {
         <ThemeToggle />
       </div>
       
-      <button class="mobile-menu-toggle" aria-label="Toggle menu">
+      <button class="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu-overlay">
         <span></span>
         <span></span>
         <span></span>
@@ -206,7 +208,9 @@ const navDescriptions: Record<string, string> = {
                           {childIcon}
                           <span class="nav-submenu-copy">
                             <strong>{child.label}</strong>
-                            {navDescriptions[child.label] && <small>{navDescriptions[child.label]}</small>}
+                            {(child.description || navDescriptions[child.label]) && (
+                              <small>{child.description || navDescriptions[child.label]}</small>
+                            )}
                           </span>
                         </a>
                       </li>
@@ -352,7 +356,7 @@ const navDescriptions: Record<string, string> = {
   .main-nav ul {
     display: flex;
     align-items: center;
-    gap: clamp(1.2rem, 1.8vw, 2.2rem);
+    gap: clamp(0.95rem, 1.35vw, 1.55rem);
     list-style: none;
     padding: 0;
     margin: 0;
@@ -656,14 +660,20 @@ const navDescriptions: Record<string, string> = {
       height: 100vh;
       background: var(--color-surface);
       z-index: 1000;
-      display: none;
+      display: flex;
       flex-direction: column;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity var(--transition-fast), visibility var(--transition-fast);
     }
     
     .mobile-menu-overlay.open {
-      display: flex;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
     }
     
     .mobile-menu-header {
@@ -896,16 +906,34 @@ const navDescriptions: Record<string, string> = {
     const overlay = document.querySelector('.mobile-menu-overlay');
     const close = document.querySelector('.mobile-menu-close');
     const body = document.body;
+    let lastFocusedElement: Element | null = null;
+
+    function closeDesktopMenus() {
+      document.querySelectorAll('.nav-item.open').forEach(item => {
+        item.classList.remove('open');
+        const button = item.querySelector('.nav-submenu-toggle, .nav-dropdown-trigger');
+        if (button) {
+          button.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
     
     function openMenu() {
+      lastFocusedElement = document.activeElement;
       overlay?.classList.add('open');
       toggle?.classList.add('open');
+      toggle?.setAttribute('aria-expanded', 'true');
       body.style.overflow = 'hidden';
+      const firstFocusable = overlay?.querySelector('button, a, [tabindex]:not([tabindex="-1"])');
+      if (firstFocusable instanceof HTMLElement) {
+        firstFocusable.focus();
+      }
     }
     
     function closeMenu() {
       overlay?.classList.remove('open');
       toggle?.classList.remove('open');
+      toggle?.setAttribute('aria-expanded', 'false');
       body.style.overflow = '';
       overlay?.querySelectorAll('.mobile-has-children').forEach(item => {
         item.classList.remove('open');
@@ -914,6 +942,9 @@ const navDescriptions: Record<string, string> = {
           button.setAttribute('aria-expanded', 'false');
         }
       });
+      if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+      }
     }
     
     toggle?.addEventListener('click', () => {
@@ -932,13 +963,16 @@ const navDescriptions: Record<string, string> = {
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (target.closest('.nav-item')) return;
-      document.querySelectorAll('.nav-item.open').forEach(item => {
-        item.classList.remove('open');
-        const button = item.querySelector('.nav-submenu-toggle, .nav-dropdown-trigger');
-        if (button) {
-          button.setAttribute('aria-expanded', 'false');
-        }
-      });
+      closeDesktopMenus();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (overlay?.classList.contains('open')) {
+        closeMenu();
+        return;
+      }
+      closeDesktopMenus();
     });
     
     // Close menu when clicking on overlay background
