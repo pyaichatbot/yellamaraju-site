@@ -233,7 +233,7 @@ def recommend(req: FeatureRequirements) -> Recommendation:
         reasons.append("Consistent style/behavior required that prompting cannot achieve")
 
     if req.labeled_examples_available < 100:
-        warnings.append(f"Only {req.labeled_examples_available} labeled examples — need 100+ for fine-tuning")
+        warnings.append("Only " + str(req.labeled_examples_available) + " labeled examples — need 100+ for fine-tuning")
         return Recommendation(
             approach="Prompting (collect more data first)",
             confidence="medium",
@@ -242,7 +242,7 @@ def recommend(req: FeatureRequirements) -> Recommendation:
         )
 
     if req.budget_usd < 5000:
-        warnings.append(f"Budget ${req.budget_usd} may be insufficient for fine-tuning + maintenance")
+        warnings.append("Budget $" + str(req.budget_usd) + " may be insufficient for fine-tuning + maintenance")
         return Recommendation(
             approach="Prompting (insufficient fine-tuning budget)",
             confidence="medium",
