@@ -1,0 +1,333 @@
+---
+title: "AI System Observability and Monitoring"
+description: "What to log, how to trace, and how to detect drift before users do. Build the observability stack that turns AI black boxes into diagnosable systems."
+level: advanced
+module: 3
+totalModules: 8
+roles: ["dev", "qa"]
+tags: ["Observability", "Monitoring", "Tracing", "Drift Detection", "LLM Ops"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: ["intermediate/04-evaluating-ai-apps"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import Callout from '../../../components/Callout.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import CodePlayground from '../../../components/CodePlayground.astro';
+
+## Why AI Systems Need Different Observability
+
+Traditional software observability answers: "Did the code do what it was supposed to do?" AI observability answers a harder question: "Did the AI *behave* the way we intended, across the distribution of inputs we actually see?"
+
+An LLM call can succeed (HTTP 200, valid JSON response) while failing silently — producing a hallucinated answer, ignoring an instruction, or degrading in quality because a model version changed upstream. Traditional uptime monitoring won't catch any of this.
+
+You need three layers of observability:
+1. **Infrastructure metrics** — latency, errors, token costs (same as any API)
+2. **Behavioral traces** — what prompt went in, what came out, eval scores
+3. **Drift signals** — is quality trending down over time?
+
+## What to Log on Every LLM Call
+
+Every call to an LLM should produce a structured log record containing:
+
+| Field | Why |
+|---|---|
+| `request_id` | Correlate logs across services |
+| `session_id` | Group a user's conversation |
+| `model` | Exact model version (`gpt-4o-2024-11-20`, not just `gpt-4o`) |
+| `prompt_hash` | SHA-256 of the rendered prompt — detect when templates change |
+| `input_tokens` | Cost accounting |
+| `output_tokens` | Cost accounting |
+| `latency_ms` | Performance tracking |
+| `temperature` | Reproducibility — affects quality variance |
+| `eval_scores` | Your automated quality scores |
+| `finish_reason` | `stop` vs `length` — `length` means you truncated the response |
+| `error` | Error type and message if the call failed |
+| `timestamp` | When the call happened |
+
+The field most teams skip: `prompt_hash`. Without it, you cannot detect when a template change caused a quality regression.
+
+<Callout type="info" title="Log the Rendered Prompt, Not the Template">
+Log the actual prompt sent to the model, not the template string. Template variables can render to unexpected values in edge cases: a `None` that becomes the string "None", a list that serializes differently than expected, a context block that's empty when it should have content. Without the rendered prompt, you will never debug these issues.
+</Callout>
+
+## LLM Trace Structure
+
+Distributed tracing for LLM applications follows the same span model as regular distributed tracing, with LLM-specific fields added.
+
+A trace for a RAG query has spans:
+- `rag.query` — root span, covers end-to-end
+  - `rag.embed_query` — embedding the user query
+  - `rag.retrieve` — vector search
+  - `rag.rerank` — cross-encoder reranking
+  - `llm.generate` — the actual LLM call
+
+Each `llm.generate` span carries: model, prompt hash, input tokens, output tokens, latency, finish reason, eval scores.
+
+<Mermaid
+  title="Observability Stack: From Traces to Alerts"
+  chart={`
+flowchart TD
+    APP[Application\nLLM Calls] -->|structured logs| COLL[Log Collector\nFluentd or similar]
+    APP -->|trace spans| TRACE[Trace Backend\nJaeger or Honeycomb]
+
+    COLL --> STORE[(Log Storage\nElasticsearch or S3)]
+    TRACE --> METRICS[Metrics Aggregator\nPrometheus]
+
+    STORE --> EVAL[Eval Pipeline\nRun quality checks]
+    METRICS --> DASH[Dashboards\nGrafana]
+
+    EVAL --> SCORES[(Eval Score Store\nTime series)]
+    SCORES --> DRIFT[Drift Detector\nRolling window analysis]
+
+    DRIFT -->|threshold breach| ALERT[Alert Manager\nPagerDuty or Slack]
+    METRICS --> ALERT
+    DASH --> USER([On-call Engineer])
+    ALERT --> USER
+
+    style APP fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style DRIFT fill:#fef3c7,stroke:#d97706,color:#92400e
+    style ALERT fill:#fee2e2,stroke:#dc2626,color:#991b1b
+    style USER fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+## Metrics to Track
+
+**Latency** — measure at p50, p95, and p99. p50 tells you the typical experience. p95 and p99 tell you how bad the tail is. LLM latency distributions are extremely fat-tailed — a p95 of 8 seconds with a p50 of 2 seconds is normal.
+
+**Token usage** — input tokens, output tokens, and total. Track per endpoint, per user segment, and per model. Token usage is your cost driver and your capacity signal.
+
+**Eval pass rate** — your automated quality checks, expressed as the fraction of calls that pass. This is the most important metric you track. Everything else is infrastructure.
+
+**Error rate** — HTTP errors, timeouts, JSON parse failures, schema validation failures. Track separately by error type.
+
+**Finish reason distribution** — what fraction of responses end with `length` (truncated) vs `stop` (natural completion)? A rising `length` rate means your output is being cut off.
+
+## Drift Detection
+
+Drift is when your system's quality degrades over time without any change on your end. It happens because:
+- The model provider silently updates a model version
+- The distribution of real-world user queries shifts
+- Your document corpus goes stale
+- A silent dependency change affects preprocessing
+
+<Mermaid
+  title="Drift Detection Pipeline"
+  chart={`
+flowchart LR
+    RAW[Raw Eval Scores\nPer call] --> ROLL[Rolling Window\n7-day p50 eval score]
+
+    ROLL --> COMP{Compare to\nBaseline}
+
+    COMP -->|delta less than 5%| OK([No action])
+    COMP -->|delta 5 to 10%| WARN[Warning Alert\nInvestigate]
+    COMP -->|delta over 10%| CRIT[Critical Alert\nPage on-call]
+
+    WARN --> ROOT[Root Cause\nAnalysis]
+    CRIT --> ROOT
+
+    ROOT --> FIX[Fix: prompt patch\nmodel pin or reindex]
+    FIX --> VERIFY[Verify: run eval\nsuite on fix]
+    VERIFY --> ROLL
+
+    style RAW fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style COMP fill:#fef3c7,stroke:#d97706,color:#92400e
+    style WARN fill:#fef3c7,stroke:#d97706,color:#92400e
+    style CRIT fill:#fee2e2,stroke:#dc2626,color:#991b1b
+    style OK fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+A 5% drop in eval pass rate over 7 days should trigger an investigation. A 10% drop should trigger an incident. These thresholds are starting points — calibrate them to your application's sensitivity.
+
+<RoleCallout role="dev">
+Build your logging middleware before you ship your first LLM feature, not after. Retrofitting observability into an LLM application is significantly harder than instrumenting from the start. Every LLM call should go through a single logging wrapper — this is also the right place to add retry logic, timeout handling, and cost tracking.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Own the eval metric definitions. What does a "passing" LLM response look like for your application? That's a quality decision, not an engineering decision. Work with the dev team to implement the checks you define, then monitor the pass rate dashboard as your primary quality signal. When pass rate drops, triage it like you would any other quality regression.
+</RoleCallout>
+
+## Implementation: Logging Wrapper
+
+<CodePlayground
+  language="python"
+  title="Structured LLM Logging Wrapper with Eval Hooks"
+  code={`import hashlib
+import json
+import time
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Callable
+
+# ── Log record structure ───────────────────────────────────────────────────────
+def make_log_record(
+    model: str,
+    rendered_prompt: str,
+    response_text: str,
+    input_tokens: int,
+    output_tokens: int,
+    latency_ms: float,
+    finish_reason: str,
+    temperature: float,
+    eval_fn: Callable[[str, str], dict] | None = None,
+    session_id: str | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    prompt_hash = hashlib.sha256(rendered_prompt.encode()).hexdigest()[:16]
+
+    eval_scores = {}
+    if eval_fn and response_text:
+        try:
+            eval_scores = eval_fn(rendered_prompt, response_text)
+        except Exception as e:
+            eval_scores = {"eval_error": str(e)}
+
+    return {
+        "request_id": str(uuid.uuid4()),
+        "session_id": session_id or str(uuid.uuid4()),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "model": model,
+        "prompt_hash": prompt_hash,
+        "rendered_prompt": rendered_prompt,  # FULL rendered prompt — not template
+        "response": response_text,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+        "latency_ms": round(latency_ms, 2),
+        "temperature": temperature,
+        "finish_reason": finish_reason,
+        "eval_scores": eval_scores,
+        "error": error,
+    }
+
+
+# ── LLM call wrapper ───────────────────────────────────────────────────────────
+class ObservableLLM:
+    def __init__(
+        self,
+        model: str = "gpt-4o-2024-11-20",
+        temperature: float = 0.0,
+        eval_fn: Callable | None = None,
+        log_sink: Callable[[dict], None] | None = None,
+    ):
+        self.model = model
+        self.temperature = temperature
+        self.eval_fn = eval_fn
+        self.log_sink = log_sink or self._default_log_sink
+
+    def _default_log_sink(self, record: dict) -> None:
+        # In production: send to your log aggregator
+        # e.g., structlog, CloudWatch, Datadog, etc.
+        print(json.dumps({
+            "ts": record["timestamp"],
+            "model": record["model"],
+            "prompt_hash": record["prompt_hash"],
+            "latency_ms": record["latency_ms"],
+            "tokens": record["total_tokens"],
+            "finish": record["finish_reason"],
+            "evals": record["eval_scores"],
+        }, indent=2))
+
+    def call(
+        self,
+        rendered_prompt: str,
+        session_id: str | None = None,
+    ) -> str:
+        """
+        Wraps an LLM call with structured logging.
+        In production: replace the simulation block with your API call.
+        """
+        start = time.perf_counter()
+        error = None
+        response_text = ""
+        input_tokens = 0
+        output_tokens = 0
+        finish_reason = "stop"
+
+        try:
+            # ── Production: replace this block ───────────────────────────────
+            # from openai import OpenAI
+            # client = OpenAI()
+            # completion = client.chat.completions.create(
+            #     model=self.model,
+            #     messages=[{"role": "user", "content": rendered_prompt}],
+            #     temperature=self.temperature,
+            # )
+            # response_text = completion.choices[0].message.content
+            # input_tokens = completion.usage.prompt_tokens
+            # output_tokens = completion.usage.completion_tokens
+            # finish_reason = completion.choices[0].finish_reason
+            # ─────────────────────────────────────────────────────────────────
+
+            # Simulation
+            time.sleep(0.05)
+            response_text = f"Simulated response to: '{rendered_prompt[:40]}...'"
+            input_tokens = len(rendered_prompt.split()) * 4 // 3
+            output_tokens = 48
+            finish_reason = "stop"
+
+        except Exception as e:
+            error = f"{type(e).__name__}: {e}"
+            finish_reason = "error"
+
+        latency_ms = (time.perf_counter() - start) * 1000
+
+        record = make_log_record(
+            model=self.model,
+            rendered_prompt=rendered_prompt,
+            response_text=response_text,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            latency_ms=latency_ms,
+            finish_reason=finish_reason,
+            temperature=self.temperature,
+            eval_fn=self.eval_fn,
+            session_id=session_id,
+            error=error,
+        )
+        self.log_sink(record)
+
+        if error:
+            raise RuntimeError(error)
+
+        return response_text
+
+
+# ── Example eval function ──────────────────────────────────────────────────────
+def simple_eval(prompt: str, response: str) -> dict[str, float]:
+    """
+    In production: use your actual eval suite.
+    This demo checks for minimal quality signals.
+    """
+    checks = {
+        "non_empty": 1.0 if len(response.strip()) > 0 else 0.0,
+        "no_apology": 0.0 if "i apologize" in response.lower() else 1.0,
+        "min_length": 1.0 if len(response.split()) >= 5 else 0.0,
+        "no_refusal": 0.0 if "i cannot" in response.lower() else 1.0,
+    }
+    checks["overall"] = sum(checks.values()) / len(checks)
+    return checks
+
+
+# ── Demo ───────────────────────────────────────────────────────────────────────
+llm = ObservableLLM(
+    model="gpt-4o-2024-11-20",
+    temperature=0.0,
+    eval_fn=simple_eval,
+)
+
+session = str(uuid.uuid4())[:8]
+response = llm.call(
+    rendered_prompt="Explain what BM25 is in one paragraph.",
+    session_id=session,
+)
+print(f"\\nResponse: {response}")
+`}
+/>
+
+<Callout type="warning" title="Production Gotcha: Log the Actual Rendered Prompt">
+Log the ACTUAL prompt sent to the model, not the template. Template variables can render to unexpected values in edge cases, and without the rendered prompt you will never debug them. A `context` variable that renders as an empty string, a `None` that stringifies as "None", a date that formats incorrectly — these are real bugs that are completely invisible if you only log the template. The rendered prompt is your ground truth.
+</Callout>

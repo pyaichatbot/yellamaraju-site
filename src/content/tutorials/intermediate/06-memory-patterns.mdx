@@ -1,0 +1,276 @@
+---
+title: "Memory Patterns for Conversational AI"
+description: "Stateless LLMs need explicit memory management. Buffer memory, summary memory, and entity memory — when to use each and how to implement them."
+level: intermediate
+module: 6
+totalModules: 8
+roles: ["dev"]
+tags: ["Memory", "Conversational AI", "Buffer Memory", "Entity Memory"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: ["05-context-window-management"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import Callout from '../../../components/Callout.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import CodePlayground from '../../../components/CodePlayground.astro';
+
+## Why LLMs Have No Memory
+
+Every call to an LLM API is stateless. The model has no idea you talked to it yesterday. It doesn't remember your name, your preferences, or what you asked last week. Each API call starts completely fresh.
+
+This is by design — statelessness makes the API horizontally scalable. But it creates a problem for conversational applications: users expect continuity.
+
+The solution is explicit memory management. You store what the model needs to remember and inject it into each request. You are the memory system. The model just processes whatever you give it.
+
+## Three Memory Patterns
+
+<Mermaid
+  title="Three Memory Patterns Compared"
+  chart={`
+flowchart TD
+    subgraph buf["Buffer Memory"]
+        B1[Keep last N messages verbatim] --> B2[Pros: Simple, lossless\nCons: Context-hungry]
+    end
+
+    subgraph sum["Summary Memory"]
+        S1[Summarize old messages] --> S2[Pros: Space-efficient\nCons: Lossy, summarization latency]
+    end
+
+    subgraph ent["Entity Memory"]
+        E1[Track named entities\npeople, places, facts] --> E2[Pros: Smart & targeted\nCons: Complex, extraction needed]
+    end
+
+    style buf fill:#dbeafe,stroke:#2563eb
+    style sum fill:#fef3c7,stroke:#d97706
+    style ent fill:#f3e8ff,stroke:#7c3aed
+`}
+/>
+
+### Buffer Memory
+
+Keep the last N message pairs verbatim. Inject them into every new request as conversation history.
+
+**When to use:** Short-session applications. Customer support chats that last 5–15 exchanges. Anywhere simplicity matters more than long-term recall.
+
+**The limit:** At N=20 messages, you're spending ~6,000 tokens on history before the user says anything new.
+
+### Summary Memory
+
+When the buffer exceeds a threshold, summarize the oldest messages into a compact paragraph. Store the summary and continue with recent messages + summary.
+
+**When to use:** Longer sessions where key facts (decisions made, context established) matter more than exact wording. Personal assistants, project management bots.
+
+**The cost:** Every summarization call adds latency and costs tokens. Use a cheap, fast model (gpt-4o-mini) for summarization.
+
+### Entity Memory
+
+Extract structured facts about entities from the conversation and maintain an entity store. "User's name is Alex" / "User prefers Python over JavaScript" / "Current project: billing refactor".
+
+Inject only the relevant entities into each new prompt, not the entire conversation history.
+
+**When to use:** Applications with long-running user relationships. Any app where user preferences, profile data, or project context must persist across many sessions.
+
+**The complexity:** Requires an entity extraction step after each message, an entity store (database), and a retrieval step to pull relevant entities into each prompt.
+
+## When to Use Each: Decision Tree
+
+<Mermaid
+  title="Memory Pattern Decision Tree"
+  chart={`
+flowchart TD
+    START([New conversational AI feature]) --> Q1{Session length?}
+    Q1 -- Short\nunder 20 turns --> BUF[Buffer Memory\nKeep last 15 messages]
+    Q1 -- Long or unknown --> Q2{Exact wording\nimportant?}
+    Q2 -- No, just\nkey facts --> SUM[Summary Memory\nSummarize every 20 turns]
+    Q2 -- Yes, verbatim --> BUF
+    SUM --> Q3{Multi-session\ncontinuity needed?}
+    Q3 -- Yes --> ENT[Entity Memory\n+ Summary Memory hybrid]
+    Q3 -- No --> SUM
+
+    style BUF fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style SUM fill:#fef3c7,stroke:#d97706,color:#b45309
+    style ENT fill:#f3e8ff,stroke:#7c3aed,color:#7c3aed
+`}
+/>
+
+## Build It: Summary Memory Implementation
+
+<CodePlayground
+  language="python"
+  title="Summary Memory: Compress Old Messages, Preserve Key Facts"
+  code={`import os
+import json
+from dataclasses import dataclass, field
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+@dataclass
+class SummaryMemory:
+    """
+    Memory that summarizes old messages when buffer exceeds max_buffer_size.
+    Maintains: a running summary of old context + recent message buffer.
+    """
+    max_buffer_size: int = 10  # messages before summarizing
+    summary: str = ""
+    buffer: list[dict] = field(default_factory=list)
+    summary_model: str = "gpt-4o-mini"
+
+    def add_message(self, role: str, content: str) -> None:
+        self.buffer.append({"role": role, "content": content})
+        if len(self.buffer) >= self.max_buffer_size:
+            self._compress()
+
+    def _compress(self) -> None:
+        """Summarize the oldest half of the buffer."""
+        cutoff = len(self.buffer) // 2
+        to_summarize = self.buffer[:cutoff]
+        self.buffer = self.buffer[cutoff:]
+
+        conversation_text = "\n".join(
+            f"{m['role'].upper()}: {m['content']}" for m in to_summarize
+        )
+
+        existing = f"Previous summary: {self.summary}\n\n" if self.summary else ""
+
+        prompt = (
+            f"{existing}"
+            f"New conversation to add to summary:\n{conversation_text}\n\n"
+            "Update the summary to include all key facts, decisions, and context. "
+            "Be concise — under 150 words."
+        )
+
+        response = client.chat.completions.create(
+            model=self.summary_model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200,
+            temperature=0,
+        )
+        self.summary = response.choices[0].message.content
+        print(f"[Memory] Compressed {cutoff} messages → summary updated")
+
+    def get_context_messages(self) -> list[dict]:
+        """Return messages to inject into the next API call."""
+        messages = []
+        if self.summary:
+            messages.append({
+                "role": "system",
+                "content": f"[Conversation history summary]:\n{self.summary}"
+            })
+        messages.extend(self.buffer)
+        return messages
+
+    def save(self, filepath: str) -> None:
+        """Persist memory to disk (use a database in production)."""
+        data = {"summary": self.summary, "buffer": self.buffer}
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=2)
+        print(f"[Memory] Saved to {filepath}")
+
+    @classmethod
+    def load(cls, filepath: str, **kwargs) -> "SummaryMemory":
+        """Load memory from disk."""
+        try:
+            with open(filepath) as f:
+                data = json.load(f)
+            mem = cls(**kwargs)
+            mem.summary = data.get("summary", "")
+            mem.buffer = data.get("buffer", [])
+            print(f"[Memory] Loaded from {filepath}")
+            return mem
+        except FileNotFoundError:
+            return cls(**kwargs)
+
+def chat_with_memory(memory: SummaryMemory, user_input: str) -> str:
+    """Send a message using memory context."""
+    memory.add_message("user", user_input)
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant with memory of our conversation."},
+        *memory.get_context_messages()[:-1],  # all but the last (user) message
+        {"role": "user", "content": user_input},
+    ]
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        max_tokens=200,
+        temperature=0.7,
+    )
+
+    assistant_reply = response.choices[0].message.content
+    memory.add_message("assistant", assistant_reply)
+    return assistant_reply
+
+# --- DEMO ---
+memory = SummaryMemory(max_buffer_size=6)
+
+conversation = [
+    "Hi! My name is Alex and I'm building a RAG system in Python.",
+    "I'm using ChromaDB for the vector store.",
+    "My main challenge is chunking strategy for long PDFs.",
+    "I think 512 tokens with 50-token overlap is working well.",
+    "Now I want to add entity extraction from the retrieved chunks.",
+    "Can you remind me what vector store I said I was using?",
+]
+
+for message in conversation:
+    print(f"\\nUser: {message}")
+    reply = chat_with_memory(memory, message)
+    print(f"Assistant: {reply[:120]}...")
+    print(f"  [Buffer: {len(memory.buffer)} msgs | Summary: {bool(memory.summary)}]")
+
+# Save memory to simulate session persistence
+memory.save("/tmp/chat_memory.json")
+`}
+/>
+
+After 6 messages the buffer compresses to a summary. On the 6th message ("Can you remind me what vector store I said I was using?"), the model can still answer "ChromaDB" because that fact was preserved in the summary even after compression.
+
+## Entity Memory: Structured Fact Tracking
+
+For applications where user preferences and profile data matter across sessions, add entity extraction on top of summary memory:
+
+```python
+ENTITY_EXTRACTION_PROMPT = """Extract key facts from this message as JSON.
+Focus on: names, preferences, decisions, project names, technical choices.
+
+Message: {message}
+
+Respond with JSON: {{"entities": [{{"key": "...", "value": "...", "confidence": 0.0-1.0}}]}}
+If no key facts, return {{"entities": []}}"""
+
+def extract_entities(message: str, client) -> list[dict]:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{
+            "role": "user",
+            "content": ENTITY_EXTRACTION_PROMPT.format(message=message)
+        }],
+        max_tokens=200,
+        temperature=0,
+        response_format={"type": "json_object"},
+    )
+    data = json.loads(response.choices[0].message.content)
+    return [e for e in data.get("entities", []) if e.get("confidence", 0) > 0.7]
+```
+
+Store extracted entities in a database keyed by user ID. On each new conversation, retrieve the user's entity profile and inject it as a system message:
+
+```
+[User profile]: Name: Alex | Stack: Python | Vector DB: ChromaDB | Preference: 512-token chunks
+```
+
+<RoleCallout role="dev">
+**Memory is state. State causes bugs.** The most common memory bug: storing the memory object in a Python variable, then the web server restarts (deploy, crash, scale event) and the user's context is gone. Always serialize memory to a database — Redis for fast access, PostgreSQL for persistence. Treat memory like session data: stateless server, stateful storage.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+**Memory is state. State causes bugs. Always serialize memory to a database, never to in-process variables.** Your server will restart — on deploys, crashes, and scale-in events. When it does, any in-memory state is gone and your users lose their context silently. Use Redis or a database table from day one. The `save()` / `load()` methods in the example above should write to a database, not a local file. The file approach is for demos only.
+</Callout>
+
+## What's Next
+
+You've now built the three fundamental memory patterns. In the next tutorial you'll take a step back and think about cost — not every question needs your most expensive model. Multi-model routing can cut your AI bill by 60–80% without users noticing.

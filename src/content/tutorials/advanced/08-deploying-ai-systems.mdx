@@ -1,0 +1,228 @@
+---
+title: "Deploying AI Systems: CI/CD, Eval Gates, and Rollbacks"
+description: "AI deployments need eval gates, not just unit tests. Build the CI/CD pipeline that validates AI quality before every deploy and rolls back on degradation."
+level: advanced
+module: 8
+totalModules: 8
+roles: ["dev", "qa"]
+tags: ["CI/CD", "Deployment", "Eval Gates", "Canary Deployment", "AI Ops"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["intermediate/04-evaluating-ai-apps", "03-ai-observability"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import Callout from '../../../components/Callout.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import CodePlayground from '../../../components/CodePlayground.astro';
+
+## Why AI Deployments Are Different
+
+Traditional CI/CD: merge code → run unit tests → deploy.
+
+AI CI/CD: merge code → run unit tests → run eval suite → check eval gate → canary deploy → monitor eval metrics → promote or rollback.
+
+The difference: **AI behavior can regress without any code change**. A prompt update, a model version change, or a data drift can silently degrade quality that your unit tests will never catch.
+
+Every AI deployment needs:
+1. **Eval gate** — automated quality check before any deploy
+2. **Model version pinning** — explicit model versions in config, not "latest"
+3. **Canary strategy** — gradual traffic shift with eval monitoring
+4. **Rollback trigger** — automatic rollback when eval scores drop
+
+## The AI CI/CD Pipeline
+
+<Mermaid
+  title="AI CI/CD Pipeline with Eval Gate"
+  chart={`
+flowchart TD
+    PR[Pull Request\nPrompt change / code change] --> UT[Unit Tests\nSchema · Logic · API contracts]
+    UT -->|pass| ES[Eval Suite\nRun 50-200 test cases]
+    UT -->|fail| BLOCK1[❌ Block]
+    ES -->|pass rate > 85%| CDEP[Canary Deploy\n5% traffic]
+    ES -->|pass rate ≤ 85%| BLOCK2[❌ Block + Alert]
+    CDEP --> MON[Monitor 30 min\nEval metrics on live traffic]
+    MON -->|score holds| FULL[Full Deploy\n100% traffic]
+    MON -->|score drops| RB[🔄 Rollback\nAuto-revert]
+    style ES fill:#fef3c7,stroke:#d97706,color:#b45309
+    style BLOCK1 fill:#fee2e2,stroke:#dc2626,color:#dc2626
+    style BLOCK2 fill:#fee2e2,stroke:#dc2626,color:#dc2626
+    style RB fill:#fee2e2,stroke:#dc2626,color:#dc2626
+    style FULL fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+## Canary Rollout with Rollback Triggers
+
+<Mermaid
+  title="Canary Rollout and Rollback"
+  chart={`
+flowchart LR
+    PROD[Production\n100% old version] --> C5[Canary\n5% → new version]
+    C5 --> MON1[Monitor\nEval score · Error rate · Latency]
+    MON1 -->|metrics ok| C25[25% → new version]
+    C25 --> MON2[Monitor]
+    MON2 -->|metrics ok| C100[100% → new version]
+    MON1 -->|degradation| RB1[Rollback to 0%]
+    MON2 -->|degradation| RB2[Rollback to 5%]
+    style RB1 fill:#fee2e2,stroke:#dc2626,color:#dc2626
+    style RB2 fill:#fee2e2,stroke:#dc2626,color:#dc2626
+    style C100 fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+## Eval Gate Script for CI
+
+<CodePlayground
+  title="CI Eval Gate — Returns Pass/Fail for Pipeline"
+  language="python"
+  code={`#!/usr/bin/env python3
+"""
+AI Eval Gate for CI/CD.
+Usage: python eval_gate.py --threshold 0.85
+Exit code 0 = pass (deploy), exit code 1 = fail (block)
+"""
+import sys
+import json
+import argparse
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class EvalCase:
+    test_id: str
+    user_input: str
+    required_contains: List[str] = field(default_factory=list)
+    forbidden_contains: List[str] = field(default_factory=list)
+    max_words: int = 500
+
+# The eval suite (store in version control, update with every feature change)
+EVAL_SUITE = [
+    EvalCase("tc_001", "Summarize: Revenue up 32% to $4.2M", ["4.2M", "32%"], max_words=50),
+    EvalCase("tc_002", "Extract JSON from: Customer Bob, ID c123", ["Bob", "c123"], max_words=30),
+    EvalCase("tc_003", "What is our refund policy?", ["refund"], forbidden_contains=["competitor"]),
+    EvalCase("tc_004", "Is this spam? 'Win $1M now!!!'", ["spam", "yes"], max_words=20),
+    EvalCase("tc_005", "Translate to French: Hello world", ["Bonjour"], max_words=10),
+]
+
+def get_model_response(user_input: str) -> str:
+    """Call your actual AI model here. Mocked for demo."""
+    mock_responses = {
+        "tc_001": "Revenue increased 32% year-over-year, reaching $4.2M.",
+        "tc_002": '{"name": "Bob", "customer_id": "c123"}',
+        "tc_003": "Our refund policy allows returns within 30 days of purchase.",
+        "tc_004": "Yes, this is spam. The message contains suspicious prize claims.",
+        "tc_005": "Bonjour le monde",
+    }
+    for case in EVAL_SUITE:
+        if case.user_input == user_input:
+            return mock_responses.get(case.test_id, "I don't know.")
+    return "Response not found"
+
+def evaluate_case(case: EvalCase) -> dict:
+    response = get_model_response(case.user_input)
+    passed = []
+    failed = []
+    
+    for term in case.required_contains:
+        if term.lower() in response.lower():
+            passed.append(f"contains '{term}'")
+        else:
+            failed.append(f"MISSING '{term}'")
+    
+    for term in case.forbidden_contains:
+        if term.lower() not in response.lower():
+            passed.append(f"excludes '{term}'")
+        else:
+            failed.append(f"FOUND forbidden '{term}'")
+    
+    word_count = len(response.split())
+    if word_count <= case.max_words:
+        passed.append(f"length ok ({word_count} words)")
+    else:
+        failed.append(f"TOO LONG: {word_count} > {case.max_words} words")
+    
+    return {
+        "test_id": case.test_id,
+        "passed": len(passed),
+        "failed": len(failed),
+        "failures": failed,
+        "pass_rate": len(passed) / (len(passed) + len(failed)) if (passed or failed) else 0
+    }
+
+def run_eval_gate(threshold: float = 0.85) -> bool:
+    print(f"Running eval gate (threshold: {threshold*100:.0f}%)...")
+    results = [evaluate_case(case) for case in EVAL_SUITE]
+    
+    overall_pass = sum(r["passed"] for r in results)
+    overall_total = sum(r["passed"] + r["failed"] for r in results)
+    overall_rate = overall_pass / overall_total if overall_total > 0 else 0
+    
+    print(f"\\n{'='*50}")
+    for r in results:
+        status = "✅" if not r["failures"] else "❌"
+        print(f"{status} {r['test_id']}: {r['pass_rate']*100:.0f}%")
+        for f in r["failures"]:
+            print(f"   ↳ {f}")
+    
+    print(f"{'='*50}")
+    print(f"Overall: {overall_rate*100:.1f}% ({overall_pass}/{overall_total} checks passed)")
+    
+    gate_passed = overall_rate >= threshold
+    print(f"Gate: {'✅ PASS — proceed to deploy' if gate_passed else '❌ FAIL — block deployment'}")
+    
+    return gate_passed
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--threshold", type=float, default=0.85)
+    args = parser.parse_args()
+    
+    passed = run_eval_gate(args.threshold)
+    sys.exit(0 if passed else 1)`}
+/>
+
+## Model Version Pinning
+
+Never use `"gpt-4o"` in production — always pin to a specific version:
+
+```python
+# ❌ Bad: "latest" means unpredictable behavior
+model = "gpt-4o"
+
+# ✅ Good: pinned to tested version
+model = "gpt-4o-2024-11-20"
+
+# In your config.yaml
+ai:
+  model: gpt-4o-2024-11-20  # Updated via PR, triggers eval gate
+  fallback_model: gpt-4o-mini-2024-07-18
+```
+
+Model version updates are deployments — they require eval gate passage, not just a config file edit.
+
+<RoleCallout role="qa">
+Own the eval gate configuration — the threshold value (85%? 90%?) is a quality decision, not an engineering decision. You know what pass rate represents acceptable user experience. Set it too low and you deploy regressions; too high and you block shipping. The threshold should be reviewed quarterly as your eval suite matures.
+</RoleCallout>
+
+<RoleCallout role="dev">
+Pin model versions in deployment config and treat model version updates as deployments — with their own PR, eval run, and canary. When an AI provider releases a new model version, do NOT just update the config. Run your full eval suite first. Model updates break things in ways you cannot predict.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+Never deploy a prompt change and a model version change in the same deployment. When something breaks — and something will break — you need to know which change caused it. Deploy prompt changes first (eval gate), then model version changes (separate PR, separate eval gate, separate canary). Treating them as one change is the source of the most painful AI incident investigations.
+</Callout>
+
+## Congratulations — You've Completed the Advanced Track
+
+You now have the full production AI engineering playbook:
+- Production RAG with self-healing
+- Multi-agent orchestration patterns
+- Observability and monitoring
+- Security and red teaming
+- Fine-tuning vs RAG decision frameworks
+- Writing specifications that ship
+- Cost optimization at scale
+- CI/CD with eval gates and rollbacks
+
+The field moves fast. What stays constant: the engineering fundamentals you've built here.

@@ -1,0 +1,165 @@
+---
+title: "Writing AI Specifications for Engineers"
+description: "The BA/PM guide to writing AI feature specs that engineers can actually implement. Eval criteria as acceptance criteria, prompt requirements, and edge case handling."
+level: advanced
+module: 6
+totalModules: 8
+roles: ["ba", "pm", "dev"]
+tags: ["AI Specs", "Product Management", "Business Analysis", "Requirements", "Acceptance Criteria"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: ["beginner/09-real-world-ai-app-structure"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import Callout from '../../../components/Callout.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+
+## Why AI Specs Are Different
+
+A traditional feature spec says: "The system shall display the user's order history sorted by date."
+
+Engineers can implement that deterministically. There's one correct behavior.
+
+An AI feature spec that says "The AI shall accurately summarize customer feedback" is not implementable. What does "accurately" mean? How do you test it? When do you ship?
+
+AI features require a fundamentally different spec format because:
+- **Outputs are probabilistic** — "correct" is a distribution, not a value
+- **Quality is measurable** — you need eval criteria, not just descriptions
+- **Failure modes matter** — the AI will sometimes be wrong; the spec must address this
+- **Model behavior evolves** — a model update can silently change behavior
+
+## From Requirements to Evals
+
+The key insight: **your acceptance criteria ARE your eval test cases**. They're not narrative descriptions — they're machine-verifiable assertions.
+
+<Mermaid
+  title="AI Spec to Eval Mapping"
+  chart={`
+flowchart LR
+    REQ[Business Requirement] --> AC[Acceptance Criteria\n'Output must contain X\nand not contain Y']
+    AC --> TC[Eval Test Case\ninput + expected_properties]
+    TC --> ER[Eval Runner\nautomated check]
+    ER --> RPT[Pass/Fail Report\ngates deployment]
+    style AC fill:#fef3c7,stroke:#d97706,color:#b45309
+    style TC fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style ER fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+Bad AC: "The AI will provide accurate summaries."
+
+Good AC: "Given a support ticket of 50-500 words, the AI summary will: (1) be 25-75 words, (2) contain the customer name, (3) contain the stated issue category, (4) not contain any PII beyond name, (5) complete in under 3 seconds."
+
+## The AI Feature Spec Template
+
+<Callout type="info" title="Copy-Paste AI Feature Spec Template">
+```
+## AI Feature Spec: [Feature Name]
+
+**User Story:**
+As a [role], I want [capability] so that [outcome].
+
+**Input Format:**
+- Source: [where input comes from]
+- Format: [structure/type]
+- Size constraints: [min/max length, file size]
+
+**Output Format:**
+- Structure: [JSON schema / free text / structured fields]
+- Length: [min/max words or tokens]
+- Required fields: [list]
+
+**Eval Criteria (Acceptance Tests):**
+1. [Property]: [Specific, testable assertion]
+2. [Property]: [Specific, testable assertion]
+3. [Property]: [Specific, testable assertion]
+   (minimum 3, ideally 5-8)
+
+**Must NOT:**
+- [Forbidden output pattern 1]
+- [Forbidden output pattern 2]
+
+**Edge Cases to Handle:**
+- Empty input → [expected behavior]
+- Input exceeds max length → [expected behavior]
+- Input is in wrong format → [expected behavior]
+- AI returns low-confidence response → [fallback behavior]
+
+**Out of Scope:**
+- [Capability 1 excluded from this version]
+- [Capability 2 excluded from this version]
+
+**Model Requirements:**
+- Min context window: [K tokens]
+- Latency budget: [X seconds p95]
+- Cost budget: $[X] per 1,000 requests
+
+**Degradation Clause:**
+If AI is unavailable or fails threshold:
+→ [fallback behavior — show cached result / surface error / disable feature]
+
+**Prompt Owner:** [engineer name]
+**Eval Owner:** [QA name]
+**Model Version Pinned:** [gpt-4o-YYYY-MM-DD]
+```
+</Callout>
+
+## Worked Example: Meeting Summarizer
+
+Let's apply the template to a real feature:
+
+**Feature:** Automatically summarize sales call recordings (transcripts) for CRM logging.
+
+**Bad spec version:**
+"The AI will summarize sales calls and extract action items."
+
+**Good spec version:**
+
+```
+Input: Sales call transcript, 500-5000 words
+Output: JSON with fields:
+  - summary (50-150 words)
+  - action_items (list of strings, max 8 items)
+  - next_steps_owner (string: "rep" | "prospect" | "both" | "none")
+  - sentiment (string: "positive" | "neutral" | "negative")
+
+Eval Criteria:
+1. Summary is 50-150 words
+2. Summary contains prospect company name
+3. All action items are imperative sentences (start with verb)
+4. sentiment field is one of the four allowed values
+5. next_steps_owner field is one of the four allowed values
+6. No dollar amounts appear in summary (confidentiality)
+7. Summary completes in under 4 seconds
+
+Must NOT contain:
+- Internal product codenames
+- Specific pricing without [REDACTED] marker
+
+Edge Cases:
+- Transcript < 200 words → return {"error": "transcript_too_short"}
+- No action items identified → action_items: []
+- Call in non-English → return {"error": "unsupported_language"}
+
+Degradation Clause:
+If AI unavailable → flag record for manual review, don't block CRM save
+```
+
+This spec can be directly converted into 7 automated eval test cases.
+
+<RoleCallout role="ba">
+Your domain knowledge is the secret ingredient. Engineers can build the pipeline — only you know what "good" looks like for the business. The eval criteria you write become the automated tests that gate every deployment. If you write vague AC, you'll get vague AI behavior with no way to measure improvement. Specificity is the whole job here.
+</RoleCallout>
+
+<RoleCallout role="pm">
+The degradation clause is the most commonly skipped section — and the most important for incident response. When the AI feature breaks (it will), what does the user experience? A confusing error? A fallback to manual process? Decide this in the spec, not during an incident. Also: AI specs need a "model version" owner — someone who reviews the eval suite every time the provider updates the underlying model.
+</RoleCallout>
+
+<RoleCallout role="dev">
+Treat the eval criteria as automated tests — code them before shipping, not as documentation. A spec with 7 eval criteria = 7 test cases in your CI pipeline. The spec owner (BA/PM) writes the WHAT; you write the HOW (the assertion code). This division of ownership works well in practice.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+Specs that say "AI will summarize accurately" are not testable and will cause endless scope debates. Specs that say "AI summary will contain all 5 key entities from the source document, verified by entity extraction" are testable and shippable. Write specs as if they'll be used as automated test assertions — because they will be.
+</Callout>

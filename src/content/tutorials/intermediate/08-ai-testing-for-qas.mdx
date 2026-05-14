@@ -1,0 +1,213 @@
+---
+title: "AI Testing Strategies for QA Engineers"
+description: "The QA playbook for non-deterministic systems. Snapshot evals, property-based testing, regression suites, and the test pyramid adapted for AI applications."
+level: intermediate
+module: 8
+totalModules: 8
+roles: ["qa", "dev"]
+tags: ["AI Testing", "QA", "Snapshot Testing", "Regression Testing", "Non-deterministic"]
+date: 2026-05-14
+estimatedTime: "30 min"
+prerequisites: ["04-evaluating-ai-apps"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import Callout from '../../../components/Callout.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import CodePlayground from '../../../components/CodePlayground.astro';
+
+## Why Your Existing QA Playbook Breaks on AI
+
+Traditional QA assumes determinism: same input → same output → pass or fail. AI breaks this assumption completely.
+
+| Traditional Testing | AI Testing |
+|---------------------|-----------|
+| `assert output == expected` | `assert property(output) == True` |
+| Single correct answer | Range of acceptable answers |
+| Regression = exact match | Regression = semantic drift |
+| Test once, ship | Test continuously, monitor |
+| Pass/Fail | Score distribution |
+
+Your job as QA shifts from **verifying correctness** to **verifying acceptable behavior within defined boundaries**.
+
+## The AI Test Pyramid
+
+<Mermaid
+  title="AI Quality Test Pyramid"
+  chart={`
+flowchart TD
+    subgraph Pyramid
+        E2E["E2E Evals\n(top)\nFull pipeline, real users\nSlow · Expensive · High confidence"]
+        SNAP["Snapshot / Regression Evals\n(middle)\nCapture good outputs, detect drift\nModerate cost · Regular runs"]
+        PROP["Property-Based Tests\n(base)\nInvariants that always hold\nFast · Cheap · Run on every commit"]
+    end
+    PROP --> SNAP
+    SNAP --> E2E
+    style E2E fill:#fee2e2,stroke:#dc2626,color:#dc2626
+    style SNAP fill:#fef3c7,stroke:#d97706,color:#b45309
+    style PROP fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+**Property-based tests** (run on every CI commit):
+- Response is valid JSON ✓
+- Required fields are present ✓
+- Response length is within bounds ✓
+- No PII patterns in output ✓
+- No competitor names mentioned ✓
+
+**Snapshot evals** (run nightly or on model changes):
+- Score output quality on a fixed test set
+- Alert when quality drops >5% from baseline
+- Capture representative good/bad examples
+
+**E2E evals** (run before major releases):
+- Full pipeline test with real documents
+- Human spot-check on 5% of results
+- Latency and cost benchmarks
+
+## Test Case Template
+
+<Callout type="info" title="Standard AI Test Case Format">
+Every AI test case should have these fields:
+
+```
+test_id:        tc_summary_001
+feature:        document-summarization
+input:          [the document or query]
+expected_properties:
+  - contains: ["key entity 1", "key entity 2"]
+  - max_length: 200 words
+  - valid_json: true
+  - sentiment_matches: positive
+expected_not_contains:
+  - ["competitor name", "internal code names"]
+pass_criterion: all properties pass
+model_version:  gpt-4o-2024-11-20
+notes:          Tests core extraction of financial summary
+```
+</Callout>
+
+## Property-Based Test Implementation
+
+<CodePlayground
+  title="Property-Based AI Test Suite"
+  language="python"
+  code={`import re
+import json
+from dataclasses import dataclass, field
+from typing import List, Optional, Callable
+
+@dataclass
+class AITestCase:
+    test_id: str
+    input_text: str
+    required_contains: List[str] = field(default_factory=list)
+    forbidden_contains: List[str] = field(default_factory=list)
+    max_words: Optional[int] = None
+    must_be_valid_json: bool = False
+    custom_checks: List[Callable] = field(default_factory=list)
+
+def run_property_tests(test_case: AITestCase, response: str) -> dict:
+    """Run all property checks against a response."""
+    results = {"test_id": test_case.test_id, "passed": [], "failed": []}
+    
+    def check(condition: bool, description: str):
+        if condition:
+            results["passed"].append(description)
+        else:
+            results["failed"].append(description)
+    
+    # Required content checks
+    for term in test_case.required_contains:
+        check(term.lower() in response.lower(), f"contains '{term}'")
+    
+    # Forbidden content checks
+    for term in test_case.forbidden_contains:
+        check(term.lower() not in response.lower(), f"does not contain '{term}'")
+    
+    # Length check
+    if test_case.max_words:
+        word_count = len(response.split())
+        check(word_count <= test_case.max_words, f"max words ({word_count}/{test_case.max_words})")
+    
+    # JSON validity check
+    if test_case.must_be_valid_json:
+        try:
+            json.loads(response)
+            results["passed"].append("valid JSON")
+        except json.JSONDecodeError as e:
+            results["failed"].append(f"invalid JSON: {str(e)[:50]}")
+    
+    # Custom property checks
+    for custom_fn in test_case.custom_checks:
+        try:
+            passed, msg = custom_fn(response)
+            check(passed, msg)
+        except Exception as e:
+            results["failed"].append(f"custom check error: {str(e)}")
+    
+    total = len(results["passed"]) + len(results["failed"])
+    results["pass_rate"] = len(results["passed"]) / total if total > 0 else 0
+    results["status"] = "PASS" if len(results["failed"]) == 0 else "FAIL"
+    return results
+
+# Define your test suite
+test_suite = [
+    AITestCase(
+        test_id="tc_001_financial_summary",
+        input_text="Summarize: Q3 revenue was $4.2M, up 32% YoY. Net margin improved to 18%.",
+        required_contains=["4.2M", "32%"],
+        forbidden_contains=["billion", "loss"],
+        max_words=50,
+    ),
+    AITestCase(
+        test_id="tc_002_json_extraction",
+        input_text="Extract to JSON: Customer Alice Smith, ID cust_12345, purchased 3 items.",
+        required_contains=["Alice Smith", "cust_12345"],
+        must_be_valid_json=True,
+    ),
+    AITestCase(
+        test_id="tc_003_no_pii_leak",
+        input_text="What products do we offer?",
+        forbidden_contains=["@", "555-", "ssn"],  # No PII patterns
+        max_words=100,
+    ),
+]
+
+# Mock responses for demo
+mock_responses = {
+    "tc_001_financial_summary": "Q3 revenue reached $4.2M, a 32% year-over-year increase, with net margin at 18%.",
+    "tc_002_json_extraction": '{"name": "Alice Smith", "customer_id": "cust_12345", "items_purchased": 3}',
+    "tc_003_no_pii_leak": "We offer cloud storage, API services, and enterprise analytics solutions.",
+}
+
+print("=== AI TEST SUITE RESULTS ===\\n")
+total_pass = total_fail = 0
+for tc in test_suite:
+    response = mock_responses[tc.test_id]
+    result = run_property_tests(tc, response)
+    icon = "✅" if result["status"] == "PASS" else "❌"
+    print(f"{icon} {tc.test_id}: {result['status']}")
+    for f in result["failed"]:
+        print(f"   ↳ FAILED: {f}")
+    if result["status"] == "PASS":
+        total_pass += 1
+    else:
+        total_fail += 1
+
+print(f"\\nResults: {total_pass} passed, {total_fail} failed")
+print("CI Gate: PASS" if total_fail == 0 else "CI Gate: FAIL — block deployment")`}
+/>
+
+<RoleCallout role="qa">
+Own the eval test suite the way you own the QA test suite — it's not the dev's job. You know the failure modes, the edge cases, and what "good enough" means for the business. Write the test cases before the feature ships. Run them in CI. Alert on regressions. This is your core deliverable for AI features.
+</RoleCallout>
+
+<RoleCallout role="dev">
+Give QA direct access to the eval harness — they need to be able to run evals themselves without engineering help. Build a simple CLI or notebook interface. QA can spot failure modes you'll never think of. The best AI test suites are collaborative, not siloed.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+QA sign-off on AI features must include model version pinning. When OpenAI or Anthropic updates a model, behavior changes — sometimes subtly, sometimes dramatically. Your eval suite passing on gpt-4o-2024-08-06 doesn't mean it passes on gpt-4o-2024-11-20. Pin model versions in production configs, and treat model version updates as deployments that require a full eval run.
+</Callout>

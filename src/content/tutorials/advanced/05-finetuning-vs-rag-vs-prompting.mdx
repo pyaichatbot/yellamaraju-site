@@ -1,0 +1,312 @@
+---
+title: "Fine-tuning vs RAG vs Prompting: A Decision Framework"
+description: "When to prompt-engineer, when to RAG, and when to fine-tune. A decision framework with cost, complexity, and quality trade-offs mapped out."
+level: advanced
+module: 5
+totalModules: 8
+roles: ["dev", "ba", "pm"]
+tags: ["Fine-tuning", "RAG", "Prompting", "Decision Framework", "AI Strategy"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: ["intermediate/01-build-first-rag"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import Callout from '../../../components/Callout.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+import CodePlayground from '../../../components/CodePlayground.astro';
+
+## The Core Distinction
+
+Every AI feature decision comes down to a fundamental question: **Do you need the model to know more, or to behave differently?**
+
+- **Know more** → RAG (inject knowledge at query time) or fine-tuning on knowledge (rare and usually wrong)
+- **Behave differently** → Prompting (first) or fine-tuning (when prompting has been exhausted)
+
+Teams waste months and thousands of dollars fine-tuning when a few hours of prompt engineering would solve the problem. This framework prevents that.
+
+## The Three Approaches
+
+### Prompting
+
+**What it does:** Shapes the model's behavior by giving it explicit instructions in the system prompt and few-shot examples.
+
+**Cost:** Near-zero. Writing prompts takes hours to days. No infrastructure changes.
+
+**What it solves:** Tone, format, persona, reasoning style, output structure, task framing.
+
+**Limitations:** Cannot teach the model new facts. Cannot reliably override deep training. Has a ceiling for complex behaviors.
+
+**When to use it first:** Always. Before any other approach.
+
+### RAG
+
+**What it does:** Retrieves relevant documents at query time and injects them into the prompt as context.
+
+**Cost:** Moderate. You need a vector database, an embedding pipeline, and maintenance of the document corpus. $100–$2,000/month depending on scale.
+
+**What it solves:** Knowledge that changes over time. Private or proprietary information. Large corpora that can't fit in a single prompt. Questions that require specific facts.
+
+**Limitations:** Retrieval quality determines answer quality. Cannot change the model's reasoning style or output format. Adds latency.
+
+**When to use it:** When the model needs access to information it wasn't trained on, or information that changes.
+
+### Fine-tuning
+
+**What it does:** Creates a new model checkpoint by training the base model on your dataset of (prompt, ideal_response) pairs.
+
+**Cost:** High. Training costs $500–$5,000+ depending on model size and dataset. Then there's inference cost (fine-tuned models often cost more per token than base models), evaluation infrastructure, deployment pipeline, and ongoing maintenance.
+
+**What it solves:** Consistent style and format adherence that prompting can't reliably achieve. Specific behaviors deeply embedded in the model. Latency reduction (compressed few-shot examples into weights).
+
+**Limitations:** Dataset quality is everything — garbage training data produces a garbage model. Fine-tuned models go stale when the world changes. Requires its own eval suite and deployment pipeline. Cannot easily update for new knowledge.
+
+**When to use it:** When you have 100+ high-quality (prompt, response) examples, have exhausted prompting and RAG, and need consistent behavior that prompting cannot achieve.
+
+## Decision Framework
+
+<Mermaid
+  title="Fine-tuning vs RAG vs Prompting Decision Flowchart"
+  chart={`
+flowchart TD
+    START([New AI Feature]) --> Q1{Does the model need\naccess to your private\nor changing knowledge?}
+
+    Q1 -->|Yes| Q2{Is the knowledge corpus\nlarger than fits in\na single prompt?}
+    Q1 -->|No| Q3{Does the current model\nbehavior fall short\nwith good prompting?}
+
+    Q2 -->|Yes| RAG([Use RAG\nVector DB retrieval])
+    Q2 -->|No| Q4{Does the knowledge\nchange frequently?}
+
+    Q4 -->|Yes| RAG
+    Q4 -->|No| Q5{Do you have 100+\nquality examples?}
+
+    Q3 -->|No| PROMPT([Improve Your Prompt\nFew-shot examples\nClear instructions])
+    Q3 -->|Yes| Q6{Is the issue about\nknowledge or behavior?}
+
+    Q6 -->|Knowledge| RAG
+    Q6 -->|Behavior| Q7{Have you exhausted\nprompt engineering\nincluding few-shot?}
+
+    Q7 -->|No| PROMPT
+    Q7 -->|Yes| Q5
+
+    Q5 -->|No| PROMPT
+    Q5 -->|Yes| Q8{Do you have budget\nfor ongoing maintenance?}
+
+    Q8 -->|No| PROMPT
+    Q8 -->|Yes| FT([Fine-tune\nTrain custom model])
+
+    style START fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style PROMPT fill:#dcfce7,stroke:#16a34a,color:#15803d
+    style RAG fill:#fef3c7,stroke:#d97706,color:#92400e
+    style FT fill:#f3e8ff,stroke:#7c3aed,color:#7c3aed
+`}
+/>
+
+## Cost vs Complexity Matrix
+
+| Approach | Time to Ship | One-time Cost | Monthly OpEx | Knowledge Updates | Behavior Changes |
+|---|---|---|---|---|---|
+| Prompting | Days | $0 | $0 | Instant | Easy |
+| RAG | Weeks | $1K–$5K | $100–$2K | Incremental | Limited |
+| Fine-tuning | Months | $5K–$50K | $2K–$20K | New training run | Excellent |
+
+The numbers are representative for a mid-size enterprise application. Fine-tuning costs 10–100× more than RAG in setup, and RAG costs 10–100× more than prompting.
+
+## Common Mistakes
+
+**Mistake 1: Fine-tuning for knowledge problems.**
+A legal team wants the AI to know their internal case law database. They train a fine-tuned model on 10,000 legal documents. Three months later, new rulings are issued, and the model's knowledge is stale. They needed RAG, not fine-tuning. Knowledge belongs in a retrieval system that can be updated cheaply.
+
+**Mistake 2: RAG for style problems.**
+A company wants all AI output to follow their specific communication style guide — short sentences, no passive voice, specific terminology. They build a RAG system that retrieves style guide excerpts. The style guide appears in every prompt but the model ignores it inconsistently. They needed fine-tuning (or at minimum, aggressive few-shot prompting). Style is a behavior, not knowledge.
+
+**Mistake 3: Skipping prompting.**
+An engineering team immediately proposes fine-tuning because "the base model doesn't do what we want." Two sprints later, they have a dataset and are building infrastructure. A product manager asks: "Did you try putting that requirement in the system prompt?" They had not. They needed 30 minutes of prompt engineering, not a 6-week fine-tuning project.
+
+<Callout type="info" title="The Practical Test for Fine-tuning">
+Before committing to fine-tuning, run this test: write a system prompt with 5 high-quality few-shot examples of the behavior you want. If the model produces correct output 80%+ of the time on your test cases, prompting is sufficient. Only if you cannot reach acceptable quality with excellent few-shot examples should you consider fine-tuning.
+</Callout>
+
+## The 6 Key Questions
+
+Before any AI feature decision, answer these six questions:
+
+1. **Is the required information static or dynamic?** Static (company values, procedures that rarely change) → prompting or fine-tuning. Dynamic (news, documents, databases that update) → RAG.
+
+2. **Is the problem about knowing or behaving?** Knowing → RAG. Behaving → prompting first, fine-tuning last.
+
+3. **What is the budget?** Under $1K → prompting only. $1K–$20K → RAG if needed. Over $20K → fine-tuning is on the table.
+
+4. **What is the latency requirement?** Sub-100ms → prompting only (no retrieval). Under 500ms → RAG is viable. Fine-tuned models are fastest per-token but retrieval adds latency.
+
+5. **Do you have labeled training data?** No → you cannot fine-tune yet. Creating training data is a project itself. Yes, 100+ examples → fine-tuning is possible. Yes, 1000+ examples → fine-tuning will likely work.
+
+6. **Who maintains the model?** In-house ML team → fine-tuning is feasible. No ML team → prompting and RAG only.
+
+<RoleCallout role="ba">
+Your domain knowledge is the secret ingredient in this decision. Engineers can build any of the three pipelines — but only you know what "good enough" looks like for the business. When evaluating options, translate the matrix into business terms: RAG means the AI always works with current data but costs more to maintain; fine-tuning means consistent behavior but becomes stale. Present it to stakeholders as: "Do we need the AI to know more, or behave differently? RAG for knowing more, fine-tuning for behaving differently."
+</RoleCallout>
+
+<RoleCallout role="pm">
+Fine-tuning takes weeks and costs $K+. Prompt engineering takes days and costs $0. Exhaust prompting before considering fine-tuning — this is not a technical preference, it is a product velocity decision. When the team proposes fine-tuning, ask: "What happens if we put the best possible instructions and 5 examples in the system prompt? Have we tried that?" Set a policy: fine-tuning requires PM sign-off after prompting has been tried and documented.
+</RoleCallout>
+
+<RoleCallout role="dev">
+Never fine-tune on your first version of a feature. Ship with prompting, measure with evals, gather real user data, and use that data to improve your prompts. If you have 3 months of production traffic showing where the model falls short, you have the foundation for a fine-tuning dataset. Fine-tuning on synthetic or theoretical examples usually underperforms on real traffic.
+</RoleCallout>
+
+## Quick Reference: The One-Line Rules
+
+- **Use prompting when:** you haven't tried it yet
+- **Use RAG when:** the model needs to know your data
+- **Use fine-tuning when:** you have exhausted prompting, have 100+ labeled examples, have a budget, and have a maintenance plan
+
+<CodePlayground
+  language="python"
+  title="Decision Framework: Score Your Feature Against Each Approach"
+  code={`from dataclasses import dataclass, field
+
+@dataclass
+class FeatureRequirements:
+    # Knowledge characteristics
+    knowledge_is_private: bool = False
+    knowledge_changes_frequently: bool = False
+    corpus_too_large_for_prompt: bool = False
+
+    # Behavior characteristics
+    requires_style_consistency: bool = False
+    prompting_quality_acceptable: bool = True  # set False if base prompting fails
+
+    # Resources
+    budget_usd: int = 0
+    labeled_examples_available: int = 0
+    has_ml_team: bool = False
+    latency_budget_ms: int = 2000
+
+    # Risk tolerance
+    acceptable_maintenance_overhead: bool = True
+
+
+@dataclass
+class Recommendation:
+    approach: str
+    confidence: str  # high | medium | low
+    reasons: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
+def recommend(req: FeatureRequirements) -> Recommendation:
+    reasons = []
+    warnings = []
+
+    # ── Rule: Always start with prompting evaluation ──────────────────────────
+    if req.prompting_quality_acceptable:
+        return Recommendation(
+            approach="Prompting",
+            confidence="high",
+            reasons=["Base model + good prompt meets quality requirements"],
+            warnings=["Re-evaluate if quality degrades at scale"],
+        )
+
+    # ── Rule: RAG for knowledge problems ─────────────────────────────────────
+    needs_rag = (
+        req.knowledge_is_private
+        or req.knowledge_changes_frequently
+        or req.corpus_too_large_for_prompt
+    )
+
+    if needs_rag:
+        reasons.append("Knowledge is private, dynamic, or too large for context")
+        if req.latency_budget_ms < 300:
+            warnings.append("RAG adds 100-300ms latency — may not meet latency budget")
+        if req.budget_usd < 1000:
+            warnings.append("RAG infra costs ~$100-500/month minimum")
+        return Recommendation(
+            approach="RAG",
+            confidence="high",
+            reasons=reasons,
+            warnings=warnings,
+        )
+
+    # ── Rule: Fine-tuning only if conditions are met ──────────────────────────
+    if req.requires_style_consistency:
+        reasons.append("Consistent style/behavior required that prompting cannot achieve")
+
+    if req.labeled_examples_available < 100:
+        warnings.append(f"Only {req.labeled_examples_available} labeled examples — need 100+ for fine-tuning")
+        return Recommendation(
+            approach="Prompting (collect more data first)",
+            confidence="medium",
+            reasons=reasons,
+            warnings=warnings,
+        )
+
+    if req.budget_usd < 5000:
+        warnings.append(f"Budget ${req.budget_usd} may be insufficient for fine-tuning + maintenance")
+        return Recommendation(
+            approach="Prompting (insufficient fine-tuning budget)",
+            confidence="medium",
+            reasons=reasons,
+            warnings=warnings,
+        )
+
+    if not req.has_ml_team:
+        warnings.append("No ML team — fine-tuning without ML expertise has high failure rate")
+
+    if not req.acceptable_maintenance_overhead:
+        warnings.append("Fine-tuned models require ongoing eval and retraining — significant overhead")
+
+    confidence = "high" if req.has_ml_team and not warnings else "medium"
+
+    return Recommendation(
+        approach="Fine-tuning",
+        confidence=confidence,
+        reasons=reasons,
+        warnings=warnings,
+    )
+
+
+# ── Demo: Score three different features ──────────────────────────────────────
+scenarios = [
+    (
+        "Customer FAQ chatbot (internal docs)",
+        FeatureRequirements(
+            knowledge_is_private=True,
+            knowledge_changes_frequently=True,
+            prompting_quality_acceptable=False,
+            budget_usd=3000,
+        ),
+    ),
+    (
+        "Brand-voice content generator",
+        FeatureRequirements(
+            requires_style_consistency=True,
+            prompting_quality_acceptable=False,
+            labeled_examples_available=500,
+            budget_usd=15000,
+            has_ml_team=True,
+        ),
+    ),
+    (
+        "Summarize support tickets",
+        FeatureRequirements(
+            prompting_quality_acceptable=True,
+        ),
+    ),
+]
+
+for name, req in scenarios:
+    rec = recommend(req)
+    print(f"Feature: {name}")
+    print(f"  Recommendation: {rec.approach} (confidence: {rec.confidence})")
+    for r in rec.reasons:
+        print(f"  + {r}")
+    for w in rec.warnings:
+        print(f"  ! {w}")
+    print()
+`}
+/>
+
+<Callout type="warning" title="Production Gotcha: Fine-tuning Operational Costs Exceed Training Costs">
+Fine-tuned models need their own eval suites and deployment pipelines. The operational cost of fine-tuning often exceeds the training cost. Budget for maintenance, not just creation. You need: a labeled eval dataset (ongoing curation), a retraining pipeline (for when the model drifts), a deployment pipeline separate from your base model, and a rollback procedure if the fine-tuned model regresses. Teams routinely budget $10K for training and discover the first year of operations costs $40K.
+</Callout>

@@ -1,0 +1,188 @@
+---
+title: "Writing Effective Prompts"
+description: "The 4-part anatomy of a great prompt: Role, Task, Context, Format. Learn zero-shot, one-shot, and few-shot techniques that actually work in production."
+level: beginner
+module: 4
+totalModules: 9
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["Prompt Engineering", "Few-shot", "Zero-shot", "Prompt Design"]
+date: 2026-05-14
+estimatedTime: "15 min"
+prerequisites: ["03-using-ai-apis"]
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+import Callout from '../../../components/Callout.astro';
+import RoleCallout from '../../../components/RoleCallout.astro';
+
+## What a Prompt Really Is
+
+You already know how to talk to people. Prompting is the same skill applied to AI models — with a few important differences.
+
+When you tell a colleague "review this," they fill in the gaps from context: who you are, what project this is, what kind of review you want, and how to format their feedback. An AI model has none of that context unless you provide it explicitly.
+
+A **prompt** is the complete set of instructions you give the model. The quality of your output is almost entirely determined by the quality of your input.
+
+## The 4-Part Anatomy of an Effective Prompt
+
+Every reliable, production-quality prompt has four components:
+
+<Mermaid
+  title="The 4-Part Prompt Anatomy"
+  chart={`
+flowchart TD
+    P[Complete Prompt] --> R["Role\n'You are a senior software architect...'"]
+    P --> T["Task\n'Review this code for security vulnerabilities...'"]
+    P --> C["Context\n'This handles payment processing for an e-commerce site...'"]
+    P --> F["Format\n'Output a JSON array with fields: issue, severity, fix'"]
+
+    style P fill:#f3e8ff,stroke:#7c3aed,color:#7c3aed
+    style R fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style T fill:#dcfce7,stroke:#16a34a,color:#15803d
+    style C fill:#fef3c7,stroke:#d97706,color:#b45309
+    style F fill:#fce7f3,stroke:#db2777,color:#be185d
+`}
+/>
+
+### 1. Role — Who is the AI?
+
+Setting a role tells the model what persona, expertise level, and perspective to adopt. It constrains the vocabulary and depth of the response.
+
+**Weak:** *(no role set)*
+**Strong:** "You are a senior software architect with 10 years of experience reviewing production Python code for security and performance issues."
+
+The role doesn't need to be elaborate. Even "You are a concise technical writer" dramatically improves consistency.
+
+### 2. Task — What do you want?
+
+Be specific about the action. Avoid ambiguous verbs like "help," "look at," or "talk about."
+
+**Weak:** "Help me with this code."
+**Strong:** "Identify all SQL injection vulnerabilities in the code below. For each one, explain why it's vulnerable and provide a corrected version."
+
+### 3. Context — What should the AI know?
+
+This is where your domain knowledge becomes the prompt's intelligence. The model knows general patterns; you know the specifics of your situation.
+
+**Weak:** "Summarize this document."
+**Strong:** "Summarize this document for a non-technical executive audience. The key decision they need to make is whether to approve a $50,000 AI tooling budget for Q3."
+
+### 4. Format — How should the output be structured?
+
+Undefined format = unpredictable output. Defined format = parseable, reliable, consistent output.
+
+**Weak:** "Give me the results."
+**Strong:** "Output a JSON array. Each item should have fields: `issue` (string), `severity` (one of: low/medium/high/critical), and `recommended_fix` (string)."
+
+## Before vs After: Seeing the Difference
+
+<Callout type="warning" title="Weak Prompt — What Not to Do">
+**System:** You are an assistant.
+
+**User:** Review my code and tell me if there are any problems.
+
+**Why it fails:** No role expertise, vague task ("problems" is undefined), no context about what the code does or what risks matter, no output format specified. The response will be generic, possibly unhelpful, and definitely unparseable by code.
+</Callout>
+
+<Callout type="tip" title="Strong Prompt — What to Do Instead">
+**System:** You are a security-focused Python developer reviewing production code that handles financial transactions.
+
+**User:** Review the following Python function for SQL injection vulnerabilities, input validation issues, and improper exception handling. The function accepts user-submitted data from a public web form.
+
+Output a JSON array where each item has: `issue` (description of the problem), `severity` (low/medium/high/critical), `line_number` (integer or null), and `fix` (corrected code snippet).
+
+**Why it works:** Clear role, specific task with three named concern areas, domain context (public web form, financial transactions), machine-parseable output format.
+</Callout>
+
+## Zero-Shot, One-Shot, and Few-Shot Prompting
+
+These terms describe how many examples you give the model before asking it to do the task.
+
+### Zero-Shot
+
+You describe the task without any examples. Works well for simple, well-defined tasks.
+
+```
+Classify the sentiment of the following customer review as positive, neutral, or negative.
+
+Review: "The product arrived on time but the packaging was damaged."
+```
+
+### One-Shot
+
+You give one example of input → output, then ask the model to follow the same pattern. Dramatically improves format consistency.
+
+```
+Classify customer review sentiment. Examples:
+
+Review: "Absolutely loved it, will buy again!"
+Sentiment: positive
+
+Now classify:
+Review: "The product arrived on time but the packaging was damaged."
+Sentiment:
+```
+
+### Few-Shot
+
+You give 3–5 examples. The most reliable approach for getting consistent output format and tone. Especially useful when your definition of "correct" is nuanced or domain-specific.
+
+```
+Classify each review using our internal categories: delighted / satisfied / neutral / frustrated / angry.
+
+Review: "Best purchase I've made all year." → delighted
+Review: "It works fine, nothing special." → satisfied
+Review: "Instructions were confusing but it works." → neutral
+Review: "Took 3 weeks to arrive and support was unhelpful." → frustrated
+Review: "Complete waste of money, do not buy." → angry
+
+Now classify:
+Review: "The product arrived on time but the packaging was damaged."
+```
+
+<Callout type="info" title="When to Use Each Approach">
+Use zero-shot for simple, clear tasks. Use one-shot when you need a specific output format. Use few-shot when you need nuanced categorization or when zero-shot results are inconsistent. More examples = more tokens = higher cost, so use only as many as you need.
+</Callout>
+
+## Common Prompt Anti-Patterns
+
+These are the mistakes that cause AI features to fail silently in production:
+
+**Anti-pattern 1: Vague instructions**
+"Make it better" — better by what measure? More concise? More formal? More detailed? Always specify the dimension.
+
+**Anti-pattern 2: No format specification**
+If your code is going to parse the output, you must specify the format. "Tell me the issues" → free text. "Output a JSON array" → parseable. Never leave format to chance in production code.
+
+**Anti-pattern 3: Missing context**
+The model doesn't know your business, your users, your constraints, or your definitions. Every piece of context you omit is a gap the model fills with a generic assumption.
+
+**Anti-pattern 4: Prompt creep**
+Adding more and more to a prompt to fix edge cases until it becomes a 2,000-token monster. When prompts grow beyond control, it's usually a sign you need structured output (Tutorial 5) or a different architecture.
+
+**Anti-pattern 5: Testing against one example**
+A prompt that works perfectly on one input can fail on 30% of real inputs. Always test against a representative sample before shipping.
+
+<RoleCallout role="ba">
+**What this means for requirements:** Your domain knowledge IS the context section of every prompt. When you brief developers on an AI feature, include specific examples of good and bad outputs — these become few-shot examples. The more precisely you can describe what "correct" looks like, the better the system will perform. Vague acceptance criteria produce vague AI outputs.
+</RoleCallout>
+
+<RoleCallout role="dev">
+**What this means for your code:** Few-shot examples are the most reliable tool for shaping output format, especially when JSON mode isn't available. Store your examples in a separate file or database — not hardcoded in the function. That way they can be updated without a code deploy. Also: your system prompt is where you put the role and format instructions; your user prompt is where you put the dynamic content.
+</RoleCallout>
+
+<RoleCallout role="qa">
+**What this means for testing:** Prompt changes are code changes. When a developer modifies a prompt, that change should go through code review and be tracked in version control. An innocent-looking prompt edit ("let's add a sentence here") can break 20% of your test cases. Treat prompt files with the same rigor as source files.
+</RoleCallout>
+
+<RoleCallout role="pm">
+**What this means for your roadmap:** The quality of an AI feature is largely a function of prompt quality — not model quality. A well-crafted prompt on GPT-4o-mini often outperforms a vague prompt on GPT-4o, at 10x lower cost. Budget time for prompt iteration. The first version is never the best version. Plan for 3–5 refinement cycles before a prompt is production-ready.
+</RoleCallout>
+
+## What's Next
+
+Great prompts produce useful text. But if your application needs to parse that text, "useful text" isn't enough — you need **structured output**. That's the subject of the next tutorial.
+
+<Callout type="tip" title="Immediate Action">
+Take a prompt you're currently using (or one from ChatGPT) and rewrite it using all 4 parts: Role, Task, Context, Format. Compare the outputs side by side. The improvement is usually immediate and significant.
+</Callout>
