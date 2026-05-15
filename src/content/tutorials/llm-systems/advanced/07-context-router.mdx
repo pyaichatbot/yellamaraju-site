@@ -1,0 +1,212 @@
+---
+title: "Context Router"
+description: "Sending the right context to the right model at the right time"
+level: advanced
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 7
+totalModules: 7
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Context Router","Advanced"]
+date: 2026-05-14
+estimatedTime: "25 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Sending the right context to the right model at the right time
+
+## What Is a Context Router?
+
+A **context router** is the intelligent layer that decides:
+1. **Which model** should handle this request (based on complexity, cost, capability)
+2. **How much context** to include (within token limits, prioritizing most relevant)
+3. **What kind of context** to inject (RAG, memory, tools, system prompt variant)
+4. **How to compress** the context if it exceeds limits
+
+**Karpathy's 2025 framing:** *"The LLM is the CPU, the context window is RAM. Context engineering is the OS - deciding what gets loaded into RAM for each computation."*
+
+**Why routing matters:** A simple greeting query doesn't need a 200K token context window with all user history, a complex RAG retrieval, and a premium model. It needs a fast, cheap model with minimal context. Routing mismatches are one of the biggest sources of wasted LLM spend.
+
+### The Mail Sorting Analogy
+
+A post office sorts mail by destination, size, urgency, and type. A postcard goes standard mail. A fragile package gets special handling. Urgent courier gets priority lane. The context router sorts every LLM request - simple questions get the economy lane, complex multi-step reasoning gets business class, safety-critical queries get the VIP treatment with full context, best model, human review.
+
+
+## Context Router Architecture
+
+**Context window management strategies:**
+
+**1. Sliding window:** Keep the N most recent turns. Simple, loses early context.
+
+**2. Summarization:** Compress older turns with a small LLM. "Summary of previous 20 turns: [...]". Keeps key info, reduces tokens.
+
+**3. Memory retrieval:** Store all conversation history in a vector DB. At each turn, retrieve semantically relevant past turns (not just recent). Best for long-term conversations.
+
+**4. Token budget allocation:**
+```
+Total window: 32K tokens
+  System prompt: 500 tokens (fixed)
+  Retrieved context: 8K tokens
+  Conversation history: 4K tokens  
+  Current query: 500 tokens
+  Reserved for output: 2K tokens
+  Safety margin: 17K (unused)
+```
+
+**5. Context compression (LLMLingua):** Neural compression that removes low-importance tokens while preserving semantics. 4-8x compression with &lt;5% quality loss. Critical for long document processing.
+
+**The "lost in the middle" fix:** Always place the most relevant retrieved chunks at the TOP and BOTTOM of the context, never in the middle. Liu et al. (2024) showed &gt;30% accuracy drop for information buried mid-context.
+
+```text
+┌───────────────────────────────────────────────────────────────────┐
+│                     CONTEXT ROUTER                                 │
+│                                                                     │
+│  Incoming Request: {query, user_id, session_history, tools_avail} │
+│        │                                                            │
+│        ▼                                                            │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │                  CLASSIFIER                                 │  │
+│  │  • Complexity: simple / medium / complex                    │  │
+│  │  • Domain: general / code / medical / legal / math          │  │
+│  │  • Sensitivity: low / medium / high (PII, compliance)       │  │
+│  │  • Intent: chat / Q&A / generation / reasoning / agentic    │  │
+│  └──────────────────────────┬──────────────────────────────────┘  │
+│                             │                                       │
+│          ┌──────────────────┼─────────────────────┐               │
+│          ▼                  ▼                       ▼               │
+│     SIMPLE TIER        MEDIUM TIER            COMPLEX TIER         │
+│     gpt-4o-mini       claude-sonnet         claude-opus-4          │
+│     4K context         32K context           200K context           │
+│     No RAG            RAG (top-3)           RAG (top-10)           │
+│     $0.15/1M tok      $3/1M tok             $15/1M tok             │
+│          │                  │                       │               │
+│          └──────────────────┴─────────────────────┘               │
+│                             │                                       │
+│                    ┌────────▼────────┐                             │
+│                    │ CONTEXT BUILDER │                             │
+│                    │ • Retrieved docs│                             │
+│                    │ • Memory        │                             │
+│                    │ • Prompt variant│                             │
+│                    │ • Window mgmt   │                             │
+│                    └─────────────────┘                             │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **One model for all queries:** Using GPT-4 or Claude Opus for 'hello, how are you'. 99% of simple queries can be handled by a 10x cheaper model with no quality difference. Routing alone typically reduces LLM costs 30-50%.
+- **Naïve context truncation:** Truncating context from the beginning when window is full. Loses the system prompt and early instructions. Always truncate middle content, preserve beginning and end.
+- **No context budget enforcement:** System prompt grows over time as features are added. Eventually exceeds the token budget, silently truncating user content. Set hard limits and monitoring on each context section.
+- **Classification on the hot path:** Running a heavy ML classifier to route every query adds 200ms+ to P50 latency. Use a fast, small classifier (distilbert, &lt;10ms) or rule-based pre-filters.
+
+
+## System Design: Multi-Model Router for Enterprise
+
+**Design a context router for an enterprise AI assistant handling 1M queries/day across teams (HR, Legal, Finance, Engineering)**
+
+**Query classification:**
+- Fast classifier (DistilBERT, 5ms): complexity + domain
+- Rule-based: check for PII -&gt; compliance tier
+- Check query length as proxy for complexity
+
+**Routing table:**
+| Class | Model | Context | Cost/query |
+|-------|-------|---------|------------|
+| Simple chat | claude-haiku | 4K | $0.0003 |
+| Domain Q&A | claude-sonnet | 16K + RAG | $0.003 |
+| Complex reasoning | claude-opus | 64K + full RAG | $0.03 |
+| Compliance-sensitive | claude-opus + HITL | 32K + audit | $0.10 |
+
+**Context builder per domain:**
+- HR: employee handbook RAG + HR policy prompt variant
+- Legal: legal corpus RAG + citation-required prompt
+- Finance: financial data RAG + disclaimer prompt
+- Engineering: code context + tool calling enabled
+
+**Savings at 1M queries/day:**
+- Without routing: all queries to claude-opus -&gt; $30,000/day
+- With routing: 70% haiku, 25% sonnet, 5% opus -&gt; $4,650/day
+- **85% cost reduction**
+
+### Non-Functional Requirements
+
+- Routing decision &lt; 15ms P99
+- Routing accuracy (correct tier) &gt; 95%
+- Context assembly &lt; 50ms P95
+- System handles 5K QPS peak
+
+
+## Inference-Aware Context Routing
+
+A context router should understand inference economics, not only prompt relevance. Shared prefixes, long prompts, and decode-heavy workloads behave differently on GPU servers.
+
+```python
+def route_request(query: str, history_tokens: int, shared_prefix_id: str | None) -> dict:
+    complexity = "complex" if any(w in query.lower() for w in ["compare", "prove", "analyze"]) else "simple"
+    prompt_tokens = len(query.split()) + history_tokens
+    prefix_cache = shared_prefix_id is not None and prompt_tokens > 1000
+
+    if prompt_tokens > 32000:
+        return {
+            "model": "long-context",
+            "context_policy": "distill_then_retrieve",
+            "prefill_pool": "large-prefill-gpu",
+            "decode_pool": "standard-decode-gpu",
+        }
+    if complexity == "simple":
+        return {
+            "model": "small-draft",
+            "context_policy": "minimal",
+            "speculative_decoding": False,
+            "prefix_cache": prefix_cache,
+        }
+    return {
+        "model": "large-verify",
+        "context_policy": "rag_top_8",
+        "speculative_decoding": True,
+        "prefix_cache": prefix_cache,
+    }
+
+print(route_request("Compare these contracts", history_tokens=4200, shared_prefix_id="legal-v3"))
+```
+
+**Prefix caching** reuses KV cache for common system prompts, policy text, or repeated document prefixes. **Speculative decoding** routes easy continuations through a small draft model and verifies with a larger model. **Context distillation** compresses long histories or documents into smaller state before final answering. **RoPE** and **ALiBi** are positional schemes: RoPE is common in modern LLMs and can be scaled for longer windows with care; ALiBi biases attention by distance and extrapolates differently. **Tensor parallelism** splits matrix operations across GPUs; **pipeline parallelism** splits layers across GPUs; both affect routing because some models require multi-GPU placement. **Disaggregated prefill/decode** sends prompt ingestion to prefill-optimized workers and token generation to decode-optimized workers, which improves utilization for mixed long-context traffic.
+
+
+## Interview Q&A
+
+### How do you train a query complexity classifier?
+
+Collect production queries -&gt; label them by complexity (using LLM-as-Judge or human labels -&gt; 3-5 classes). Train a fast classifier (DistilBERT, logistic regression on embeddings, or even simple heuristics: query length, number of constraints, presence of 'compare', 'analyze', 'multi-step' signals). Validate against ground truth: does routing match human judgment? A/B test routing thresholds against quality and cost metrics.
+
+### How do you handle a query that straddles complexity tiers?
+
+Use probabilistic routing with a score, not hard cutoffs. If complexity score is 0.52 (threshold 0.5), route to medium tier to be safe. Track these boundary cases and use them to improve the classifier. For latency-critical applications, err toward simpler models; for quality-critical, err toward more capable models. Let business context determine the threshold.
+
+### What's context engineering and how does it differ from prompt engineering?
+
+Prompt engineering: crafting the instructions/examples in your prompts (what you say to the model). Context engineering: the broader architectural decisions about what information flows into the context window - when to retrieve, what to compress, what to prioritize, how much history to include. Prompt engineering is one tool within context engineering. In 2025, Karpathy and Anthropic both identified context engineering as the primary leverage point in production AI systems.
+
+## Interview Practice
+
+1. How does prefix caching interact with KV cache reuse?
+2. When would you use speculative decoding in a context router?
+3. What is context distillation and when is summarization insufficient?
+4. How do RoPE and ALiBi differ as positional encodings?
+5. What is the routing impact of tensor parallelism?
+6. What is the routing impact of pipeline parallelism?
+7. Why separate prefill and decode onto different worker pools?
+8. How do you decide whether to compress, retrieve, or drop context?
+9. What metrics prove the router saved money without hurting quality?
+10. How do you test boundary cases near context-window limits?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

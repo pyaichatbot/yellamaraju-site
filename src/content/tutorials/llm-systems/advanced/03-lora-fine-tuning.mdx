@@ -1,0 +1,177 @@
+---
+title: "LoRA Fine-Tuning"
+description: "Efficiently specializing LLMs for your domain"
+level: advanced
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 3
+totalModules: 7
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","LoRA Fine-Tuning","Advanced"]
+date: 2026-05-14
+estimatedTime: "30 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Efficiently specializing LLMs for your domain
+
+## What Is LoRA?
+
+**LoRA (Low-Rank Adaptation)** is a parameter-efficient fine-tuning technique that adapts a pre-trained LLM to a specific task by training only a small number of additional parameters - instead of updating all model weights.
+
+**The math insight:** Neural network weight matrices are often redundant (high rank). LoRA adds two small matrices (A and B) such that the weight update ΔW = A × B, where A and B have much lower rank than ΔW. This means:
+
+- Full fine-tuning of LLaMA-70B: ~280GB of trainable parameters
+- LoRA of LLaMA-70B (rank=16): ~50MB of trainable parameters
+- **560x fewer parameters -&gt; fits on a single GPU**
+
+**When to fine-tune vs. RAG:**
+- **RAG**: Knowledge is external, updates frequently, needs citations -&gt; use RAG
+- **Fine-tune**: Style/behavior change needed, specific domain terminology, format adherence, latency critical (no retrieval step) -&gt; fine-tune
+- **Both**: Fine-tune for behavior + RAG for knowledge = most powerful combination
+
+### The Piano Analogy
+
+Imagine a concert pianist (pre-trained LLM) who knows thousands of pieces. Teaching them a new piece from scratch (full fine-tuning) takes months. LoRA is like teaching them a new playing style - a small set of habits and adjustments that overlay on their existing skills. They don't need to relearn music theory; they just learn the delta.
+
+
+## LoRA Architecture
+
+**QLoRA: Fine-tuning on consumer hardware:**
+QLoRA = LoRA + 4-bit quantization of base model. Quantize the frozen base model weights from 16-bit to 4-bit (4x memory reduction), then add LoRA adapters in full precision. Result: Fine-tune LLaMA-70B on a single 48GB A100 GPU.
+
+**Practical fine-tuning recipe:**
+1. Choose base model (LLaMA-3.1, Mistral, Qwen2.5)
+2. Prepare dataset: instruction-response format (Alpaca format or ChatML)
+3. Configure LoRA: rank=16, alpha=32, target_modules=["q_proj","v_proj"]
+4. Use Unsloth or HuggingFace PEFT library
+5. Train with Cosine LR schedule, 3 epochs max
+6. Merge adapters into base model for deployment
+7. Eval on held-out test set - compare to base model and RAG baseline
+
+**Tools:**
+- Unsloth: 2x faster training, 50% less VRAM
+- HuggingFace PEFT: most flexible, production-ready
+- Axolotl: config-file driven, popular in community
+- LLaMA Factory: GUI for fine-tuning
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    LoRA MECHANISM                                │
+│                                                                   │
+│  FROZEN PRE-TRAINED WEIGHT MATRIX (W)                            │
+│  ┌────────────────────────────────┐                              │
+│  │  W (e.g., 4096 × 4096)        │                              │
+│  │  Frozen - not updated          │                              │
+│  └────────────────────────────────┘                              │
+│                 +                                                 │
+│  LoRA ADAPTER (trainable)                                        │
+│  ┌──────────┐     ┌──────────┐                                  │
+│  │  A       │  ×  │  B       │  =  ΔW                          │
+│  │ 4096 × 16│     │ 16 × 4096│  (4096 × 4096)                  │
+│  │ (trainable)    │ (trainable)│                                 │
+│  └──────────┘     └──────────┘                                  │
+│                                                                   │
+│  Output = W·x + (A·B)·x × scaling_factor                        │
+│                                                                   │
+│  RANK r=16: 2 × 4096 × 16 = 131K params per layer              │
+│  vs full fine-tune: 4096 × 4096 = 16M params per layer         │
+│  SAVINGS: 99.2% fewer parameters                                 │
+│                                                                   │
+│  TYPICAL SETUP:                                                   │
+│  Base model: LLaMA-3.1-8B (frozen on GPU)                        │
+│  LoRA rank: 16-64                                                 │
+│  Alpha: 32-128 (scaling factor)                                   │
+│  Target modules: q_proj, v_proj, k_proj (attention layers)      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **Fine-tuning on too little data:** Fine-tuning on 50 examples. Model memorizes training set, fails to generalize. Minimum: 500-1000 high-quality examples. For complex behavior changes: 10K+.
+- **Catastrophic forgetting:** Fine-tuning on domain data causes model to 'forget' general capabilities. Always include a mix of general instruction-following data with domain data (typically 1:4 ratio).
+- **Wrong rank selection:** Rank too low (r=2): model can't express the required adaptation. Rank too high (r=256): approaches full fine-tune, loses PEFT benefits. Start with r=16, scale up only if eval shows underfitting.
+- **No base model comparison:** Fine-tuned model looks better, but you never compared to a well-prompted base model. Often, a good RAG prompt outperforms a poorly fine-tuned model. Always run a base model baseline first.
+
+
+## Practical Example: QLoRA Config and Multi-LoRA Serving
+
+```yaml
+base_model: meta-llama/Meta-Llama-3.1-8B-Instruct
+load_in_4bit: true          # QLoRA: frozen GPTQ/AWQ-style quantized base
+adapter: lora
+lora_r: 16
+lora_alpha: 32             # LoRA+ may use separate learning rates for A and B
+lora_dropout: 0.05
+target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+train_format: chatml
+learning_rate: 0.0002
+num_train_epochs: 3
+eval_strategy: steps
+save_steps: 200
+```
+
+```python
+class AdapterRouter:
+    def __init__(self, gpu_cache_size: int = 4):
+        self.loaded: dict[str, str] = {}
+        self.gpu_cache_size = gpu_cache_size
+
+    def load_adapter(self, tenant: str, adapter_uri: str) -> None:
+        if tenant not in self.loaded and len(self.loaded) >= self.gpu_cache_size:
+            self.loaded.pop(next(iter(self.loaded)))  # LRU in real code
+        self.loaded[tenant] = adapter_uri
+
+    def generate(self, tenant: str, prompt: str) -> str:
+        adapter = self.loaded[tenant]
+        return f"base_model + {adapter}: {prompt}"
+
+router = AdapterRouter()
+router.load_adapter("acme", "s3://adapters/acme-support-lora")
+print(router.generate("acme", "Classify this support ticket"))
+```
+
+DoRA separates direction and magnitude of the weight update and can improve quality at similar parameter counts. LoRA+ uses different learning rates for LoRA matrices. LoRA-XS pushes adapter size even smaller for constrained serving. GPTQ and AWQ are post-training quantization methods often paired with adapters for inference; QLoRA usually means training adapters while the base is 4-bit. TIES and DARE are adapter/model merge strategies for combining skills. Multi-LoRA serving keeps one base model on GPU and swaps or batches many tenant adapters, which is why vLLM-style adapter support matters.
+
+
+## Interview Q&A
+
+### What hyperparameters matter most in LoRA fine-tuning?
+
+Rank (r): 16-64 for most tasks. Higher rank for complex behavior changes. Alpha (α): usually 2× rank. Controls scaling of LoRA updates. Learning rate: 1e-4 to 3e-4 for LoRA (10-100× higher than full fine-tune is fine because fewer parameters). Dropout: 0.05 for regularization. Target modules: at minimum q_proj and v_proj. Adding k_proj, o_proj, gate_proj improves results.
+
+### How do you serve multiple LoRA adapters efficiently?
+
+LoRA adapters are small (50-500MB). Keep the base model loaded on GPU once, hot-swap adapters per request. Libraries like vLLM support this natively. For a platform with 100 tenants each with a fine-tuned adapter: store adapters in S3, load on-demand with LRU cache. Batch requests by adapter to maximize GPU utilization.
+
+### When is full fine-tuning better than LoRA?
+
+Rarely necessary for behavior adaptation. Full fine-tuning is preferred when: (1) you're training from scratch or doing domain-adaptive pre-training on a massive corpus, (2) you're implementing RLHF reward model training, (3) you have evidence that LoRA can't express the needed weight updates (rare). In 95% of enterprise fine-tuning cases, LoRA or QLoRA is sufficient.
+
+## Interview Practice
+
+1. Why does low-rank adaptation reduce trainable parameters?
+2. How do LoRA, QLoRA, DoRA, LoRA+, and LoRA-XS differ?
+3. When would you choose GPTQ versus AWQ for deployment?
+4. What target modules would you tune first and why?
+5. How do you serve 100 tenant-specific adapters efficiently?
+6. What are TIES and DARE used for in adapter merging?
+7. How do you avoid catastrophic forgetting during adapter training?
+8. How do you decide whether rank is too low or too high?
+9. What evals prove the adapter beats prompting plus RAG?
+10. When should you merge an adapter into the base model?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

@@ -1,0 +1,88 @@
+---
+title: "Deployment & Scaling: Advanced"
+description: "Local graph to production API"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 8
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Deployment & Scaling","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on Deployment & Scaling at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Advanced production: CI/CD with eval regression gating blocks deploys if quality drops, canary deployments route 5% traffic to new graph versions, and cost optimization uses smaller models for cheap routing steps. Observability stack: OpenTelemetry from LangGraph + Prometheus metrics + LangSmith traces. The langgraph deploy CLI integrates natively with GitHub Actions pipelines.
+
+## Key Facts
+
+- Eval gating: run eval suite in CI, block deploy if quality below threshold
+- Canary: LangSmith Deployment supports traffic splitting across graph versions
+- Cost optimization: track tokens per node, substitute cheaper models for routing
+- OpenTelemetry: LangGraph emits OTEL spans - export to Datadog, Grafana, Jaeger
+- GitHub Actions: langgraph deploy CLI integrates as a pipeline step
+
+## Reference Implementation
+
+```python
+# GitHub Actions CI/CD with eval gate (abbreviated)
+# steps:
+# 1. Run eval suite:
+#    python scripts/run_evals.py \
+#      --dataset compliance_v2 \
+#      --threshold 0.85 \
+#      --output eval_results.json
+#
+# 2. Check results:
+#    python -c "
+#    import json
+#    r = json.load(open('eval_results.json'))
+#    assert r['aggregate_score'] >= 0.85, f'BLOCKED: {r["aggregate_score"]}'
+#    print('PASSED - deploying')
+#    "
+# 3. Deploy if passed:
+#    langgraph deploy --config langgraph.json
+
+from langsmith.evaluation import evaluate
+
+def run_evals(dataset: str, threshold: float) -> dict:
+    results = evaluate(
+        lambda x: app.invoke(x),
+        data=dataset,
+        evaluators=[correctness_evaluator],
+        experiment_prefix="ci-eval"
+    )
+    score = results.to_pandas()["feedback.correctness"].mean()
+    return {"aggregate_score": float(score), "passed": score >= threshold}
+```
+
+## Interview Q&A
+
+### Q1. How do you implement eval-gated CI/CD for a LangGraph agent?
+
+In GitHub Actions: build and run the new graph version against a fixed evaluation dataset in LangSmith, parse the aggregate score from eval results, if score is at or above threshold proceed to langgraph deploy, otherwise fail the pipeline with a clear error. This prevents quality regressions from reaching production. Raise the threshold as the agent improves over time.
+
+### Q2. How do you implement cost observability for a production LangGraph agent?
+
+LangSmith automatically tracks token usage and cost per trace. For custom metrics: add a cost_tokens field to state with operator.add, increment in each node using get_usage_metadata() from the LLM response. Export LangSmith metrics via API to Grafana. Set alerts when cost_per_session exceeds threshold. Track cost_by_node to identify expensive nodes.
+
+### Q3. Describe a blue-green deployment strategy for LangGraph with stateful sessions.
+
+Challenge: users mid-session must complete on old (blue) graph; new sessions start on green. Strategy: deploy green alongside blue, route new thread_ids to green while existing ones stay on blue via routing by thread_id prefix or metadata, monitor green error rates and eval scores, once all blue sessions complete decommission blue. LangSmith Deployment handles this with graph version pinning per thread.
+
+### Q4. Where does langgraph dev fit in CI/CD?
+
+Use langgraph dev locally and in smoke environments to verify langgraph.json exports, graph imports, and server endpoints before building a deployment image. CI should still run eval gates and unit checks separately.
+
+### Q5. How do you canary streaming endpoints?
+
+Canary both normal runs and /runs/stream behavior. Check event ordering, disconnect recovery, backpressure, and whether clients handle interrupts or tool errors without corrupting UI state.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

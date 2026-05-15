@@ -1,0 +1,122 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import TutorialCard from '../../../../components/TutorialCard.astro';
+import { TUTORIAL_LEVELS, TUTORIAL_PATHS, LEGACY_LEVELS, getTutorialLevel, getTutorialPath, tutorialHref, splitTutorialSlug } from '../../../../data/tutorial-paths';
+
+export async function getStaticPaths() {
+  const tutorials = await getCollection('tutorials', ({ data }) => !data.draft);
+  const validCombos = TUTORIAL_PATHS.flatMap((path) => TUTORIAL_LEVELS
+    .filter((level) => tutorials.some((t) => t.data.path === path.id && t.data.level === level.key))
+    .map((level) => ({ params: { path: path.id, level: level.key }, props: { legacyHref: undefined } }))
+  );
+
+  const legacyTutorials = tutorials
+    .filter((t) => t.data.path === 'genai')
+    .map((t) => {
+      const parts = splitTutorialSlug(t.slug);
+      return {
+        params: { path: parts.level, level: parts.slug },
+        props: { legacyHref: tutorialHref(t) },
+      };
+    });
+
+  return [...validCombos, ...legacyTutorials];
+}
+
+const { path: pathParam, level: levelParam } = Astro.params as { path: string; level: string };
+const { legacyHref } = Astro.props as { legacyHref?: string };
+
+if (legacyHref || LEGACY_LEVELS.includes(pathParam as any)) {
+  return Astro.redirect(legacyHref ?? `/tutorials/genai/${pathParam}`, 301);
+}
+
+const pathInfo = getTutorialPath(pathParam);
+const levelInfo = getTutorialLevel(levelParam);
+if (!pathInfo || !levelInfo) return Astro.redirect('/tutorials', 302);
+
+const tutorials = (await getCollection('tutorials', ({ data }) => !data.draft && data.path === pathParam && data.level === levelParam))
+  .sort((a, b) => a.data.module - b.data.module);
+---
+
+<BaseLayout title={`${pathInfo.title}: ${levelInfo.label}`} description={`${levelInfo.label} tutorials for ${pathInfo.title}.`}>
+  <div class="level-page" style={`--track-color: ${levelInfo.color}; --path-accent: ${pathInfo.accent}`}>
+    <header class="level-header">
+      <a href={`/tutorials/${pathInfo.id}`} class="back-link">← {pathInfo.title}</a>
+      <div class="level-badge" style={`background: color-mix(in srgb, ${levelInfo.color} 12%, transparent); color: ${levelInfo.color}; border: 1px solid color-mix(in srgb, ${levelInfo.color} 30%, transparent)`}>
+        {levelInfo.label}
+      </div>
+      <p class="path-kicker">{pathInfo.title}</p>
+      <h1>{levelInfo.label} Track</h1>
+      <p class="level-subtitle">{levelInfo.subtitle} · {tutorials.length} tutorials · {levelInfo.time}</p>
+      <p class="level-description">{pathInfo.outcome}</p>
+      <div class="role-filters" aria-label="Filter tutorials by role">
+        <button class="role-filter-btn active" data-filter-role="all" aria-pressed="true">All Roles</button>
+        <button class="role-filter-btn" data-filter-role="dev" aria-pressed="false">DEV</button>
+        <button class="role-filter-btn" data-filter-role="qa" aria-pressed="false">QA</button>
+        <button class="role-filter-btn" data-filter-role="ba" aria-pressed="false">BA</button>
+        <button class="role-filter-btn" data-filter-role="pm" aria-pressed="false">PM</button>
+      </div>
+    </header>
+
+    <div class="tutorials-grid">
+      {tutorials.map((t) => (
+        <TutorialCard
+          title={t.data.title}
+          description={t.data.description}
+          level={t.data.level}
+          module={t.data.module}
+          totalModules={t.data.totalModules}
+          roles={t.data.roles}
+          estimatedTime={t.data.estimatedTime}
+          href={tutorialHref(t)}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const buttons = document.querySelectorAll('.role-filter-btn');
+    const cards = document.querySelectorAll('.tutorial-card');
+
+    function applyFilter(role) {
+      cards.forEach((card) => {
+        const roles = (card.getAttribute('data-roles') || '').split(',');
+        const show = role === 'all' || roles.includes(role);
+        card.style.display = show ? '' : 'none';
+      });
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const role = btn.getAttribute('data-filter-role') || 'all';
+        buttons.forEach((b) => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        applyFilter(role);
+      });
+    });
+  });
+</script>
+
+<style>
+  .level-page { max-width: 1100px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
+  .level-header { margin-bottom: var(--space-xl); }
+  .back-link { font-size: 0.875rem; color: var(--color-text-tertiary); text-decoration: none; display: inline-block; margin-bottom: var(--space-md); }
+  .back-link:hover { color: var(--path-accent); }
+  .level-badge { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.7rem; border-radius: 4px; margin-bottom: var(--space-sm); }
+  .path-kicker { margin: 0 0 var(--space-xs); color: var(--path-accent); font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  .level-header h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 0 0 var(--space-sm); letter-spacing: -0.04em; }
+  .level-subtitle { font-size: 1rem; color: var(--color-text-secondary); margin: 0 0 var(--space-sm); }
+  .level-description { font-size: 1rem; color: var(--color-text-secondary); max-width: 680px; line-height: 1.6; margin: 0; }
+  .role-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: var(--space-sm); }
+  .role-filter-btn { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); border-radius: 999px; padding: 0.3rem 0.8rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: var(--font-mono); }
+  .role-filter-btn.active { border-color: var(--path-accent); color: var(--path-accent); background: color-mix(in srgb, var(--path-accent) 8%, var(--color-surface)); }
+  .tutorials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); }
+  @media (max-width: 640px) { .tutorials-grid { grid-template-columns: 1fr; } }
+</style>

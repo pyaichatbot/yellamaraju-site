@@ -1,0 +1,85 @@
+---
+title: "Safety, Compliance, and Human Approval Pipelines"
+description: "Layer safety, auditability, and human review into AI infrastructure from the start."
+level: advanced
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 4
+totalModules: 5
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "45 min"
+prerequisites: []
+---
+Safety and compliance systems protect users, companies, and downstream systems from harmful outputs, unauthorized actions, privacy violations, and weak auditability. They must be designed into the flow, not added as a final checkbox.
+
+## Layered Safety Pipeline
+
+Input safety checks the user's request before retrieval, tool use, or model generation. It can block obvious abuse, route sensitive requests to stricter models, or require confirmation.
+
+Retrieval safety enforces permissions and policy filters before context reaches the model. A model should never see documents the user is not allowed to access.
+
+Tool safety validates arguments, scopes, and side effects. High-risk tools require approval.
+
+Output safety checks the generated response before the user sees it. It can redact secrets, block policy violations, require citations, or escalate to review.
+
+Latency matters. A 20 ms classifier is fine on a chat path; a 2 second safety check may dominate time to first token. Use fast classifiers for common cases and escalate only ambiguous cases.
+
+## Human Approval
+
+Human-in-the-loop is for irreversible, high-risk, or low-confidence actions:
+
+- Sending external messages.
+- Deleting or exporting customer data.
+- Changing production configuration.
+- Making compliance determinations with legal impact.
+- Executing code against sensitive systems.
+
+Approval records should include requested action, arguments, model rationale, evidence, reviewer, decision, timestamp, and final side effect. The system must pause and resume safely.
+
+## Compliance Architecture
+
+Compliance requirements affect region, retention, audit, deletion, and access control. For GDPR-style data residency, route EU users to EU infrastructure and keep raw data, indexes, logs, and backups in-region unless a legal basis allows transfer.
+
+Audit logs should be immutable or append-only. They should store who did what, when, with which authorization, and what data was touched. Avoid storing unnecessary sensitive prompt text in logs; redact or tokenize where possible.
+
+## Walkthrough: Compliance Document Processing System
+
+Requirements: ingest regulations and internal policies, answer questions with citations, enforce user permissions, keep EU data in-region, escalate uncertain answers, and maintain a full audit trail.
+
+Architecture:
+
+```text
+Upload -> Object Storage -> Ingestion Queue -> Extract/Chunk/Embed -> Vector and Keyword Index
+User Question -> Auth -> Permission Filter -> Hybrid Retrieval -> Model -> Safety -> Human Review if needed
+```
+
+Data stores: object storage for source PDFs, PostgreSQL for document metadata and audit logs, vector index for chunk embeddings, and an immutable log store for review events.
+
+Human review triggers: missing citations, conflicting sources, low retrieval score, high-risk regulation, requested external communication, or confidence below threshold.
+
+MCP integration: expose safe tools such as `search_regulations`, `get_policy`, and `write_audit_log` through an MCP gateway with scopes like `read:regulations` and `write:audit_log`. Do not expose raw database tools to general users.
+
+Failure behavior: if retrieval permissions cannot be verified, fail closed. If human review queue is down, block irreversible actions and continue low-risk read-only Q&A with warnings. If audit logging fails, block compliance-affecting actions because evidence is required.
+
+## Design Checklist
+
+- Place safety checks at input, retrieval, tool, and output stages.
+- Define which actions require human approval.
+- Store approval and audit records durably.
+- Enforce region and retention requirements for source data, embeddings, logs, and backups.
+- Redact sensitive data from logs and traces.
+- Measure false positives, false negatives, appeal outcomes, and review latency.
+
+## Interview Practice
+
+1. Why is output filtering alone insufficient for AI safety?
+2. Which actions should require human approval in an enterprise assistant?
+3. How do you design pause and resume for an approval workflow?
+4. What must be included in an audit log for compliance review?
+5. How does data residency affect vector indexes and backups?
+6. When should a compliance assistant fail closed?
+7. What safety metrics would you report weekly?
+8. How would you expose compliance search through MCP safely?

@@ -1,0 +1,92 @@
+---
+title: "Scaling Patterns: Hashing, Sharding, and Replication"
+description: "Design data distribution and replication strategies with explicit trade-offs."
+level: intermediate
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 1
+totalModules: 4
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+Scaling state is harder than scaling stateless web servers. Once data no longer fits comfortably on one machine, you must decide how to distribute it, replicate it, rebalance it, and explain the consistency impact to users.
+
+## Consistent Hashing And Vnodes
+
+Modulo hashing is fragile: `hash(key) % node_count` remaps most keys when a node is added or removed. Consistent hashing maps keys and nodes onto a ring so only a slice of keys moves during membership changes.
+
+Virtual nodes, or vnodes, make the ring smoother. Instead of placing each physical node once, place it many times. A larger machine can own more vnodes; a smaller machine can own fewer. When a node fails, its vnodes spread across many peers instead of overloading one neighbor.
+
+Use consistent hashing for distributed caches, key-value stores, queues, and sharded services where keys can be routed independently.
+
+## Sharding Strategies
+
+| Strategy | Best for | Risk |
+| --- | --- | --- |
+| Range sharding | Time ranges, ordered scans | Hot latest range |
+| Hash sharding | Even distribution | Hard range queries |
+| Directory sharding | Custom placement by tenant | Directory becomes critical dependency |
+| Geographic sharding | Data residency and low latency | Cross-region queries are harder |
+
+Partitioning divides data within one database instance or cluster. Sharding distributes data across multiple database instances or clusters.
+
+## Replication
+
+Leader-follower replication sends writes to a leader and replicates changes to followers. Reads can scale across followers, but replication lag means users may not immediately see their writes if they read from a replica.
+
+Common lag solutions:
+
+- Read-your-writes by sending a user's immediate reads to the leader.
+- Version checks so the client waits for a replica to catch up.
+- Session stickiness for short periods after writes.
+- Async reads for non-critical views, strong reads for critical flows.
+
+Leader-leader replication allows writes in multiple regions, but conflict resolution becomes a product decision. Last-write-wins is simple and dangerous for money, inventory, and permissions.
+
+## Distributed Transactions
+
+Two-phase commit coordinates a transaction across services but can block and reduce availability. Modern systems often avoid it by designing around local transactions plus asynchronous coordination.
+
+Patterns:
+
+- Saga: split a workflow into local transactions with compensating actions.
+- Outbox: write the business row and an event row in the same database transaction; a relay publishes the event.
+- CQRS: separate write models from read models so each can optimize for its job.
+
+Use sagas for workflows such as booking, fulfillment, and onboarding. Use outbox whenever events must not be lost after a database write.
+
+## Walkthrough: Sharded Key-Value Store
+
+Requirements: low-latency `get` and `put`, 100 TB total data, 100,000 reads per second, 25,000 writes per second, automatic node replacement, and eventual consistency acceptable for most reads.
+
+Architecture: clients call stateless routers. Routers use consistent hashing with vnodes to find the replica set for a key. Each key is written to three replicas. A coordinator accepts a write after two replicas acknowledge. Reads can be served from one replica for latency or two replicas for stronger consistency.
+
+Rebalancing: when adding nodes, assign them vnodes and stream the relevant key ranges in the background. Keep old owners serving reads until transfer completes.
+
+Failure handling: use heartbeat and gossip membership to detect failed nodes. Hinted handoff stores writes temporarily when a replica is down. Read repair fixes stale replicas discovered during reads.
+
+Trade-offs: quorum reads and writes improve consistency but add tail latency. Eventual reads keep the system fast and available, but clients may briefly see stale values.
+
+## Design Checklist
+
+- Choose the shard key from the dominant access pattern.
+- Identify hot keys and hot ranges.
+- Decide replication factor and quorum settings.
+- Explain read-after-write behavior.
+- Plan rebalancing before the system is full.
+- Prefer sagas and outbox over distributed transactions unless strict atomicity is unavoidable.
+
+## Interview Practice
+
+1. Why does modulo hashing cause large remapping during node changes?
+2. How do vnodes improve load distribution?
+3. Compare range, hash, directory, and geographic sharding.
+4. How would you provide read-your-writes on top of asynchronous replication?
+5. When is leader-leader replication worth the conflict complexity?
+6. Explain the outbox pattern and the bug it prevents.
+7. Design shard rebalancing for a 100 TB key-value store.
+8. Where would you use a saga instead of two-phase commit?

@@ -1,0 +1,89 @@
+---
+title: "Human-in-the-Loop: Intermediate"
+description: "Interrupt, approve, edit"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 6
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Human-in-the-Loop","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on Human-in-the-Loop at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+The interrupt() function (v0.4+) enables dynamic HITL from inside any node - pause based on state conditions, pass a structured payload to the waiting client, receive structured feedback on resume. More flexible than compile-time interrupt_before/after. Combined with a task queue and async API, you can build batch approval workflows where agents queue work and humans review throughout the day.
+
+## Key Facts
+
+- interrupt(payload) suspends and returns the payload to the caller
+- Resume: graph.invoke(Command(resume=human_input), config)
+- Multiple interrupts: a graph can have many interrupt points across different nodes
+- Async HITL: agents queue work in database, humans review in batches and resume
+- Interrupt payload: any JSON-serializable dict - form data, documents, risk scores
+
+## Reference Implementation
+
+```python
+from langgraph.types import Command, interrupt
+from typing import TypedDict
+
+class ContractState(TypedDict):
+    contract_text: str
+    risk_score: float
+    human_decision: str
+    amendments: list
+
+def analyze_contract(state: ContractState):
+    # Simulate risk analysis - replace with LLM call
+    return {"risk_score": 0.85}
+
+def conditional_review(state: ContractState):
+    if state["risk_score"] > 0.7:
+        # Dynamic interrupt: only pauses for high-risk contracts
+        human_input = interrupt({
+            "contract_preview": state.get("contract_text", "")[:200],
+            "risk_score": state["risk_score"],
+            "recommendation": "HIGH RISK - Legal review required",
+            "options": ["approve", "reject", "amend"]
+        })
+        return {
+            "human_decision": human_input.get("decision", "reject"),
+            "amendments": human_input.get("amendments", [])
+        }
+    return {"human_decision": "auto_approved"}
+
+# Resume:
+# app.invoke(Command(resume={"decision": "approve"}), config)
+```
+
+## Interview Q&A
+
+### Q1. How do you implement conditional HITL that only pauses for high-risk operations?
+
+Use the interrupt() function inside the node, gated by a condition: if state['risk_score'] &gt; threshold: human_input = interrupt(payload). For low-risk cases, return normally without interrupting. This is more efficient than compile-time interrupt_before which always pauses regardless of state values.
+
+### Q2. How do you build an async HITL workflow with a human review queue?
+
+When interrupt() fires, the graph suspends and persists state. Store thread_id and interrupt payload in a review queue (database table). Human reviewers pick from the queue, review via UI, submit feedback via an API that authorizes the user and calls invoke(Command(resume=feedback), config). Agents create tasks; humans process throughout the day asynchronously.
+
+### Q3. What is the security model for HITL - who can resume a paused graph?
+
+LangGraph has no built-in authorization for resume operations - you implement access control in your application layer. Store which user or role can resume each thread_id, validate on the resume API endpoint before calling invoke(). For multi-tenant systems, namespace thread_ids by tenant and enforce isolation in your resume handler.
+
+### Q4. What are the rules for placing interrupt() calls?
+
+Do not wrap interrupt() in try/except, do not reorder multiple interrupt calls in the same node, and keep payloads JSON-serializable. Side effects before an interrupt must be idempotent because the node can re-enter around the pause/resume boundary.
+
+### Q5. When would you use NodeInterrupt directly?
+
+Prefer interrupt() for new code. NodeInterrupt exists as the lower-level exception class raised by a node to interrupt execution; most applications should not raise it manually because interrupt() handles payload shape and resume behavior consistently.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

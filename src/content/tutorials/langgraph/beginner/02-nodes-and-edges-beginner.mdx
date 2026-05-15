@@ -1,0 +1,82 @@
+---
+title: "Nodes & Edges: Beginner"
+description: "Modular building blocks"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 2
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Nodes & Edges","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on Nodes & Edges at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Nodes are the workers in your graph - any Python callable that takes state and returns a partial state update. Edges are the routes between workers. Two types: deterministic edges (always run) and conditional edges (logic decides at runtime). Every graph has two virtual sentinel nodes: START and END. In v1.0, you connect to these with add_edge() - the old set_entry_point() and set_finish_point() are removed.
+
+## Key Facts
+
+- Nodes: sync or async Python functions, lambdas, or objects with __call__
+- add_node('name', fn) - the name string is what edges reference
+- add_edge('a', 'b') - deterministic, always runs after a
+- add_conditional_edges(src, fn, [dests]) - routing function decides at runtime
+- Nodes return a partial dict - only changed keys, not full state
+
+## Reference Implementation
+
+```python
+from langgraph.graph import StateGraph, START, END
+from typing import TypedDict
+
+class State(TypedDict):
+    query: str
+    result: str
+
+def fetch(state: State) -> dict:
+    return {"result": f"Data for: {state['query']}"}
+
+def format_result(state: State) -> dict:
+    return {"result": f"Formatted: {state['result']}"}
+
+def route(state: State) -> str:
+    return "format_result"   # always go to formatter
+
+graph = StateGraph(State)
+graph.add_node("fetch", fetch)
+graph.add_node("format_result", format_result)
+graph.add_edge(START, "fetch")
+graph.add_conditional_edges("fetch", route, ["format_result"])
+graph.add_edge("format_result", END)
+app = graph.compile()
+```
+
+## Interview Q&A
+
+### Q1. What can a LangGraph node be?
+
+Any Python callable: a regular function, an async function for non-blocking IO, a lambda, or an object with __call__. The contract is: it receives the current state dict and returns a dict of partial state updates. You do not have to return the full state - only the keys you want to change.
+
+### Q2. What is the difference between add_edge and add_conditional_edges?
+
+add_edge creates a deterministic connection that always fires. add_conditional_edges calls a routing function that receives current state and returns a destination node name string, deciding at runtime which path to take. The list of possible destinations is required for graph validation and visualization.
+
+### Q3. Why are START and END needed in v1.0?
+
+START and END replaced set_entry_point() and set_finish_point() in v1.0. They are virtual sentinel nodes that make entry and exit points explicit graph citizens - you connect edges to them just like any other node. This is cleaner for visualization and enables features like multiple entry points.
+
+### Q4. What should a node return?
+
+A node should return a partial state update, not the whole state unless it truly updates every key. Returning only changed keys keeps merge behavior predictable and reduces checkpoint size.
+
+### Q5. What happens if two parallel nodes write the same key?
+
+If the key has no reducer, LangGraph raises a merge conflict because it cannot know which value should win. Add an Annotated reducer or write to separate keys and aggregate later.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

@@ -1,0 +1,82 @@
+---
+title: "LangGraph Core: Beginner"
+description: "Stateful multi-actor graph runtime"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 1
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","LangGraph Core","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on LangGraph Core at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+LangGraph is an open-source Python library (21,700+ GitHub stars, v1.0 stable Oct 2025) for building stateful AI agent workflows as directed graphs. It models agent execution as nodes (computation steps) connected by edges (control flow) sharing a common State TypedDict. Unlike LangChain chains, LangGraph agents can loop, branch, remember, and recover from failures. Trusted in production by Klarna, Replit, Elastic, Uber, and LinkedIn.
+
+## Key Facts
+
+- Install: pip install langgraph langgraph-prebuilt langchain-openai
+- Requires Python 3.10+ - dropped 3.8/3.9 in v1.0
+- MIT-licensed, 21,700+ GitHub stars
+- v1.0 breaking change: set_entry_point() REMOVED - use add_edge(START, 'node')
+- Inspired by Google Pregel and Apache Beam bulk-synchronous parallel model
+
+## Reference Implementation
+
+```python
+from langgraph.graph import StateGraph, START, END
+from typing import TypedDict
+
+class MyState(TypedDict):
+    message: str
+    count: int
+
+def greet(state: MyState):
+    return {"message": "Hello!", "count": state["count"] + 1}
+
+def farewell(state: MyState):
+    return {"message": state["message"] + " Goodbye!"}
+
+graph = StateGraph(MyState)
+graph.add_node("greet", greet)
+graph.add_node("farewell", farewell)
+graph.add_edge(START, "greet")   # v1.0: no more set_entry_point()
+graph.add_edge("greet", "farewell")
+graph.add_edge("farewell", END)  # v1.0: no more set_finish_point()
+
+app = graph.compile()
+result = app.invoke({"message": "", "count": 0})
+# {"message": "Hello! Goodbye!", "count": 1}
+```
+
+## Interview Q&A
+
+### Q1. What is LangGraph and why was it created?
+
+LangGraph is a low-level orchestration framework for building stateful, long-running AI agents as directed graphs. It was created because traditional LLM chains are linear and stateless - they cannot loop, branch conditionally, or resume after failure. LangGraph adds cycles, persistent state, and explicit control flow.
+
+### Q2. What are the three core components of every LangGraph app?
+
+State (a TypedDict schema defining shared data), Nodes (Python functions that read and update state), and Edges (connections between nodes - deterministic or conditional). Everything else - checkpointers, interrupts, tools - builds on this foundation.
+
+### Q3. What changed between LangGraph v0.x and v1.0?
+
+set_entry_point() and set_finish_point() were removed - replace with add_edge(START, 'node') and add_edge('node', END). Python 3.8/3.9 support was dropped. add_conditional_edges() is completely unchanged. Most online tutorials still use deprecated v0.x patterns - a common interview trap.
+
+### Q4. What is the difference between state and memory?
+
+State is the data passed through one graph run or thread. Memory usually means data persisted across runs, such as checkpoints for thread history or a Store for long-term user preferences.
+
+### Q5. Why are START and END useful?
+
+START and END make entry and exit points explicit. That improves visualization, validation, and interview explanations because every graph has a clear beginning and a clear terminal path.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

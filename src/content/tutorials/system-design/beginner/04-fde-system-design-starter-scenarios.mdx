@@ -1,0 +1,94 @@
+---
+title: "FDE System Design Starter Scenarios"
+description: "Practice explaining AI-adjacent systems to technical and non-technical stakeholders."
+level: beginner
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 4
+totalModules: 4
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+Forward deployed engineering interviews reward two abilities at once: you can design the system, and you can explain the trade-offs to customers, product leaders, security reviewers, and infrastructure engineers.
+
+## The SCARE Framework
+
+Use SCARE to structure open-ended prompts:
+
+| Step | What to say |
+| --- | --- |
+| Scope | Users, workflows, non-goals, compliance boundaries |
+| Capacity | Back-of-envelope reads, writes, storage, latency, peak load |
+| Architecture | APIs, services, data stores, queues, caches, model calls |
+| Reliability | failure modes, retries, observability, SLOs, fallback |
+| Evaluation | safety, cost, quality, human review, launch plan |
+
+This prevents jumping directly to "use Kafka" or "put Redis in front" before the user problem is clear.
+
+## Scenario 1: API Rate Limiter
+
+User promise: legitimate customers can use the API within their quota; abusive or runaway clients are throttled quickly and fairly.
+
+Start with capacity. If one tenant is allowed 1,000 requests per minute and the platform has 10,000 active tenants, the design must handle millions of counter updates per minute. A single in-process map will fail because traffic is spread across API servers.
+
+Architecture: an L7 gateway authenticates requests, extracts tenant ID and route, checks a shared rate limiter service backed by Redis, and either forwards the request or returns `429 Too Many Requests` with `Retry-After`.
+
+Algorithms:
+
+- Fixed window: simple but allows bursts at window boundaries.
+- Sliding log: accurate but memory-heavy.
+- Sliding window counter: good balance for most APIs.
+- Token bucket: allows controlled bursts while enforcing average rate.
+- Leaky bucket: smooths traffic at a steady drain rate.
+
+Use token bucket for customer-facing API quotas and sliding window counters for abuse detection. If Redis is unavailable, fail open for low-risk read endpoints with local emergency limits, and fail closed for expensive model endpoints if cost exposure is high.
+
+## Scenario 2: Compliance Document Ingestion
+
+User promise: compliance teams can ask grounded questions over controlled documents and see citations and audit history.
+
+Architecture: upload service stores PDFs in object storage, metadata in PostgreSQL, and ingestion jobs in a queue. Workers extract text, chunk by section, embed chunks, store vectors, and write audit records. The query path checks permissions, retrieves relevant chunks with hybrid search, assembles context, calls the model, and returns citations.
+
+Reliability: ingestion is asynchronous and retryable with idempotency keys per document version. Human review is required when confidence is low or the action is irreversible.
+
+## Scenario 3: Multi-Tenant LLM Serving
+
+User promise: each customer gets predictable latency, correct isolation, and transparent cost attribution.
+
+Architecture: gateway authenticates tenants and applies quotas. A scheduler routes requests by model, tenant tier, region, and context length. Inference workers batch compatible requests. Usage events stream to billing and observability.
+
+Isolation choices: separate API keys are not enough. Use tenant-scoped storage, tenant IDs in every metric and log, per-tenant rate limits, and optionally dedicated model pools for regulated customers.
+
+## Scenario 4: Safe Moderation Pipeline
+
+User promise: unsafe content is blocked or escalated without making the product unusable.
+
+Architecture: input classifier, policy engine, model call, output classifier, audit log, appeal queue, and human review console. Measure false positives, false negatives, appeal outcomes, and classifier latency.
+
+Safety is not a final filter bolted on at the end. It belongs in input validation, retrieval permissions, tool authorization, output review, logging, and launch monitoring.
+
+## Communication Signals
+
+Strong FDE answers include:
+
+- L4 versus L7 load balancing trade-offs.
+- CAP choices in product language.
+- Observability for customer-facing incidents.
+- Cost and latency estimates for model calls.
+- Security boundaries, token scopes, and audit trails.
+- A migration path from prototype to production.
+
+## Interview Practice
+
+1. Design a rate limiter for a public LLM API with free and enterprise tiers.
+2. Which rate limiter algorithm would you choose for bursty customers, and why?
+3. How would you explain L4 versus L7 load balancing to a non-infra stakeholder?
+4. Design a compliance ingestion pipeline with citations and human review.
+5. What isolation controls are required for multi-tenant LLM serving?
+6. What metrics prove a moderation pipeline is working?
+7. Where would you fail open versus fail closed in a customer deployment?
+8. How would you turn a prototype RAG demo into a production launch plan?

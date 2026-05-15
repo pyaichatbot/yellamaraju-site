@@ -1,0 +1,264 @@
+---
+title: "Enterprise MCP and Tool Architecture"
+description: "Move from ad-hoc function calls to protocolized, auditable tool integrations using MCP and enterprise connector patterns."
+level: advanced
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 9
+totalModules: 15
+roles: ["dev", "qa", "pm"]
+tags: ["MCP", "Tooling", "Integration", "Security", "Architecture"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["advanced/02-multi-agent-orchestration", "intermediate/03-tool-use-function-calling"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import CodePlayground from '../../../../components/CodePlayground.astro';
+
+## Why MCP Matters in Enterprise Systems
+
+Most AI products begin with direct function calls: `search_docs()`, `create_ticket()`, `send_email()`. That works for prototypes, but it becomes brittle when several teams need tool discovery, permissions, audit trails, and repeatable deployments.
+
+Model Context Protocol (MCP) moves tool access behind protocolized servers. The agent runtime becomes an MCP client. Business systems expose capabilities through MCP servers. Security, observability, and governance can then be enforced at the protocol boundary instead of being scattered through prompts.
+
+<Mermaid
+  title="Enterprise MCP Topology"
+  chart={`
+flowchart LR
+  U[User Request] --> A[Agent Runtime]
+  A --> C[MCP Client]
+  C --> R[Tool Registry]
+  C --> CRM[(MCP Server: CRM)]
+  C --> KB[(MCP Server: Knowledge)]
+  C --> ITSM[(MCP Server: Ticketing)]
+  CRM --> P[Policy and Authz]
+  KB --> P
+  ITSM --> P
+  P --> O[OTel Traces and Audit Log]
+  O --> SIEM[SIEM / Incident Review]
+`}
+/>
+
+## MCP vs Plain Function Calling
+
+| Concern | Plain tool call | MCP-style architecture |
+|---|---|---|
+| Discovery | Hard-coded in app | Server advertises tools and schemas |
+| Ownership | App team owns everything | System-owning teams publish servers |
+| Governance | Usually prompt conventions | Policy layer gates tool calls |
+| Auditability | Ad hoc logs | Standard request, actor, trace, and tool events |
+| Change management | Breaking changes leak into prompts | Versioned server and tool contracts |
+
+MCP does not eliminate function calling. It gives function calling an enterprise boundary: contracts, identity, lifecycle, and observability.
+
+## Tool Contract Design
+
+A useful tool contract describes not just parameters, but risk. Interviewers expect you to mention authz, idempotency, side effects, schema versioning, and audit correlation.
+
+```ts
+// Tool metadata shape used by an internal MCP registry.
+type RiskTier = "read" | "write" | "regulated";
+
+type ToolContract = {
+  name: string;
+  version: string;
+  description: string;
+  riskTier: RiskTier;
+  inputSchema: Record<string, unknown>;
+  outputSchema: Record<string, unknown>;
+  idempotencyRequired: boolean;
+  approvalRequired: boolean;
+  auditFields: Array<"actor_id" | "tenant_id" | "thread_id" | "trace_id">;
+};
+
+export const createTicketContract: ToolContract = {
+  name: "ticket.create",
+  version: "1.3.0",
+  description: "Create a support ticket for an authenticated customer account.",
+  riskTier: "write",
+  inputSchema: {
+    type: "object",
+    required: ["customerId", "title", "priority"],
+    properties: {
+      customerId: { type: "string" },
+      title: { type: "string", minLength: 8, maxLength: 120 },
+      priority: { enum: ["low", "medium", "high"] },
+      evidenceUrls: { type: "array", items: { type: "string" } }
+    }
+  },
+  outputSchema: {
+    type: "object",
+    required: ["ticketId", "status"],
+    properties: {
+      ticketId: { type: "string" },
+      status: { enum: ["created", "queued"] }
+    }
+  },
+  idempotencyRequired: true,
+  approvalRequired: false,
+  auditFields: ["actor_id", "tenant_id", "thread_id", "trace_id"]
+};
+```
+
+## Minimal MCP Server Shape
+
+The exact SDK evolves, but the server responsibilities are stable: advertise capabilities, validate input, enforce policy, run the connector, and emit audit events.
+
+```ts
+// Pseudocode: MCP-style tool server boundary.
+import { z } from "zod";
+
+const CreateTicketInput = z.object({
+  customerId: z.string(),
+  title: z.string().min(8).max(120),
+  priority: z.enum(["low", "medium", "high"]),
+  evidenceUrls: z.array(z.string().url()).default([])
+});
+
+type RequestContext = {
+  actorId: string;
+  tenantId: string;
+  threadId: string;
+  traceId: string;
+  scopes: string[];
+};
+
+export async function createTicketTool(rawInput: unknown, ctx: RequestContext) {
+  const input = CreateTicketInput.parse(rawInput);
+
+  if (!ctx.scopes.includes("tickets:write")) {
+    throw new Error("permission_denied:tickets:write");
+  }
+
+  const idempotencyKey = `${ctx.threadId}:ticket.create:${input.customerId}:${input.title}`;
+
+  const result = await ticketingClient.createTicket({
+    ...input,
+    tenantId: ctx.tenantId,
+    idempotencyKey
+  });
+
+  await auditLog.write({
+    event: "mcp.tool.completed",
+    tool: "ticket.create",
+    actorId: ctx.actorId,
+    tenantId: ctx.tenantId,
+    threadId: ctx.threadId,
+    traceId: ctx.traceId,
+    resourceId: result.ticketId
+  });
+
+  return { ticketId: result.ticketId, status: "created" };
+}
+```
+
+## Gateway Topology
+
+In a small app, the agent can connect directly to a few MCP servers. In an enterprise, use a gateway so teams can enforce rate limits, tenant isolation, schema allowlists, and observability consistently.
+
+```yaml
+# mcp-gateway.yaml
+routes:
+  - server: crm
+    tools: ["account.lookup", "contact.update"]
+    rate_limit:
+      per_actor_per_minute: 60
+      per_tenant_per_minute: 1200
+    policy:
+      required_scopes: ["crm:read"]
+      pii_redaction: true
+
+  - server: ticketing
+    tools: ["ticket.create", "ticket.comment"]
+    rate_limit:
+      per_actor_per_minute: 30
+    policy:
+      required_scopes: ["tickets:write"]
+      approval_when:
+        priority: "high"
+
+observability:
+  emit_otel: true
+  attributes:
+    - gen_ai.operation.name
+    - gen_ai.tool.name
+    - gen_ai.request.model
+    - enduser.id
+```
+
+A gateway also gives you a clean place to implement retry budgets. Retrying a read tool is usually fine. Retrying a write tool requires idempotency keys and a durable record of whether the external system accepted the write.
+
+## Tool Description Quality
+
+Models choose tools from names, descriptions, and schemas. Bad tool descriptions produce bad routing even when the connector code is correct.
+
+Weak description:
+
+```text
+create_ticket: creates a ticket
+```
+
+Production description:
+
+```text
+ticket.create: Create one support ticket for the authenticated customer's active account. Use only after the user asks to open a case or after policy requires escalation. Do not use for billing disputes; use billing.case.create instead.
+```
+
+## Versioning and Compatibility
+
+Use semantic versioning for tool contracts:
+
+| Change | Version impact |
+|---|---|
+| Add optional input | Minor |
+| Add output field | Minor |
+| Remove field | Major |
+| Rename tool | Major |
+| Tighten validation | Usually major |
+| Improve description only | Patch |
+
+Keep old versions available until active prompts, evals, and agent plans have migrated. Tool schemas are part of the model-facing API surface.
+
+## Security Controls
+
+MCP servers sit close to sensitive systems, so they need OWASP LLM Top 10 style controls:
+
+- Treat model-supplied tool arguments as untrusted input.
+- Enforce authorization in code, not in the system prompt.
+- Protect against indirect prompt injection in retrieved documents.
+- Apply least privilege per user, tenant, and tool.
+- Redact secrets and PII from traces unless explicitly approved.
+- Separate read-only tools from write tools.
+- Require human approval for irreversible or regulated actions.
+
+<RoleCallout role="dev">
+Treat MCP servers as product APIs. Keep business invariants, authz, validation, and idempotency in the server boundary, not in agent prompts.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Add contract tests for every server: schema validation, permission denial, rate-limit behavior, idempotency, and backward compatibility.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Define tool risk tiers in the product spec. “Can update a customer record” is a business risk decision, not just an engineering implementation detail.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+If tool descriptions are vague, model routing quality collapses. Spend as much effort on tool semantics and examples as on connector implementation.
+</Callout>
+
+## Interview Practice
+
+1. Explain how MCP changes the boundary between an agent runtime and enterprise systems.
+2. What metadata should a production tool contract include beyond input and output schemas?
+3. Why should authorization be enforced in an MCP server instead of only in the system prompt?
+4. How would you design idempotency for a side-effecting tool such as `ticket.create`?
+5. When would you introduce an MCP gateway, and what controls should it centralize?
+6. How do tool descriptions affect model routing quality?
+7. What is a backward-compatible tool schema change, and what requires a major version?
+8. How would you map MCP tool calls into OpenTelemetry and audit logs?
+

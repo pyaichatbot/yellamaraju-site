@@ -1,0 +1,91 @@
+---
+title: "Evaluation: Beginner"
+description: "Trace analysis & metrics"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 9
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Evaluation","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on Evaluation at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Evaluating an agent means measuring whether it achieves its goal correctly, efficiently, and safely. Unlike static ML models, agents take multiple steps - you evaluate both the final output AND the trajectory (the sequence of tool calls, routing decisions, and intermediate steps). LangSmith is the primary evaluation tool for LangGraph agents, providing traces, datasets, and evaluators.
+
+## Key Facts
+
+- LangSmith: built-in tracing, datasets, evaluators, quality dashboards
+- Trajectory eval: did the agent take the right steps, not just get the right answer
+- LLM-as-judge: use an LLM to evaluate output quality automatically at scale
+- Dataset: input/expected_output pairs for regression testing across releases
+- LANGSMITH_TRACING_V2=true: env var enables automatic tracing, zero code changes
+
+## Reference Implementation
+
+```python
+import os
+from langsmith import Client
+from langsmith.evaluation import evaluate
+
+os.environ["LANGSMITH_TRACING_V2"] = "true"
+os.environ["LANGSMITH_API_KEY"] = "your-api-key"
+
+client = Client()
+
+# Create regression test dataset
+dataset = client.create_dataset("compliance-agent-v1")
+client.create_examples(
+    inputs=[{"question": "Is clause 7.3 GDPR compliant?"}],
+    outputs=[{"answer": "No, violates GDPR Article 17"}],
+    dataset_id=dataset.id
+)
+
+def correctness_evaluator(run, example):
+    expected = example.outputs["answer"]
+    actual = run.outputs.get("answer", "")
+    # Cheap smoke check only: exact/substring checks miss paraphrases and can be gamed.
+    expected_terms = {"gdpr", "article 17", "violates"}
+    actual_terms = set(actual.lower().replace(",", " ").split())
+    score = len(expected_terms & actual_terms) / len(expected_terms)
+    return {"key": "correctness", "score": score}
+
+results = evaluate(
+    lambda x: app.invoke(x),
+    data="compliance-agent-v1",
+    evaluators=[correctness_evaluator],
+    experiment_prefix="v1.2-release"
+)
+```
+
+## Interview Q&A
+
+### Q1. What is the difference between evaluating a chain vs. an agent graph?
+
+A chain has one input-output pair to evaluate. An agent graph has a trajectory: multiple steps, branching decisions, tool calls, and potentially loops. You evaluate: final output quality (correct answer?), trajectory correctness (right steps taken?), efficiency (minimum steps?), and cost (total tokens). Agent evals require trajectory-level datasets, not just expected output strings.
+
+### Q2. What is LLM-as-judge and what are its limitations?
+
+LLM-as-judge uses a separate LLM to evaluate another LLM's output. Limitations: same-family models tend to be lenient on each other's outputs, non-deterministic across runs, expensive (extra LLM calls per eval), and requires careful judge prompt calibration against human labels to be reliable.
+
+### Q3. How do you set up automatic tracing for a LangGraph agent?
+
+Set LANGSMITH_TRACING_V2=true and LANGSMITH_API_KEY in your environment. LangGraph automatically instruments all node executions, state transitions, and LLM calls with zero code changes. Each invocation creates a trace with full step-by-step visibility. Use LANGSMITH_PROJECT to group traces by deployment version.
+
+### Q4. Why is substring matching a weak evaluator?
+
+Substring matching rewards copied words instead of correct meaning. It fails on valid paraphrases, ignores missing citations, and can pass an answer that includes the expected phrase while saying the opposite. Use it only as a smoke test; use rubric-based LLM judges or human-labeled datasets for quality gates.
+
+### Q5. What should a beginner evaluate besides final answer text?
+
+Evaluate whether the graph chose the right route, called the right tools, avoided unnecessary loops, stayed within cost limits, and produced safe output. LangGraph bugs often appear in the trajectory before they appear in the final answer.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

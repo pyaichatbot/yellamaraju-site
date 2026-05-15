@@ -1,0 +1,200 @@
+---
+title: "Prompt Registry"
+description: "Version control for the soul of your LLM system"
+level: intermediate
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 3
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Prompt Registry","Engineering"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Version control for the soul of your LLM system
+
+## What Is a Prompt Registry?
+
+A **prompt registry** is a centralized versioned store for all LLM prompts used in your system. It treats prompts as first-class software artifacts - with versioning, testing, rollback, and A/B testing capabilities.
+
+**The core problem:** Prompts are the code of AI systems. But teams often store them:
+- Hardcoded in application code (can't change without deploy)
+- In Google Docs or Notion (no versioning, no testing)
+- In environment variables (scattered, unreviewed)
+
+**Why this kills teams:** A product manager tweaks a prompt in a config file, pushes directly to prod, and breaks 30% of outputs. No test was run. No rollback is possible. No one knows what changed.
+
+A prompt registry is the Git + CI/CD for your prompts.
+
+### The Building Codes Analogy
+
+Every building must comply with building codes (standards). An architect can't just 'try something' on a live building. They submit blueprints (prompts), they get reviewed, tested on a model, approved, and only then applied to the building (deployed to production). The prompt registry is the blueprint management system + approval workflow.
+
+
+## Architecture
+
+**What lives in a prompt registry entry:**
+
+```json
+{
+  "name": "compliance-classifier",
+  "version": "3.2.1",
+  "template": "You are a compliance expert at a European bank...
+
+Classify the following transaction: {{transaction}}
+
+Respond with: COMPLIANT | REVIEW | BLOCK",
+  "model": { "provider": "anthropic", "model": "claude-sonnet-4-20250514", "temperature": 0.1 },
+  "variables": ["transaction"],
+  "eval_score": { "accuracy": 0.94, "f1": 0.91 },
+  "created_by": "praveen@fiserv.com",
+  "deployed_at": "2025-11-01T09:00:00Z",
+  "tags": ["production", "compliance", "reviewed"]
+}
+```
+
+**Semantic versioning for prompts:**
+- **Patch** (3.2.0 -&gt; 3.2.1): Typo fix, minor wording
+- **Minor** (3.1.0 -&gt; 3.2.0): New instruction added, behavior expands
+- **Major** (2.x -&gt; 3.0.0): Restructured prompt, model change, breaking behavior shift
+
+```text
+┌────────────────────────────────────────────────────────────────┐
+│                     PROMPT REGISTRY SYSTEM                      │
+│                                                                  │
+│  ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐  │
+│  │ Prompt Store │   │ Version Control│   │   Eval Runner    │  │
+│  │              │   │               │   │                  │  │
+│  │ • Template   │   │ • Git-backed  │   │ • Auto-run evals │  │
+│  │   variables  │   │ • Semantic    │   │   on new versions│  │
+│  │ • Model pins │   │   versioning  │   │ • Score gating   │  │
+│  │ • Metadata   │   │ • Changelogs  │   │ • Human review   │  │
+│  └──────┬───────┘   └───────────────┘   └──────────────────┘  │
+│         │                                                        │
+│  ┌──────▼────────────────────────────────────────────────────┐ │
+│  │                   PROMPT API                               │ │
+│  │  GET /prompts/{name}?version=latest&env=production        │ │
+│  │  POST /prompts/{name}/deploy?target=canary                │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│         │                                                        │
+│  ┌──────▼──────┐  ┌──────────────┐  ┌─────────────────────┐  │
+│  │ A/B Testing │  │  Rollback    │  │  Usage Analytics    │  │
+│  │             │  │  (one-click) │  │  per prompt version  │  │
+│  └─────────────┘  └──────────────┘  └─────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **Prompt in source code:** Hardcoded prompts require code deploy to change. Marketing teams can't iterate. Hotfixes take hours instead of seconds.
+- **No prompt testing:** Changing a prompt without running evals. One word change can completely shift model behavior. Always A/B test prompt changes against your eval suite.
+- **No variable templating:** Concatenating strings to build prompts. Leads to injection vulnerabilities (user input can escape the prompt structure) and makes prompts hard to read.
+- **Shared prompts across environments:** Same prompt in dev, staging, and prod without environment-specific overrides. Prod prompts should have stricter safety instructions, different temperature, different few-shots.
+
+
+## Practical Example: Registry Schema and Resolution API
+
+```sql
+CREATE TABLE prompt_versions (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  version TEXT NOT NULL,
+  template TEXT NOT NULL,
+  model_provider TEXT NOT NULL,
+  model_name TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('draft','staging','production','archived')),
+  eval_score NUMERIC NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (name, version)
+);
+
+CREATE TABLE prompt_promotions (
+  name TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  version TEXT NOT NULL,
+  promoted_by TEXT NOT NULL,
+  promoted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (name, environment)
+);
+```
+
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+PROMPTS = {
+    ("support-router", "1.2.0"): {
+        "template": "Route this ticket: {{ticket}}\nExamples:\n{{few_shots}}",
+        "model": "gpt-4o-mini",
+        "eval_score": 0.93,
+    }
+}
+PROMOTIONS = {("support-router", "prod"): "1.2.0"}
+
+class ResolveRequest(BaseModel):
+    name: str
+    environment: str = "prod"
+    version: str | None = None
+    variables: dict[str, str]
+
+def dynamic_few_shots(name: str, variables: dict[str, str]) -> str:
+    # Usually retrieved by embedding similarity over successful examples.
+    return "- refund ticket -> billing\n- outage ticket -> incident"
+
+@app.post("/prompts/resolve")
+def resolve_prompt(req: ResolveRequest):
+    version = req.version or PROMOTIONS.get((req.name, req.environment))
+    if version is None:
+        raise HTTPException(404, "no promoted prompt")
+    prompt = PROMPTS[(req.name, version)]
+    rendered = prompt["template"].replace("{{few_shots}}", dynamic_few_shots(req.name, req.variables))
+    for key, value in req.variables.items():
+        rendered = rendered.replace("{{" + key + "}}", value.replace("{{", "").replace("}}", ""))
+    return {"name": req.name, "version": version, "model": prompt["model"], "prompt": rendered}
+```
+
+Version resolution should be deterministic: explicit version wins, otherwise environment promotion wins, otherwise fail closed. Promotion should require eval score gates, human approval for high-risk prompts, and one-click rollback by moving the environment pointer back to the previous version. Dynamic few-shot examples belong in the registry boundary so the application gets a fully resolved prompt plus metadata for logging.
+
+
+## Interview Q&A
+
+### How do you do A/B testing for prompts in production?
+
+Route X% of traffic to prompt version A, (100-X)% to version B. Log outputs + business metrics (conversion, user rating, resolution rate). After statistical significance (typically 1000+ samples per variant), compare eval scores AND business metrics. Roll out the winner. Tools: Anthropic's prompt management, LangSmith, PromptLayer.
+
+### How do you prevent prompt injection in a template system?
+
+Escape user inputs before interpolation (strip curly braces, markdown that could escape the template). Use XML-tagged sections for user content. Run an input guardrail model (small classifier) to detect injection attempts before they reach the prompt. Separate system prompt from user content structurally, not just by convention.
+
+### How would you migrate 50 prompts from hardcoded to a registry?
+
+Extract -&gt; catalog (name, owner, environment, dependencies) -&gt; add to registry with current behavior as v1.0.0 -&gt; run eval baseline on v1.0.0 -&gt; wire application to pull from registry -&gt; deploy with feature flag -&gt; monitor for regressions. Never 'lift and shift' without an eval baseline.
+
+## Interview Practice
+
+1. How should `latest`, `staging`, and explicit semantic versions resolve?
+2. What database schema fields are required for auditability?
+3. What checks should block prompt promotion to production?
+4. How do you implement rollback without redeploying application code?
+5. Where should dynamic few-shot selection happen and how do you log it?
+6. How do you prevent template injection when rendering user variables?
+7. How do you A/B test two prompt versions without contaminating metrics?
+8. How do you migrate hardcoded prompts while preserving current behavior?
+9. What prompt metadata is needed for cost and quality dashboards?
+10. How do prompt registries interact with eval harnesses and gateways?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

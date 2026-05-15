@@ -1,0 +1,100 @@
+---
+title: "Multi-Agent, MCP, and Prompt Caching Systems"
+description: "Design AI-native control planes with agent orchestration, tool protocols, and cache efficiency."
+level: advanced
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 3
+totalModules: 5
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "45 min"
+prerequisites: []
+---
+Agent systems are distributed systems with probabilistic planners. They need the same engineering controls as any workflow engine: state, idempotency, authorization, observability, cancellation, and cost limits.
+
+## Multi-Agent Architecture
+
+A useful pattern is an orchestrator plus specialized workers. The orchestrator receives the user goal, decomposes work, assigns tasks, tracks state, and decides when to stop. Sub-agents handle research, code changes, data analysis, review, or tool execution.
+
+State model:
+
+| Entity | Purpose |
+| --- | --- |
+| task | user goal, status, budget, deadline |
+| step | planned action and result |
+| agent_run | model, prompt, tokens, latency |
+| tool_call | tool name, validated args, output, side effects |
+| approval | requested action, reviewer, decision |
+
+Every action should have an idempotency key. Retrying "send invoice" or "delete record" without one can create real damage.
+
+## MCP In Production
+
+Model Context Protocol connects model clients to tools and data sources. An MCP server exposes tools, resources, and prompts over transports such as stdio, HTTP, or SSE. In production, treat MCP tools as privileged API endpoints.
+
+Production layout:
+
+```text
+LLM Client -> MCP Gateway -> MCP Registry -> MCP Servers -> Internal Systems
+                  |              |
+                  |              -> discovery and metadata
+                  -> auth, scopes, audit, rate limits
+```
+
+Security controls:
+
+- OAuth scopes for each tool and resource.
+- Argument validation with typed schemas.
+- Tenant and user context on every call.
+- Read-only tools by default.
+- Sandboxed execution for code tools.
+- Audit logs for inputs, outputs, reviewer decisions, and side effects.
+
+Never trust tool arguments just because a model produced them. The server validates them as if they came from an untrusted client.
+
+## Prompt Caching
+
+Enterprise prompts often repeat large system instructions, tool schemas, and policy context. Prompt caching stores reusable prefix computation so each request only pays for the changed part.
+
+Cache key inputs usually include model, system prompt, tool definitions, safety policy version, and tenant. Invalidate when any of those change.
+
+Storage tiers:
+
+- Hot prefix cache in GPU memory for active batches.
+- Warm cache in host memory or fast NVMe.
+- Cold reconstruction from prompt templates and tool registry.
+
+Prompt caching improves latency and cost, but cache correctness matters. Do not share tenant-specific prompt prefixes across tenants unless the prefix is truly identical and contains no private data.
+
+## Walkthrough: Agentic Compliance Assistant
+
+Requirements: answer compliance questions, search internal policies through MCP, draft evidence requests, require approval before sending external emails, and produce an audit trail.
+
+Architecture: the orchestrator receives a goal and creates a task. A retrieval agent calls `compliance_search` through MCP. A reasoning agent drafts an answer with citations. An action agent can create tickets or emails, but risky actions enter a human approval state. The orchestrator stores every step and can resume after failures.
+
+Failure behavior: if an agent loops, enforce max steps and cost budget. If a tool times out, retry with jitter only when idempotent. If confidence is low, ask a human instead of fabricating. If approval expires, cancel the action and mark the task incomplete.
+
+Observability: traces should show the full task graph: parent task, sub-agent runs, model calls, tool calls, approvals, and final answer. Alerts should catch stuck tasks, repeated tool errors, and budget overruns.
+
+## Design Checklist
+
+- Treat agent execution as a durable workflow.
+- Store task state after every meaningful step.
+- Validate MCP tool arguments and scopes server-side.
+- Require human approval for irreversible actions.
+- Add cost, token, and step budgets.
+- Use prompt caching only with clear invalidation and tenant boundaries.
+
+## Interview Practice
+
+1. Why is an agent orchestrator different from a plain chat loop?
+2. What state must be durable in a multi-agent system?
+3. How would you make tool calls idempotent?
+4. What does an MCP gateway add beyond direct MCP server calls?
+5. Which MCP tools should require human approval?
+6. How do you prevent cross-tenant leaks in prompt caching?
+7. What metrics detect stuck or looping agents?
+8. Design cancellation and resume for a long-running agent task.

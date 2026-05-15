@@ -1,0 +1,102 @@
+---
+title: "Service Communication and Mesh Patterns"
+description: "Choose between synchronous APIs, async queues, service discovery, and service mesh."
+level: intermediate
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 2
+totalModules: 4
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+Distributed services need a communication strategy. The core decision is whether a request must finish now, can happen later, or should be streamed as events.
+
+## Service Discovery
+
+Service discovery answers "where is the healthy instance for this service?" Kubernetes provides DNS names such as `orders.default.svc.cluster.local`. Consul, Eureka, and etcd solve similar problems outside Kubernetes.
+
+Discovery alone is not enough. Clients also need timeouts, retries, load balancing, and circuit breakers so a bad dependency does not cascade through the system.
+
+## Sync, Async, And Streaming
+
+| Pattern | Use when | Example |
+| --- | --- | --- |
+| REST | Public APIs, browser clients, simple resources | Customer CRUD |
+| gRPC | Internal low-latency service calls with schemas | Pricing service |
+| WebSocket | Long-lived bidirectional client updates | Chat and collaboration |
+| Server-Sent Events | One-way server-to-browser streams | Model token streaming |
+| Queue | Work can happen later | Email sending |
+| Event stream | Consumers need replay and ordered logs | Usage analytics |
+
+Synchronous calls are simple but tightly couple availability. Asynchronous queues improve resilience but introduce eventual consistency and duplicate processing.
+
+## Kafka, RabbitMQ, And SQS
+
+Kafka is a durable distributed log. Use it when replay, high throughput, ordered partitions, consumer groups, and stream processing matter.
+
+RabbitMQ is a broker with flexible routing. Use it for work queues, routing keys, acknowledgements, and operationally familiar task dispatch.
+
+SQS is managed cloud queueing. Use it when simplicity, durability, and low operational burden matter more than replayable event history.
+
+Design every consumer to be idempotent. Most queue systems deliver at least once, so duplicates are normal.
+
+## Service Mesh
+
+A service mesh such as Istio or Linkerd moves cross-cutting network behavior into sidecars or node proxies: mTLS, retries, traffic splitting, circuit breaking, telemetry, and policy. It is powerful when many teams operate many services. It is overkill for a small monolith or a handful of services.
+
+Use a mesh to standardize communication; do not use it to hide unclear ownership or bad service boundaries.
+
+## Walkthrough: Notification System
+
+Requirements: send email, SMS, push, and in-app notifications; respect user preferences; support transactional and marketing notifications; tolerate provider failures; avoid duplicate sends.
+
+Capacity: assume 20 million users, 5 notifications per user per day, about 100 million notification intents per day. Average throughput is about 1,200 intents per second; peak might be 10,000 per second during campaigns.
+
+APIs:
+
+```http
+POST /notifications
+GET /users/{id}/notification-preferences
+POST /templates
+```
+
+Data model:
+
+| Entity | Purpose |
+| --- | --- |
+| notification_intent | requested send with idempotency key |
+| user_preferences | channel opt-ins, quiet hours, locale |
+| template | versioned content |
+| delivery_attempt | provider, status, error, timestamps |
+
+Architecture: producers call a notification API. The API validates tenant, template, recipient, and idempotency key, then writes the intent and an outbox row in one transaction. An outbox relay publishes to Kafka or SQS by channel. Workers load preferences, render templates, check quiet hours, call providers, and record delivery attempts.
+
+Provider failures: use retries with exponential backoff and jitter. After repeated failures, move messages to a dead-letter queue. For urgent notifications, fail over to another provider. For marketing notifications, delay is usually better than duplicate sends.
+
+Ordering: transactional security alerts should bypass campaign queues. Per-user ordering may matter for in-app notifications, so partition by user ID.
+
+Observability: track sent, delivered, bounced, provider latency, queue age, duplicate suppression, opt-out rate, and dead-letter count.
+
+## Design Checklist
+
+- Choose sync calls only when the caller needs the result immediately.
+- Use queues for slow, flaky, or provider-backed work.
+- Pick Kafka for replay and streams, RabbitMQ for broker routing, SQS for managed simplicity.
+- Make consumers idempotent.
+- Add dead-letter queues and poison-message handling.
+- Use service mesh when communication policy is repeated across many services.
+
+## Interview Practice
+
+1. When should a service call be synchronous instead of queued?
+2. Compare Kafka, RabbitMQ, and SQS for notification delivery.
+3. Why are idempotent consumers required with at-least-once delivery?
+4. How would you prevent duplicate emails after worker retries?
+5. What should go into a dead-letter queue?
+6. When is a service mesh worth its complexity?
+7. How would you preserve per-user notification ordering?
+8. Design provider failover for SMS delivery.

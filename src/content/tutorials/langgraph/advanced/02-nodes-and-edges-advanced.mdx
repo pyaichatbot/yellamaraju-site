@@ -1,0 +1,96 @@
+---
+title: "Nodes & Edges: Advanced"
+description: "Modular building blocks"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 2
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Nodes & Edges","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on Nodes & Edges at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Advanced node patterns include async streaming nodes, nodes that call subgraphs with schema translation, and dynamic interrupt inside nodes. The interrupt() function (added in v0.4) lets you pause mid-node based on state conditions - more flexible than compile-time interrupt_before. Edge routing functions can return lists for parallel dispatch or use the Send API for per-item dynamic routing.
+
+## Key Facts
+
+- interrupt() inside a node: pause dynamically based on state conditions
+- graph.astream(..., stream_mode='updates'|'values'|'messages'|'custom'): state/message streaming
+- graph.astream_events(input, config, version='v2'): full Runnable event taxonomy
+- interrupt_before=['node']: compile-time pause before that node every time
+- Schema translation: subgraph InputState/OutputState maps to parent state keys
+- NodeInterrupt exception raised by interrupt() - caught by LangGraph runtime
+
+## Reference Implementation
+
+```python
+from langgraph.types import interrupt
+from langgraph.graph import StateGraph, START, END
+from typing import TypedDict
+
+class ReviewState(TypedDict):
+    draft: str
+    approved: bool
+    feedback: str
+
+def write_draft(state: ReviewState):
+    return {"draft": "AI-generated draft content here"}
+
+def human_review(state: ReviewState):
+    # Pause execution and wait for external input
+    feedback = interrupt({
+        "draft": state["draft"],
+        "instruction": "Approve or provide feedback"
+    })
+    if feedback.get("approved"):
+        return {"approved": True}
+    return {"approved": False, "feedback": feedback.get("comment", "")}
+
+def revise(state: ReviewState):
+    return {"draft": f"Revised: {state['feedback']}", "approved": False}
+
+graph = StateGraph(ReviewState)
+graph.add_node("write", write_draft)
+graph.add_node("review", human_review)
+graph.add_node("revise", revise)
+graph.add_edge(START, "write")
+graph.add_edge("write", "review")
+graph.add_conditional_edges("review",
+    lambda s: END if s["approved"] else "revise", [END, "revise"])
+graph.add_edge("revise", "review")
+```
+
+## Interview Q&A
+
+### Q1. How do you stream intermediate node outputs to a UI?
+
+Use graph.astream_events(input, config, version='v2'). This yields RunnableStreamEvent objects tagged with node name and event type. Filter by event['name'] to show token-by-token LLM output or per-node status. This is how LangSmith Studio displays real-time agent reasoning and how you build live agent UIs.
+
+Use stream_mode='updates' for per-node deltas, 'values' for full state snapshots, 'messages' for token/message chunks, and 'custom' for application-defined progress events. Use astream_events when you need lower-level event names such as on_chain_start, on_chat_model_stream, on_tool_start, and on_tool_end.
+
+### Q2. What is the interrupt() pattern vs compile-time interrupt_before?
+
+interrupt_before=['node_name'] at compile time pauses before that node every single time. interrupt() inside a node is dynamic - you pause conditionally based on current state. interrupt() also passes a structured payload to the waiting client. Compile-time interrupts can resume with graph.invoke(None, config); dynamic interrupts resume with graph.invoke(Command(resume=value), config).
+
+### Q3. How do you implement a node that calls external APIs without blocking?
+
+Make the node async (async def) and use await for the API call. Compile the graph and call await graph.ainvoke() or await graph.astream_events(). For true parallelism across multiple calls, use asyncio.gather(). Never use time.sleep() or synchronous requests inside an async node - it blocks the entire event loop.
+
+### Q4. What is the difference between stream modes and event streaming?
+
+stream_mode controls graph-level output shape: updates, values, messages, or custom chunks. astream_events exposes the underlying Runnable event taxonomy, which is better for detailed UIs, telemetry, and debugging tool/model boundaries.
+
+### Q5. How do NodeInterrupt and GraphRecursionError differ?
+
+NodeInterrupt represents an intentional pause raised by a node or by interrupt(). GraphRecursionError is a safety failure raised when execution exceeds recursion_limit, usually due to a missing END route or tool loop that never settles.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

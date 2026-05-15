@@ -1,0 +1,221 @@
+---
+title: "Tool-Calling Agent"
+description: "LLMs that act, not just respond — the future is agentic"
+level: advanced
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 1
+totalModules: 7
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Tool-Calling Agent","Advanced"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** LLMs that act, not just respond - the future is agentic
+
+## What Is a Tool-Calling Agent?
+
+A **tool-calling agent** is an LLM that can take actions in the world by calling functions/APIs. Instead of just generating text, it can:
+- Search the web
+- Query a database
+- Execute code
+- Call external APIs (Slack, Salesforce, GitHub)
+- Read and write files
+
+**The ReAct Loop** (Reason + Act): The agent cycles through:
+1. **Think**: What do I need to do?
+2. **Act**: Call a tool with structured arguments
+3. **Observe**: Get the tool's output
+4. **Repeat**: Until the task is complete or max steps reached
+
+Karpathy on agents: *"The LLM is the CEO. Tools are the employees. The agent loop is the org chart."*
+
+### The Swiss Army Knife Analogy
+
+A standard LLM is a consultant who gives great advice but never touches anything. A tool-calling agent is a consultant who also has a computer, a phone, a calculator, and access to every database - and actually executes the work. The tools are the blades of the Swiss Army knife; the LLM decides which one to use.
+
+
+## Architecture
+
+**How tool definitions work (Anthropic format):**
+```json
+{
+  "name": "search_flights",
+  "description": "Search for available flights between two airports on a date. Returns up to 10 results sorted by price.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "from": { "type": "string", "description": "IATA departure airport code (e.g. 'JFK')" },
+      "to": { "type": "string", "description": "IATA destination airport code (e.g. 'TXL')" },
+      "date": { "type": "string", "description": "Date in YYYY-MM-DD format" },
+      "max_price": { "type": "number", "description": "Maximum price in USD" }
+    },
+    "required": ["from", "to", "date"]
+  }
+}
+```
+
+**Critical insight on tool descriptions:** The LLM decides which tool to call based ENTIRELY on the tool description. A bad description = wrong tool calls = agent failure. Treat tool descriptions like API documentation - precise, with examples, edge cases noted.
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│                   TOOL-CALLING AGENT SYSTEM                         │
+│                                                                      │
+│  User Request: "Book a flight to Berlin next Tuesday under $500"   │
+│       │                                                              │
+│       ▼                                                              │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                    AGENT LOOP                                 │  │
+│  │                                                               │  │
+│  │  Step 1: THINK -> "I need today's date, flight options, cost"  │  │
+│  │  Step 2: ACT  -> call get_date()                              │  │
+│  │  Step 3: OBS  -> "2025-11-15 (Friday)"                        │  │
+│  │  Step 4: ACT  -> call search_flights(from="NYC",              │  │
+│  │                   to="BER", date="2025-11-18")                │  │
+│  │  Step 5: OBS  -> [Flight A: $420, Flight B: $550, ...]        │  │
+│  │  Step 6: ACT  -> call book_flight(id="A", confirm=true)       │  │
+│  │  Step 7: OBS  -> "Booking confirmed: PNR XJ9247"              │  │
+│  │  Step 8: FINAL -> "I've booked Flight A to Berlin on          │  │
+│  │                   Tuesday Nov 18 for $420. PNR: XJ9247"      │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  TOOL REGISTRY:                                                      │
+│  get_date() | search_flights() | book_flight() | send_email()      │
+│  Each tool: JSON schema (name, description, parameters, returns)   │
+│                                                                      │
+│  SAFETY LAYER:                                                      │
+│  • Max steps: 10  • Human-in-loop for irreversible actions         │
+│  • Tool call logging  • Sandboxed execution                         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+
+## Multi-Agent Systems
+
+**When single agents aren't enough:** Complex tasks benefit from specialization.
+
+**Orchestrator-Subagent pattern:**
+- **Orchestrator**: High-level coordinator, breaks task into subtasks, delegates
+- **Subagents**: Specialists (research agent, coding agent, writing agent)
+- Communication via structured messages (not free-form text)
+
+**Parallel vs. Sequential execution:**
+- Sequential: Orchestrator waits for each subagent. Simple, easy to debug.
+- Parallel: Multiple subagents run concurrently. Faster for independent subtasks.
+
+**Human-in-the-loop (HITL) - mandatory for production:**
+- **Irreversible actions** (send email, delete data, make payment): Always require human confirmation
+- **Low-confidence states**: If agent uncertainty &gt; threshold, pause and ask
+- **Max step exceeded**: Surface intermediate state to human
+
+**The key question at Anthropic interviews:** "How do you prevent an agent from taking catastrophic irreversible actions?" -&gt; HITL checkpoints + action classification (reversible/irreversible) + sandboxed tools for testing
+
+
+## Anti-Patterns
+
+- **No max step limit:** Agent enters infinite loops (tool always fails, agent retries forever). Always set max_steps = N, surface to human when exceeded.
+- **No sandboxing for code execution:** Agent runs arbitrary code directly on the host. Use Docker containers with resource limits, no network access, no filesystem write outside sandbox.
+- **Ambiguous tool descriptions:** Tools with overlapping descriptions cause the LLM to pick the wrong one. Make tool descriptions mutually exclusive and collectively exhaustive.
+- **No action logging:** Agent takes 15 actions, something goes wrong, you have no audit trail. Log every tool call: timestamp, input, output, duration, token cost.
+- **Eager irreversible execution:** Booking a flight, sending an email, charging a card without confirmation. Fatal in production. Classify every tool as reversible or irreversible. HITL for all irreversible actions.
+
+
+## Practical Example: Parallel Tools With Validation and Persistence
+
+```python
+import asyncio
+import json
+
+TOOLS = {
+    "get_weather": {
+        "schema": {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+            "additionalProperties": False,
+        },
+        "handler": lambda args: {"city": args["city"], "forecast": "rain"},
+    },
+    "lookup_policy": {
+        "schema": {
+            "type": "object",
+            "properties": {"topic": {"type": "string"}},
+            "required": ["topic"],
+            "additionalProperties": False,
+        },
+        "handler": lambda args: {"topic": args["topic"], "policy": "requires approval"},
+    },
+}
+
+def validate_args(args: dict, schema: dict) -> None:
+    allowed = set(schema["properties"])
+    missing = [key for key in schema.get("required", []) if key not in args]
+    extra = [key for key in args if key not in allowed]
+    if missing or extra:
+        raise ValueError({"missing": missing, "extra": extra})
+
+async def call_tool(name: str, args: dict, trace: list[dict]) -> dict:
+    spec = TOOLS[name]
+    validate_args(args, spec["schema"])
+    result = await asyncio.to_thread(spec["handler"], args)
+    trace.append({"tool": name, "args": args, "result": result})
+    return result
+
+async def run_agent_step(tool_calls: list[dict], trace_path: str = "agent_trace.jsonl"):
+    trace: list[dict] = []
+    results = await asyncio.gather(*[
+        call_tool(call["name"], call["arguments"], trace)
+        for call in tool_calls
+    ])
+    with open(trace_path, "a", encoding="utf-8") as f:
+        for event in trace:
+            f.write(json.dumps(event) + "\n")
+    return results
+
+asyncio.run(run_agent_step([
+    {"name": "get_weather", "arguments": {"city": "Berlin"}},
+    {"name": "lookup_policy", "arguments": {"topic": "travel"}},
+]))
+```
+
+Parallel tool use is safe only when calls are independent and side-effect classes are known. Schema validation catches malformed arguments before tools run. Persistence should store trajectory state, not just the final answer, so retries can resume and benchmarks can replay exact steps. MCP is a common protocol shape for exposing tools and resources to agents; A2A patterns add agent identity, task handoff, and structured messages between specialized agents. Benchmark agents with task completion, tool accuracy, wall-clock latency, number of steps, cost, and irreversible-action safety violations.
+
+
+## Interview Q&A
+
+### How do you handle agent failures and retries?
+
+Classify failures: transient (rate limit, timeout -&gt; retry with exponential backoff), logical (tool returned error -&gt; let LLM reason about the error and try different approach), unrecoverable (auth failure -&gt; surface to human). Set per-tool retry limits (max 3). If agent can't recover in N steps, return partial results with explanation, not a failure response.
+
+### How do you evaluate an agent system?
+
+Task completion rate (did it achieve the goal?), step efficiency (fewer steps = better), tool call accuracy (right tool, right parameters), hallucination rate (did it fabricate tool outputs?), HITL trigger rate (how often does it need human help?). Use trajectory-level eval, not just final answer eval - the path matters.
+
+### What's the difference between agents and chains?
+
+Chains: fixed, predetermined sequence of LLM calls. DAG structure known at design time. Predictable, fast, easy to test. Agents: dynamic, LLM decides what to do next at each step. Flexible, handles novel situations, harder to predict and test. Use chains when you know the workflow; use agents when the workflow depends on data discovered at runtime.
+
+## Interview Practice
+
+1. When is parallel tool execution safe, and when must it be sequential?
+2. How do you validate tool arguments before execution?
+3. What agent state must be persisted to support retry and replay?
+4. How do MCP-style tool servers change agent architecture?
+5. What does A2A communication require beyond ordinary function calls?
+6. How do you benchmark an agent trajectory, not just the final answer?
+7. How do you prevent fabricated tool results from entering the transcript?
+8. How do you classify reversible versus irreversible tools?
+9. What should happen when an agent exceeds its step budget?
+10. How would you sandbox code-execution tools in production?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

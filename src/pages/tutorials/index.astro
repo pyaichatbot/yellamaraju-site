@@ -1,37 +1,46 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import TutorialPathCard from '../../components/TutorialPathCard.astro';
 import TutorialCard from '../../components/TutorialCard.astro';
+import { TUTORIAL_PATHS, TUTORIAL_LEVELS, tutorialHref } from '../../data/tutorial-paths';
 
 const allTutorials = await getCollection('tutorials', ({ data }) => !data.draft);
+const sortedPaths = [...TUTORIAL_PATHS].sort((a, b) => a.order - b.order);
 
-const byLevel = {
-  beginner: allTutorials.filter(t => t.data.level === 'beginner').sort((a,b) => a.data.module - b.data.module),
-  intermediate: allTutorials.filter(t => t.data.level === 'intermediate').sort((a,b) => a.data.module - b.data.module),
-  advanced: allTutorials.filter(t => t.data.level === 'advanced').sort((a,b) => a.data.module - b.data.module),
-};
+const pathSummaries = sortedPaths.map((path) => {
+  const tutorials = allTutorials.filter((t) => t.data.path === path.id);
+  const levels = TUTORIAL_LEVELS
+    .filter((level) => tutorials.some((t) => t.data.level === level.key))
+    .map((level) => level.label);
+  const recommended = TUTORIAL_LEVELS.find((level) => level.key === path.recommendedLevel)?.label ?? 'Start here';
+  return { path, tutorials, levels, recommended };
+});
 
-const levels = [
-  { key: 'beginner', label: 'Beginner', subtitle: 'From Zero to First AI App', color: 'var(--tut-beginner)', time: '15-20 min each' },
-  { key: 'intermediate', label: 'Intermediate', subtitle: 'Build Real AI Features', color: 'var(--tut-intermediate)', time: '25-30 min each' },
-  { key: 'advanced', label: 'Advanced', subtitle: 'Production-Grade AI Systems', color: 'var(--tut-advanced)', time: '35-45 min each' },
-] as const;
+const featuredTutorials = sortedPaths
+  .map((path) => allTutorials
+    .filter((t) => t.data.path === path.id && t.data.level === path.recommendedLevel)
+    .sort((a, b) => a.data.module - b.data.module)[0])
+  .filter(Boolean);
 ---
 
-<BaseLayout title="GenAI Tutorials" description="Progressive GenAI tutorials for DEVs, QAs, BAs, and PMs  -  from zero to production AI systems.">
-  <div class="tutorials-hub">
-    <header class="hub-header">
-      <h1>GenAI Tutorials</h1>
+<BaseLayout title="Tutorial Learning Paths" description="Choose a practical learning path for GenAI foundations, production LLM systems, LangGraph, or AI system design.">
+  <div class="tutorials-hub path-hub">
+    <header class="hub-header path-hero">
+      <p class="eyebrow">Tutorials</p>
+      <h1>Choose the learning path for what you need next.</h1>
       <p class="hub-subtitle">
-        Practical, progressive tutorials for everyone building with AI  -  developers, QA engineers,
-        business analysts, and product managers.
+        Start with the outcome, then pick the right difficulty. Each path is built for practical users: builders, testers, analysts, and product owners shipping AI systems.
       </p>
-      <div class="hub-roles">
-        {['DEV', 'QA', 'BA', 'PM'].map(r => (
-          <span class="hub-role-pill" data-role={r.toLowerCase()}>{r}</span>
+      <div class="recommended-order" aria-label="Recommended learning order">
+        {sortedPaths.map((path, index) => (
+          <>
+            <a href={`/tutorials/${path.id}`} style={`--step-color: ${path.accent}`}>{path.shortTitle}</a>
+            {index < sortedPaths.length - 1 && <span aria-hidden="true">→</span>}
+          </>
         ))}
       </div>
-      <div class="role-filters" aria-label="Filter tutorials by role">
+      <div class="role-filters" aria-label="Filter featured tutorials by role">
         <button class="role-filter-btn active" data-filter-role="all" aria-pressed="true">All Roles</button>
         <button class="role-filter-btn" data-filter-role="dev" aria-pressed="false">DEV</button>
         <button class="role-filter-btn" data-filter-role="qa" aria-pressed="false">QA</button>
@@ -40,34 +49,43 @@ const levels = [
       </div>
     </header>
 
-    {levels.map(({ key, label, subtitle, color, time }) => (
-      <section class="track-section" id={key}>
-        <div class="track-header">
-          <div class="track-meta">
-            <span class="track-level-dot" style={`background: ${color}`} />
-            <div>
-              <h2 class="track-title">{label}</h2>
-              <p class="track-subtitle">{subtitle} · {byLevel[key].length} tutorials · {time}</p>
-            </div>
-          </div>
-          <a href={`/tutorials/${key}`} class="track-cta">View Track →</a>
-        </div>
-        <div class="track-grid">
-          {byLevel[key].map(t => (
-            <TutorialCard
-              title={t.data.title}
-              description={t.data.description}
-              level={t.data.level}
-              module={t.data.module}
-              totalModules={t.data.totalModules}
-              roles={t.data.roles}
-              estimatedTime={t.data.estimatedTime}
-              href={`/tutorials/${t.data.level}/${t.slug.replace(`${t.data.level}/`, '')}`}
-            />
-          ))}
-        </div>
-      </section>
-    ))}
+    <section class="path-grid" aria-label="Tutorial learning paths">
+      {pathSummaries.map(({ path, tutorials, levels, recommended }) => (
+        <TutorialPathCard
+          title={path.title}
+          description={path.description}
+          audience={path.audience}
+          outcome={path.outcome}
+          href={`/tutorials/${path.id}`}
+          accent={path.accent}
+          moduleCount={tutorials.length}
+          levels={levels}
+          tags={path.tags}
+          recommendedLabel={`Start: ${recommended}`}
+        />
+      ))}
+    </section>
+
+    <section class="featured-starts" aria-label="Recommended starting tutorials">
+      <div class="section-heading">
+        <h2>Recommended Starting Points</h2>
+        <p>One first step per path. Use role filters if you are scanning for your own job-to-be-done.</p>
+      </div>
+      <div class="track-grid">
+        {featuredTutorials.map((t) => (
+          <TutorialCard
+            title={t.data.title}
+            description={t.data.description}
+            level={t.data.level}
+            module={t.data.module}
+            totalModules={t.data.totalModules}
+            roles={t.data.roles}
+            estimatedTime={t.data.estimatedTime}
+            href={tutorialHref(t)}
+          />
+        ))}
+      </div>
+    </section>
   </div>
 </BaseLayout>
 
@@ -75,19 +93,12 @@ const levels = [
   document.addEventListener('DOMContentLoaded', () => {
     const buttons = document.querySelectorAll('.role-filter-btn');
     const cards = document.querySelectorAll('.tutorial-card');
-    const sections = document.querySelectorAll('.track-section');
 
     function applyFilter(role) {
       cards.forEach((card) => {
         const roles = (card.getAttribute('data-roles') || '').split(',');
         const show = role === 'all' || roles.includes(role);
         card.style.display = show ? '' : 'none';
-      });
-
-      sections.forEach((section) => {
-        const sectionCards = Array.from(section.querySelectorAll('.tutorial-card'));
-        const hasVisible = sectionCards.some((card) => card.style.display !== 'none');
-        section.style.display = hasVisible ? '' : 'none';
       });
     }
 
@@ -107,43 +118,22 @@ const levels = [
 </script>
 
 <style>
-  .tutorials-hub { max-width: 1100px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
-
-  .hub-header { text-align: center; margin-bottom: var(--space-xl); }
-  .hub-header h1 { font-size: 2.5rem; margin-bottom: var(--space-sm); }
-  .hub-subtitle { font-size: 1.1rem; color: var(--color-text-secondary); max-width: 600px; margin: 0 auto var(--space-md); }
-
-  .hub-roles { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
-  .hub-role-pill { font-size: 0.8rem; font-weight: 700; padding: 0.3rem 0.8rem; border-radius: 999px; font-family: var(--font-mono); border: 1px solid var(--color-border); }
-  .role-filters { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin-top: var(--space-sm); }
-  .role-filter-btn {
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-text-secondary);
-    border-radius: 999px;
-    padding: 0.3rem 0.8rem;
-    font-size: 0.78rem;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: var(--font-mono);
-  }
-  .role-filter-btn.active {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
-  }
-
-  .track-section { margin-bottom: var(--space-xl); }
-
-  .track-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); flex-wrap: wrap; gap: var(--space-sm); }
-  .track-meta { display: flex; align-items: center; gap: var(--space-sm); }
-  .track-level-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-  .track-title { font-size: 1.5rem; margin: 0; }
-  .track-subtitle { font-size: 0.9rem; color: var(--color-text-secondary); margin: 0.2rem 0 0; }
-  .track-cta { font-size: 0.9rem; color: var(--color-accent); text-decoration: none; font-weight: 600; }
-  .track-cta:hover { text-decoration: underline; }
-
-  .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); }
-
-  @media (max-width: 640px) { .track-grid { grid-template-columns: 1fr; } }
+  .tutorials-hub { max-width: 1180px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
+  .path-hero { text-align: left; margin-bottom: var(--space-xl); }
+  .eyebrow { margin: 0 0 var(--space-xs); color: var(--color-accent); font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  .hub-header h1 { max-width: 780px; font-size: clamp(2.3rem, 7vw, 4.8rem); line-height: 0.96; margin-bottom: var(--space-md); letter-spacing: -0.055em; }
+  .hub-subtitle { font-size: 1.08rem; color: var(--color-text-secondary); max-width: 720px; margin: 0 0 var(--space-md); line-height: 1.65; }
+  .recommended-order { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; margin: var(--space-md) 0; font-family: var(--font-sans); }
+  .recommended-order a { border: 1px solid color-mix(in srgb, var(--step-color) 32%, var(--color-border)); border-radius: 999px; color: var(--step-color); background: color-mix(in srgb, var(--step-color) 7%, var(--color-surface)); padding: 0.34rem 0.75rem; font-size: 0.84rem; font-weight: 700; text-decoration: none; }
+  .recommended-order span { color: var(--color-text-tertiary); }
+  .role-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: var(--space-sm); }
+  .role-filter-btn { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); border-radius: 999px; padding: 0.3rem 0.8rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: var(--font-mono); }
+  .role-filter-btn.active { border-color: var(--color-accent); color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+  .path-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); margin-bottom: var(--space-xl); }
+  .featured-starts { margin-top: var(--space-xl); }
+  .section-heading { display: flex; justify-content: space-between; gap: var(--space-md); align-items: end; margin-bottom: var(--space-md); }
+  .section-heading h2 { margin: 0; font-size: 1.6rem; }
+  .section-heading p { margin: 0; max-width: 520px; color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; }
+  .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md); }
+  @media (max-width: 760px) { .path-grid { grid-template-columns: 1fr; } .section-heading { display: block; } }
 </style>

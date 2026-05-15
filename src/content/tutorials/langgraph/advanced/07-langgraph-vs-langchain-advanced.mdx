@@ -1,0 +1,82 @@
+---
+title: "LangGraph vs LangChain: Advanced"
+description: "When to use graphs over chains"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 7
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","LangGraph vs LangChain","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on LangGraph vs LangChain at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Enterprise framework selection: LangGraph wins on control, observability, and production readiness. The LangChain ecosystem is: LangChain (integrations) + LangGraph (orchestration) + LangSmith (evals + observability) + LangSmith Deployment (infrastructure). Competitors: AutoGen (Microsoft), CrewAI, Google ADK (strong GCP integration), AWS Bedrock Agents (managed, less control), Semantic Kernel (.NET-first).
+
+## Key Facts
+
+- Google ADK: tight GCP integration, strong multi-modal; less flexible routing
+- AWS Bedrock Agents: managed, less control; good for AWS-only shops
+- Semantic Kernel: .NET-first enterprise integration; Python support secondary
+- LangGraph + MCP: agents call MCP servers as standard tool nodes
+- LangGraph Functional API: wraps CrewAI and other frameworks inside LangGraph
+
+## Reference Implementation
+
+```python
+# Framework decision matrix
+MATRIX = {
+    "LangGraph": {
+        "control": "maximum",
+        "learning_curve": "steep",
+        "state": "explicit TypedDict + reducers",
+        "observability": "LangSmith (best-in-class)",
+        "deployment": "LangSmith Deployment or self-hosted K8s",
+        "best_for": ["complex agents","HITL","compliance","multi-agent"],
+        "avoid_for": ["simple chatbots","stateless pipelines","rapid MVP"]
+    },
+    "CrewAI": {
+        "control": "medium",
+        "learning_curve": "gentle",
+        "best_for": ["role-based teams","quick prototypes"],
+        "avoid_for": ["custom routing","complex state schemas"]
+    },
+    "AWS Bedrock Agents": {
+        "control": "low",
+        "best_for": ["AWS-native shops","managed infra"],
+        "avoid_for": ["multi-cloud","deep audit trails"]
+    }
+}
+```
+
+## Interview Q&A
+
+### Q1. How would you make the case for LangGraph over AWS Bedrock Agents in a financial firm?
+
+LangGraph wins on: control with explicit state schemas vs. managed black box, observability with LangSmith tracing every decision vs. CloudWatch logs, portability not locked to AWS (runs on-premises), first-class HITL for compliance workflows, and cost transparency. For a compliance-heavy financial firm needing audit trails, LangGraph is the defensible architectural choice.
+
+### Q2. How does LangGraph integrate with MCP (Model Context Protocol)?
+
+LangGraph agents call MCP servers as standard tool nodes. Use langchain-mcp-adapters to convert MCP server tools into LangChain tools, then pass them to create_react_agent() or ToolNode. This enables LangGraph agents to use any MCP-compatible server (Google Drive, Gmail, Supabase) without custom integration code.
+
+### Q3. Describe a migration path from LangChain chains to LangGraph.
+
+Incremental migration: keep existing LCEL chains and wrap each as a LangGraph node, add StateGraph around the chain sequence with explicit state, add MemorySaver for checkpointing without changing behavior, gradually replace chain-to-chain calls with graph edges, add conditional edges where you previously had if/else logic. Enable LangSmith tracing and use trace data to find bottlenecks. Full migration is 2-4 sprints for a complex system.
+
+### Q4. When should you expose an LCEL chain as a Functional API task?
+
+Use @task when an existing chain step is independently retryable, worth tracing, or expensive enough to checkpoint. The @entrypoint wrapper can then orchestrate those tasks without a full graph rewrite.
+
+### Q5. What is the enterprise risk of migrating everything at once?
+
+A big-bang migration changes orchestration, persistence, prompts, and observability at the same time. Incremental wrapping keeps behavior stable while adding checkpoints, traces, and routing one piece at a time.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

@@ -1,0 +1,99 @@
+---
+title: "Deployment & Scaling: Beginner"
+description: "Local graph to production API"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 8
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Deployment & Scaling","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on Deployment & Scaling at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Deploying a LangGraph graph means exposing it as an API that clients can call. The simplest approach is wrapping it in FastAPI. LangSmith Deployment (formerly LangGraph Platform, GA'd May 2025, renamed Oct 2025) is the managed service - providing REST endpoints, streaming, async execution, and horizontal scaling with one-click GitHub deployment.
+
+## Key Facts
+
+- LangGraph Server: opinionated REST API for stateful agents
+- REST resources: /assistants, /threads, /threads/:thread_id/runs, /runs/stream
+- Local dev: langgraph dev serves graphs from langgraph.json for Studio testing
+- LangSmith Deployment: managed hosting (Cloud SaaS, Hybrid, Self-hosted)
+- 1-click deploy from GitHub via LangSmith UI
+- Cloud SaaS requires Plus plan or above
+- langgraph.json: config file mapping graph objects to deployment
+
+## Reference Implementation
+
+```python
+# Option A: FastAPI DIY deployment
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app_api = FastAPI()
+
+class InvokeRequest(BaseModel):
+    message: str
+    thread_id: str
+
+@app_api.post("/invoke")
+async def invoke_agent(req: InvokeRequest):
+    config = {"configurable": {"thread_id": req.thread_id}}
+    result = await lg_app.ainvoke(
+        {"messages": [("user", req.message)]}, config
+    )
+    return {"response": result["messages"][-1].content}
+
+# Option B: langgraph.json for LangSmith 1-click deploy
+# {
+#   "dependencies": ["."],
+#   "graphs": {
+#     "my_agent": "./src/agent.py:graph"
+#   },
+#   "env": ".env"
+# }
+# Local test: langgraph dev --config langgraph.json
+# Deploy:     langgraph deploy --config langgraph.json
+```
+
+## LangGraph Server Endpoints
+
+The managed/server API revolves around assistants, threads, and runs:
+
+- `POST /assistants` registers or configures a graph assistant.
+- `POST /threads` creates a durable conversation thread.
+- `POST /threads/:thread_id/runs` starts an async run on a thread.
+- `POST /threads/:thread_id/runs/stream` streams run events with Server-Sent Events.
+- `GET /threads/:thread_id/state` inspects the latest checkpointed state.
+
+## Interview Q&A
+
+### Q1. What is LangSmith Deployment and when should you use it?
+
+LangSmith Deployment (renamed from LangGraph Platform in Oct 2025) is LangChain's managed infrastructure for deploying stateful agents. It provides REST endpoints with streaming, horizontal scaling, built-in persistence, LangSmith Studio for debugging, and 1-click GitHub deployment. Use it when you want to focus on agent logic, not infrastructure.
+
+### Q2. What deployment options does LangSmith Deployment offer?
+
+Three options: Cloud SaaS - fully managed on AWS/GCP, fastest setup, requires Plus plan. Hybrid - SaaS control plane with self-hosted data plane, for data residency requirements. Fully Self-Hosted - entire platform in your VPC via Helm charts, needs your own Postgres and Redis. Available on AWS Marketplace.
+
+### Q3. How do you add streaming to a deployed LangGraph agent?
+
+LangGraph Server provides /stream endpoints returning Server-Sent Events (SSE). For DIY deployment, use FastAPI's StreamingResponse with graph.astream_events(), filtering for on_chat_model_stream events to stream tokens. Client-side, use EventSource API or the LangGraph JS SDK's client.runs.stream() method.
+
+### Q4. What does langgraph dev do?
+
+langgraph dev reads langgraph.json, starts a local LangGraph Server, and exposes your graph to LangGraph Studio-compatible tooling. It is the quickest way to test server behavior before deploying.
+
+### Q5. What are assistants, threads, and runs?
+
+An assistant is a configured graph, a thread is durable state for one conversation or job, and a run is one execution of an assistant against a thread. This separation lets you reuse one assistant across many persisted threads.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

@@ -1,0 +1,186 @@
+---
+title: "Hallucination Monitor"
+description: "Catching LLM lies before they reach your users"
+level: advanced
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 5
+totalModules: 7
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Hallucination Monitor","Production"]
+date: 2026-05-14
+estimatedTime: "25 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Catching LLM lies before they reach your users
+
+## What Is Hallucination?
+
+**Hallucination** occurs when an LLM generates content that is fluent and confident-sounding but factually wrong, fabricated, or unsupported by provided context.
+
+**Types of hallucination:**
+1. **Factuality errors**: Wrong facts ("Eiffel Tower is in Berlin")
+2. **Faithfulness errors**: Answer contradicts or fabricates beyond provided context ("The document says X" when it doesn't)
+3. **Citation hallucination**: References that don't exist
+4. **Numerical hallucination**: Wrong numbers, statistics, dates
+
+**Why models hallucinate (2025 research insight):** OpenAI's 2025 paper shows that next-token prediction training **rewards confident guessing over admitting uncertainty**. Models are penalized for saying "I don't know" during training, so they learn to bluff.
+
+**Production impact:** A legal chatbot hallucinating case citations. A medical assistant fabricating drug dosages. A financial advisor inventing market statistics. These are existential risks, not bugs.
+
+### The Unreliable Journalist Analogy
+
+A journalist who fabricates quotes sounds completely authoritative. You can't tell from the writing style that the source didn't exist. A hallucination monitor is your fact-checking department - it independently verifies every claim before publication, catching fabrications the journalist delivered with complete confidence.
+
+
+## Hallucination Monitor Architecture
+
+**Detection methods (ranked by accuracy vs. cost):**
+
+**1. Context-based faithfulness check (RAG systems):**
+- Most important: if you have source documents, verify every claim appears in them
+- Use NLI (Natural Language Inference) model: does the context ENTAIL the claim?
+- Tools: MiniCheck, AlignScore, TrueTeacher
+
+**2. Chain-of-Verification (CoVe):**
+- Generate response -&gt; extract claims -&gt; generate verification questions -&gt; independently answer questions -&gt; compare to original claims
+- More compute, much better accuracy
+- Example: "The CEO was hired in 2018" -&gt; "When was this CEO hired?" -&gt; verify against source
+
+**3. LLM-as-Judge with grounding:**
+- Ask Claude/GPT-4: "Is this claim supported by the provided context? Quote the evidence."
+- Structured output: &#123;verdict: "SUPPORTED" | "UNSUPPORTED", evidence_quote: "...", confidence: 0.95&#125;
+
+**4. Knowledge graph verification:**
+- For factual claims (geography, history, science): query Wikidata or internal knowledge graph
+- Expensive but high precision for fact types
+
+**5. Confidence calibration:**
+- Train model to output uncertainty scores
+- Flag responses where model is uncertain but sounds confident (high verbosity, hedging -&gt; uncertain)
+
+**Anthropic's insight (2025):** Hallucinations can be reduced via targeted preference fine-tuning on "hard-to-hallucinate" examples - 90-96% reduction in specific domains without hurting quality.
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│               HALLUCINATION MONITOR SYSTEM                       │
+│                                                                   │
+│  LLM Response                                                     │
+│       │                                                           │
+│       ▼                                                           │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                 CLAIM EXTRACTOR                            │  │
+│  │  "Paris is the capital of Italy" -> atomic claim           │  │
+│  │  "The company was founded in 1998" -> atomic claim         │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│       │                                                           │
+│       ▼                                                           │
+│  ┌────────────────┐  ┌────────────────┐  ┌──────────────────┐  │
+│  │ CONTEXT CHECK  │  │  KNOWLEDGE     │  │  CONSISTENCY     │  │
+│  │                │  │  BASE CHECK    │  │  CHECK           │  │
+│  │ Is claim in    │  │ (RAG / KG /    │  │ Does claim       │  │
+│  │ provided docs? │  │  web search)   │  │ contradict       │  │
+│  │ Faithfulness   │  │ Factuality     │  │ earlier parts?   │  │
+│  └────────┬───────┘  └───────┬────────┘  └────────┬─────────┘  │
+│           │                  │                     │             │
+│           └──────────────────┴─────────────────────┘            │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │              HALLUCINATION SCORE                           │ │
+│  │  Per-claim: SUPPORTED / UNSUPPORTED / CONTRADICTED        │ │
+│  │  Overall: 0.0 (fully hallucinated) -> 1.0 (fully grounded) │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              │                                   │
+│              ┌───────────────┼────────────────┐                 │
+│              ▼               ▼                ▼                 │
+│           PASS          WARN TO USER      BLOCK + ALERT         │
+│        (score >0.9)    (0.7 < s < 0.9)  (score <0.7)           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **Post-hoc hallucination detection only:** Detecting after the user has already seen the response. Ideally, hallucination detection is in the pre-delivery pipeline, blocking bad responses before users see them.
+- **Binary pass/fail monitoring:** Treating hallucination as all-or-nothing. In practice, partial hallucinations (one wrong claim in ten) need nuanced handling - pass with citation warning, not full block.
+- **Ignoring confidence-fluency gap:** Models produce hallucinations in their most fluent prose. High readability score ≠ factual accuracy. The correlation is actually slightly negative for some failure modes.
+- **No domain-specific calibration:** A generic hallucination detector performs poorly on medical or legal terminology. Fine-tune or calibrate your detector on domain-specific examples.
+
+
+## Practical Example: Semantic Entropy and Faithfulness
+
+```python
+from collections import Counter
+from math import log2
+
+def normalize_claim(answer: str) -> str:
+    # Real systems cluster by embeddings or NLI equivalence, not lowercasing.
+    return answer.lower().replace(".", "").strip()
+
+def semantic_entropy(samples: list[str]) -> float:
+    clusters = Counter(normalize_claim(sample) for sample in samples)
+    total = sum(clusters.values())
+    return -sum((count / total) * log2(count / total) for count in clusters.values())
+
+def faithfulness_score(claims: list[str], retrieved_context: str) -> float:
+    supported = sum(claim.lower() in retrieved_context.lower() for claim in claims)
+    return supported / max(1, len(claims))
+
+def conformal_flag(score: float, calibration_scores: list[float], alpha: float = 0.1) -> bool:
+    # Flag if score is below the alpha quantile from known-good calibration data.
+    threshold = sorted(calibration_scores)[int(alpha * (len(calibration_scores) - 1))]
+    return score < threshold
+
+samples = [
+    "The contract renews every 12 months.",
+    "The contract renews annually.",
+    "The contract expires after 90 days.",
+]
+claims = ["contract renews every 12 months", "notice period is 30 days"]
+context = "The contract renews every 12 months. Termination requires notice."
+score = faithfulness_score(claims, context)
+print({"semantic_entropy": semantic_entropy(samples), "faithfulness": score})
+print("block", conformal_flag(score, calibration_scores=[0.7, 0.8, 0.9, 1.0]))
+```
+
+Self-consistency samples multiple answers; high semantic entropy means the model is uncertain at the meaning level even if each answer sounds fluent. Conformal prediction turns calibration data into thresholds with a target error rate, which is easier to explain to auditors than arbitrary scores. RAG faithfulness checks whether answer claims are entailed by retrieved chunks; factuality checks whether claims are true in the world. Monitor both, because a response can be faithful to the wrong retrieved document.
+
+
+## Interview Q&A
+
+### How would you build a hallucination monitor for a medical chatbot?
+
+Multi-layer: (1) Source grounding - only answer from retrieved medical literature, claim must be traceable to cited paper. (2) NLI check - AlignScore or similar to verify claims are entailed by sources. (3) Temporal validation - check if cited guidelines are current version. (4) Specialist LLM review - medical-tuned model rates clinical safety. (5) Human review queue - any response above certain risk score routed to clinician before delivery. Block responses below faithfulness threshold. Log everything for audit.
+
+### What metrics do you track for hallucination monitoring?
+
+Faithfulness score distribution (histogram, not just average), per-category hallucination rate (facts vs. citations vs. numbers), false positive rate of the detector (blocking correct responses), hallucination rate trend over time (catch model degradation), downstream impact (user correction rate, complaint rate correlated with hallucination score).
+
+### How does RAG affect hallucination rates?
+
+RAG reduces factuality hallucinations by grounding generation in retrieved context. But: faithfulness hallucinations (model claims context says X when it doesn't) still occur. Poorly configured RAG can introduce new hallucinations (model confidently uses wrong retrieved chunk). RAG reduces hallucination 40-60% in practice, but you still need faithfulness monitoring.
+
+## Interview Practice
+
+1. What is the difference between factuality and faithfulness?
+2. How does semantic entropy reveal uncertainty?
+3. How would you use self-consistency for hallucination detection?
+4. What does conformal prediction add beyond a fixed threshold?
+5. How do you calibrate a detector for legal or medical terminology?
+6. Why can RAG introduce hallucinations instead of preventing them?
+7. How do you evaluate false positives in a hallucination monitor?
+8. What claims should be blocked versus shown with a warning?
+9. How do you trace a hallucination back to retrieval, prompt, or model failure?
+10. How should hallucination scores feed an eval harness?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

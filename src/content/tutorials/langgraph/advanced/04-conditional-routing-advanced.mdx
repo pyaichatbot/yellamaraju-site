@@ -1,0 +1,89 @@
+---
+title: "Conditional Routing: Advanced"
+description: "Dynamic decision-making"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 4
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Conditional Routing","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on Conditional Routing at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Production routing patterns: the Command type returned from a node atomically routes AND updates state - the recommended pattern for supervisors in v1.0+. Hierarchical routing (supervisor of supervisors) and dynamic agent registries with semantic capability search enable enterprise-scale orchestration. Always layer LLM routing with fallback: structured output -&gt; text parsing -&gt; safe default node.
+
+## Key Facts
+
+- Command(goto=...) returned from node: atomic routing + state update
+- FINISH sentinel: supervisor returns this string to exit multi-agent loop
+- LLM routing latency: 100-500ms - pre-classify in state if latency sensitive
+- Circuit breaker: track routing errors, fall back after N failures
+- Audit logging: write routing decisions to state list for compliance trace
+
+## Reference Implementation
+
+```python
+from langgraph.types import Command
+from langgraph.graph import END
+from typing import TypedDict, Annotated, List
+import operator
+
+def add_int(old: int, new: int) -> int:
+    return old + new
+
+class SupervisorState(TypedDict):
+    messages: Annotated[list, operator.add]
+    task_count: Annotated[int, add_int]
+    routing_log: Annotated[List[str], operator.add]
+
+def supervisor_node(state: SupervisorState):
+    # LLM decides - demo uses deterministic logic
+    if state["task_count"] >= 2:
+        return Command(
+            goto=END,
+            update={"routing_log": [f"DONE after {state['task_count']} tasks"]}
+        )
+    return Command(
+        goto="researcher",
+        update={
+            "task_count": 1,
+            "routing_log": [f"Step {state['task_count']}: dispatched to researcher"]
+        }
+    )
+# Command gives atomic routing + state update in one return
+```
+
+## Interview Q&A
+
+### Q1. What is the Command return type and how does it differ from a routing function?
+
+Command(goto='node', update=&#123;...&#125;) is returned from a node itself - not a separate routing function - and atomically routes AND updates state. This is more powerful than add_conditional_edges because you compute routing data mid-node and write it to state simultaneously. It is the recommended supervisor pattern in LangGraph v1.0+.
+
+The update values must match reducers: task_count uses an int reducer, so return 1, not [1]. Lists are correct for routing_log because that channel uses a list appender.
+
+### Q2. How do you implement a safe fallback routing pattern?
+
+Layer three fallback levels: try structured LLM output with model.with_structured_output(); if parsing fails try text-based extraction; if that fails route to a safe_default node that asks the user for clarification. Always wrap LLM routing in try/except and log failures to LangSmith for analysis.
+
+### Q3. How would you design routing for a compliance system requiring audit logs?
+
+Use the Command pattern: before returning the destination, write the routing decision to an audit_log list in state, emit an OpenTelemetry span with routing metadata, and conditionally insert a human_approval node for high-risk routes. Never trust LLM routing alone for financial or legal decisions - add deterministic guardrails on top.
+
+### Q4. How do you validate LLM-chosen routes?
+
+Parse routes with structured output, check the selected destination against an allowlist, and verify policy constraints before returning Command(goto=...). Invalid or risky routes should go to a safe_default or human_approval node.
+
+### Q5. When is path_map important?
+
+path_map is important when routing labels differ from node names or when you want visualization to show all possible branches. It also makes conditional edge contracts easier to review.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

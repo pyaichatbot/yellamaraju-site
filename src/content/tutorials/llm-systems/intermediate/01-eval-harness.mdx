@@ -1,0 +1,258 @@
+---
+title: "Eval Harness"
+description: "The nervous system of every production LLM system"
+level: intermediate
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 1
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Eval Harness","Foundation"]
+date: 2026-05-14
+estimatedTime: "25 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** The nervous system of every production LLM system
+
+## What Is an Eval Harness?
+
+An **eval harness** is the automated testing infrastructure that continuously measures whether your LLM system is actually doing what you think it's doing. 
+
+Think of it like a **flight simulator for AI**: before any pilot (prompt, model, or retriever) goes into production, it runs through thousands of test scenarios. Failures are caught early, not in front of your users.
+
+**Karpathy's mental model:** "LLM = CPU, context window = RAM, eval harness = the OS that tells you if the program crashed."
+
+Without evals, you're flying blind. You might improve your prompt for three scenarios and unknowingly break 50 others - this is called **silent regression** and it kills production AI systems.
+
+### The Hospital Analogy
+
+Imagine a hospital that never checks patient vitals after a procedure. Doctors 'feel good' about outcomes but have no data. An eval harness is the monitoring system that checks every patient (query), measures every outcome (response quality), and alerts when something degrades - before the patient dies (before users churn).
+
+
+## Architecture Deep Dive
+
+**The 5 layers of a production eval harness:**
+
+**1. Test Suite (Inputs)** - Your golden dataset. Contains:
+- Reference Q&A pairs manually verified by humans
+- Adversarial inputs (jailbreaks, weird edge cases, typos)
+- Regression tests from past failures
+- Canary queries (simple cases that must NEVER fail)
+
+**2. LLM System Under Test** - The actual pipeline (prompt + model + RAG + tools). This runs in isolation - same as production, but with test inputs.
+
+**3. Scorer / Judge** - How you grade outputs. Hierarchy of trust:
+- **Exact match**: "Is the answer 'Paris'?" (lowest cost, highest precision)
+- **Embedding similarity**: Semantic overlap via cosine distance
+- **LLM-as-Judge**: Ask GPT-4 or Claude to grade on a rubric (expensive, high signal)
+- **Human eval**: Gold standard, used sparingly for calibration
+
+**4. Metrics Aggregator** - Compiles scores into dashboard. Track trends, not just snapshots.
+
+**5. Regression Gate** - The gatekeeper. In your CI/CD, if eval scores drop below thresholds -&gt; deployment blocked. This is called **eval-gated deployment**.
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                      EVAL HARNESS PIPELINE                       │
+│                                                                   │
+│  ┌─────────────┐    ┌──────────────┐    ┌───────────────────┐  │
+│  │  Test Suite  │───▶│  LLM System  │───▶│  Scorer / Judge   │  │
+│  │             │    │  (Under Test) │    │                   │  │
+│  │ • Golden    │    │              │    │ • Rule-based      │  │
+│  │   Q&A pairs │    │ Prompt +     │    │ • Embedding sim   │  │
+│  │ • Edge cases│    │ RAG + Tools  │    │ • LLM-as-Judge    │  │
+│  │ • Adversar. │    │              │    │ • Human eval      │  │
+│  └─────────────┘    └──────────────┘    └─────────┬─────────┘  │
+│                                                    │             │
+│  ┌─────────────────────────────────────────────────▼──────────┐ │
+│  │               METRICS AGGREGATOR                           │ │
+│  │  Accuracy | Faithfulness | Relevance | Latency | Cost      │ │
+│  └─────────────────────────────────────────────────┬──────────┘ │
+│                                                    │             │
+│  ┌─────────────────────────────────────────────────▼──────────┐ │
+│  │         REGRESSION GATE (CI/CD)                            │ │
+│  │    Score > threshold -> Deploy   Score drops -> Block    │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+
+## Key Metrics You Must Know
+
+**For RAG systems (RAGAS framework):**
+- **Context Recall**: Did retrieval find the relevant chunks? (0-1)
+- **Context Precision**: Of retrieved chunks, how many were actually useful? (0-1)
+- **Answer Faithfulness**: Does the answer stay grounded in retrieved context? Key for hallucination detection
+- **Answer Relevance**: Does the answer actually address the question?
+
+**For general LLM systems:**
+- **BLEU / ROUGE**: Token overlap with reference answers (good for summarization, bad for open-ended)
+- **BERTScore**: Embedding-level semantic similarity (better than BLEU)
+- **Pass@k**: For code - does the model solve the problem in k attempts?
+- **LLM Judge Score**: 1-5 rubric scored by a frontier model (GPT-4, Claude)
+
+**NFR metrics (Non-Functional Requirements):**
+- P50/P95/P99 latency per eval run
+- Token cost per query (track regressions in cost too!)
+- Throughput: evals/hour capacity
+
+
+## Anti-Patterns to Avoid
+
+- **Eval on train data:** Testing on the data you used to build the system. Like memorizing the exam answers. Gives false confidence - performance will be much worse in production.
+- **LLM-only scoring:** Using GPT-4 to grade GPT-4 outputs without any reference. The judge may share the same failure modes as the system under test.
+- **No regression gate:** Running evals as a report but not blocking deploys. Teams see scores drop and still ship. 'We'll fix it next sprint' kills products.
+- **Static test suites:** Never adding new failures to the test suite. Production always generates new edge cases. Your evals should grow with every incident.
+- **Aggregate-only metrics:** Only tracking average score. A system that scores 85% average might fail 100% on a critical subgroup (medical questions, legal queries).
+
+
+## System Design: Build a Production Eval Harness
+
+**Scenario: You're building evals for a compliance chatbot at a fintech.**
+
+**Step 1 - Define evaluation criteria upfront:**
+- Faithfulness (never hallucinate regulations)
+- Completeness (answer covers the full regulatory requirement)
+- Citation accuracy (references are real and current)
+- Refusal rate (system should refuse out-of-scope queries)
+
+**Step 2 - Build the golden dataset:**
+- 500 Q&A pairs from domain experts
+- 100 adversarial inputs (trick questions, out-of-scope)
+- 50 canary queries that must always pass
+
+**Step 3 - Choose your scorer:**
+- Rule-based: regex checks for citation format
+- LLM judge: Claude grades faithfulness on 1-5 rubric
+- Embedding: cosine sim &gt; 0.85 with reference answer
+
+**Step 4 - Wire into CI/CD:**
+```
+GitHub PR -> eval harness runs (2 min) -> 
+  if faithfulness < 0.90 -> PR blocked 
+  if latency p95 > 3s -> PR blocked 
+  if cost > $0.05/query -> warning 
+  else -> deploy approved 
+```
+
+**Step 5 - Online eval (production monitoring):**
+Sample 5% of live queries -&gt; async eval -&gt; alert if scores drift
+
+### Non-Functional Requirements
+
+- Eval suite runs &lt; 5 min on CI
+- 95% eval coverage of production query distribution
+- False positive rate on regression gate &lt; 2%
+- Eval results stored immutably for audit
+
+
+## Practical Example: Stratified Eval Runner
+
+This runnable-looking Python skeleton shows the pieces interviewers expect: stratified sampling, pairwise judging, LLM-as-judge calibration against human labels, Cohen's kappa, and a deploy gate.
+
+```python
+from collections import defaultdict
+from dataclasses import dataclass
+from statistics import mean
+
+@dataclass
+class Case:
+    id: str
+    cohort: str
+    prompt: str
+    reference: str
+    human_label: int | None = None
+
+def system_under_test(prompt: str) -> str:
+    return f"draft answer for: {prompt}"
+
+def judge_score(prompt: str, answer: str, reference: str) -> int:
+    # Replace with a rubric-bound LLM call returning 1..5 JSON.
+    return 5 if reference.lower() in answer.lower() else 3
+
+def pairwise_judge(prompt: str, answer_a: str, answer_b: str) -> str:
+    # Returns "A", "B", or "TIE"; useful when absolute scores drift.
+    return "A" if len(answer_a) <= len(answer_b) else "B"
+
+def cohen_kappa(labels_a: list[int], labels_b: list[int]) -> float:
+    assert len(labels_a) == len(labels_b)
+    observed = sum(a == b for a, b in zip(labels_a, labels_b)) / len(labels_a)
+    classes = sorted(set(labels_a) | set(labels_b))
+    expected = sum(
+        (labels_a.count(c) / len(labels_a)) * (labels_b.count(c) / len(labels_b))
+        for c in classes
+    )
+    return (observed - expected) / (1 - expected) if expected < 1 else 1.0
+
+def stratified(cases: list[Case], per_cohort: int) -> list[Case]:
+    buckets: dict[str, list[Case]] = defaultdict(list)
+    for case in cases:
+        buckets[case.cohort].append(case)
+    return [case for bucket in buckets.values() for case in bucket[:per_cohort]]
+
+cases = [
+    Case("1", "legal", "Can we store SSNs?", "encrypt"),
+    Case("2", "billing", "Refund policy?", "30 days"),
+    Case("3", "legal", "Can I delete audit logs?", "must retain", human_label=2),
+]
+
+scores = []
+calibration_human, calibration_judge = [], []
+for case in stratified(cases, per_cohort=2):
+    answer = system_under_test(case.prompt)
+    score = judge_score(case.prompt, answer, case.reference)
+    scores.append(score)
+    if case.human_label is not None:
+        calibration_human.append(case.human_label)
+        calibration_judge.append(score)
+
+gate = mean(scores) >= 4.2
+if calibration_human:
+    print("judge_kappa", round(cohen_kappa(calibration_human, calibration_judge), 3))
+print({"mean_score": round(mean(scores), 2), "deploy_allowed": gate})
+```
+
+Use pairwise judging for prompt/model comparisons because it is more stable than asking for an absolute 1-5 score. Use Cohen's kappa to decide whether the judge agrees with humans enough to trust; below 0.6 means the rubric or judge prompt needs work. Stratify by domain, tenant, language, risk tier, and query length so one large easy cohort cannot hide failures in a small critical cohort.
+
+
+## Interview Q&A
+
+### How do you prevent eval leakage / data contamination?
+
+Keep eval sets in a separate, locked repo. Never expose them to the prompt engineering process. Use hash-based deduplication to ensure no train/eval overlap. Rotate a portion of the eval set monthly.
+
+### When would you use LLM-as-Judge vs. rule-based eval?
+
+Rule-based for precision requirements (regex, exact match, schema validation). LLM-as-Judge for semantic quality (does this response 'feel' right, is the tone appropriate, is the reasoning sound). Calibrate LLM judges against human labels first - aim for &gt;85% agreement before trusting them.
+
+### How do you handle eval at scale (millions of daily queries)?
+
+Online stratified sampling: randomly sample 1-5% of queries per cohort (user type, query category). Run evals async so they don't block inference. Use lightweight heuristics for 95% of queries, full LLM-judge for the sampled 5%. Store all results in a time-series DB for trend detection.
+
+### What's the difference between offline eval and online eval?
+
+Offline eval: runs on fixed test sets before deployment. Catches regressions. Online eval: monitors live traffic after deployment. Catches distribution shift, novel failure modes, and real-world edge cases that test sets didn't anticipate. You need both.
+
+## Interview Practice
+
+1. How would you calibrate an LLM judge before using it as a CI gate?
+2. Why is pairwise judging often more reliable than absolute scoring?
+3. What does Cohen's kappa measure, and what would you do if it is low?
+4. How do you stratify evals so aggregate accuracy does not hide subgroup failures?
+5. How do you prevent prompt, model, or fine-tuning teams from leaking eval examples?
+6. What metrics would you gate for a RAG chatbot versus a code-generation agent?
+7. How would you design a low-cost online eval pipeline for 10M requests per day?
+8. How do you detect judge drift after changing the judge model or rubric?
+9. What belongs in a canary eval set versus a broad regression suite?
+10. When should a regression gate warn instead of block?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

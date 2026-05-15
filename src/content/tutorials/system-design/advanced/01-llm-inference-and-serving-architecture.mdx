@@ -1,0 +1,105 @@
+---
+title: "LLM Inference and Serving Architecture"
+description: "Design high-throughput model serving with batching, KV cache, routing, and cost controls."
+level: advanced
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 1
+totalModules: 5
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "45 min"
+prerequisites: []
+---
+LLM serving is not just a normal API behind bigger machines. It is GPU-bound, latency-variable, memory-sensitive, and cost-sensitive. A strong design explains how requests are admitted, batched, routed, streamed, billed, and observed.
+
+## Inference Concepts
+
+Time to first token is the delay before streaming begins. Tokens per second is generation throughput after the first token. Tail latency depends on prompt length, output length, model size, batching, GPU memory, and queueing.
+
+The KV cache stores attention keys and values from previous tokens so the model does not recompute the whole context for each new token. Long contexts consume substantial GPU memory, so cache management directly affects throughput.
+
+PagedAttention treats KV cache memory like pages, allocating blocks as needed. This reduces fragmentation and allows more concurrent sequences.
+
+Continuous batching lets new requests join while other requests are already generating. When one sequence finishes, its slot can be reused without waiting for the whole batch.
+
+Tensor parallelism splits model computation across GPUs. It enables larger models but introduces communication overhead.
+
+## Production Architecture
+
+Request path:
+
+```text
+Client -> API Gateway -> Auth/Quota -> Scheduler -> Inference Workers -> Stream Gateway -> Client
+                               |             |              |
+                               |             |              -> GPU metrics
+                               |             -> queue by model, region, priority
+                               -> usage events and audit logs
+```
+
+The scheduler groups compatible requests by model, context length, priority, and tenant class. Enterprise tenants may require region pinning, dedicated capacity, or strict data retention. Free-tier traffic can use lower priority queues.
+
+Streaming should start as soon as tokens are available. Server-Sent Events are simple for browser clients:
+
+```text
+event: token
+data: hello
+```
+
+Use WebSockets when the client also sends real-time control messages, such as cancel, edit, or interactive tool events.
+
+## Cost And Capacity
+
+Estimate in tokens, not just requests. A workload of 100 requests per second with 1,000 input tokens and 500 output tokens is 150,000 tokens per second before retries. Output tokens usually dominate compute time because they are generated sequentially.
+
+Track:
+
+- Time to first token.
+- Inter-token latency.
+- Tokens per second per GPU.
+- GPU utilization and memory utilization.
+- Queue age by priority.
+- KV cache hit rate.
+- Cost per tenant, model, and endpoint.
+
+## Walkthrough: Design A Claude-Style API
+
+Requirements: accept chat requests, stream responses, enforce organization quotas, support multiple models, log usage, and keep tenant data isolated.
+
+APIs:
+
+```http
+POST /v1/messages
+GET /v1/usage?org_id=...
+POST /v1/responses/{id}/cancel
+```
+
+Architecture: API gateway validates API keys and scopes. A quota service checks request and token budgets. The scheduler selects a model pool based on requested model, region, priority, context length, and safety policy. Inference workers use continuous batching and KV cache management. A stream gateway sends tokens to clients and handles disconnects. Usage events are written to Kafka or another durable stream and aggregated for billing.
+
+Rate limiting: enforce both request-per-minute and token-per-minute limits. A tiny request and a 200,000-token request should not cost the same.
+
+Fallbacks: if the premium model pool is saturated, paid users can queue, while free users can be routed to a smaller model or receive `429` with retry guidance. If usage aggregation is delayed, serve traffic only if raw request logs can reconstruct billing.
+
+Safety and compliance: region-pin requests when required. Do not log raw prompts by default for sensitive tenants. Redact secrets before traces and logs.
+
+## Design Checklist
+
+- Estimate input and output tokens per second.
+- Separate admission control from inference scheduling.
+- Explain KV cache, PagedAttention, continuous batching, and GPU memory pressure.
+- Stream tokens rather than waiting for full completion.
+- Track cost and usage as first-class product data.
+- Define model fallback and quota behavior.
+
+## Interview Practice
+
+1. Why is LLM serving more memory-sensitive than a normal JSON API?
+2. What does the KV cache store, and why does it matter?
+3. How does continuous batching improve GPU utilization?
+4. When is tensor parallelism necessary, and what does it cost?
+5. Design token-per-minute rate limiting for an LLM API.
+6. What metrics would you put on an inference dashboard?
+7. How should the system behave when a client disconnects mid-stream?
+8. How would you support EU data residency for inference requests?

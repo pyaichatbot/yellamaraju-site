@@ -1,0 +1,246 @@
+---
+title: "AI Cost Optimization at Scale"
+description: "Token costs, prompt caching, batching, model routing, and response caching. Techniques that turn a $50K/month AI bill into $12K without sacrificing quality."
+level: advanced
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 7
+totalModules: 15
+roles: ["dev", "pm"]
+tags: ["Cost Optimization", "Token Costs", "Prompt Caching", "Batching", "Model Routing"]
+date: 2026-05-14
+estimatedTime: "38 min"
+prerequisites: ["intermediate/07-multi-model-strategies"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import CodePlayground from '../../../../components/CodePlayground.astro';
+
+## Understanding Your AI Cost Breakdown
+
+Before optimizing, know where money goes. A typical production AI app cost breakdown:
+
+| Cost Driver | Typical % | Optimization Lever |
+|------------|-----------|-------------------|
+| Input tokens (LLM) | 35% | Prompt compression, caching |
+| Output tokens (LLM) | 40% | max_tokens control, stop sequences |
+| Embedding calls | 10% | Batch embedding, cache embeddings |
+| Vector DB storage | 10% | TTL policies, selective indexing |
+| Reranking/other | 5% | Cache reranking results |
+
+Output tokens are 2-5× more expensive than input tokens at most providers. **Controlling output length is the highest-ROI optimization.**
+
+<Mermaid
+  title="Cost Optimization Decision Tree"
+  chart={`
+flowchart TD
+    START[High AI Costs] --> Q1{Output tokens\nhigh?}
+    Q1 -->|yes| A1[Set max_tokens\nAdd stop sequences\nRequest concise format]
+    Q1 -->|no| Q2{System prompt\nrepeated per call?}
+    Q2 -->|yes| A2[Enable prompt caching\n60-80% cache hit\n= 60-80% input cost savings]
+    Q2 -->|no| Q3{Same queries\nrepeated?}
+    Q3 -->|yes| A3[Response caching\nRedis / semantic cache]
+    Q3 -->|no| Q4{Using premium\nmodel for all tasks?}
+    Q4 -->|yes| A4[Implement model routing\nCheap model for simple tasks]
+    Q4 -->|no| A5[Batch embedding calls\nCheck token waste in prompts]
+`}
+/>
+
+## Prompt Caching: Biggest Single Win
+
+Prompt caching lets you pay input token costs only once for repeated prefixes. The provider caches the KV computation for your system prompt.
+
+**How it works:**
+1. First call: full input token cost
+2. Subsequent calls with same prefix: 80-90% discount on cached portion
+
+**Requirements (provider-dependent):**
+- OpenAI: prefix caching behavior depends on model and current platform rules
+- Anthropic: use `cache_control: {"type": "ephemeral"}` on content blocks
+- Minimum cacheable prefix and TTL vary by provider/model/version
+- Always verify current limits in provider docs before rollout
+
+**Practical impact example:**
+
+```
+System prompt: 2,000 tokens
+User message: 200 tokens
+Response: 500 tokens
+
+Without caching:  2,200 input tokens per call
+With caching:     200 input tokens + ~400 cached (80% off)
+Savings per call: ~72% on input tokens
+At 100K calls/day: ~$2,000/day saved
+```
+
+## Output Length Control
+
+The most underused optimization  -  and the fastest to implement:
+
+```python
+# Bad: no max_tokens set, model writes essays
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=messages
+)
+
+# Good: constrain output to what you actually need
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=messages,
+    max_tokens=150,  # Set based on expected output size
+    stop=["###", "\n\n\n"]  # Stop at natural boundaries
+)
+```
+
+Also: explicitly ask for concise output in your prompt.
+```
+"Respond in 2-3 sentences maximum."
+"Return only the JSON object, no explanation."
+"Answer in one sentence."
+```
+
+## Response Caching
+
+For deterministic queries (temperature=0), identical inputs produce identical outputs  -  cache them.
+
+```python
+import hashlib
+import json
+
+class CachedAIClient:
+    def __init__(self, client, cache):
+        self.client = client
+        self.cache = cache  # Redis, memcache, or dict for demo
+    
+    def _cache_key(self, messages, model, temperature):
+        payload = json.dumps({"messages": messages, "model": model, "temp": temperature})
+        return f"ai:{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
+    
+    def complete(self, messages, model="gpt-4o", temperature=0, max_tokens=500):
+        if temperature == 0:  # Only cache deterministic calls
+            key = self._cache_key(messages, model, temperature)
+            if key in self.cache:
+                return self.cache[key]  # Cache hit: $0 cost
+        
+        response = self.client.chat.completions.create(
+            model=model, messages=messages,
+            temperature=temperature, max_tokens=max_tokens
+        )
+        result = response.choices[0].message.content
+        
+        if temperature == 0:
+            self.cache[key] = result  # Cache for next time
+        
+        return result
+```
+
+## Cost Estimator
+
+<CodePlayground
+  title="Monthly AI Cost Estimator"
+  language="python"
+  code={`from dataclasses import dataclass
+
+@dataclass
+class ModelPricing:
+    name: str
+    input_per_1m: float   # $ per 1M input tokens
+    output_per_1m: float  # $ per 1M output tokens
+
+MODELS = {
+    "gpt-4o":        ModelPricing("GPT-4o",         2.50,  10.00),
+    "gpt-4o-mini":   ModelPricing("GPT-4o-mini",    0.15,   0.60),
+    "claude-sonnet": ModelPricing("Claude Sonnet",  3.00,  15.00),
+    "claude-haiku":  ModelPricing("Claude Haiku",   0.25,   1.25),
+}
+
+def estimate_monthly_cost(
+    daily_requests: int,
+    avg_input_tokens: int,
+    avg_output_tokens: int,
+    model_key: str,
+    cache_hit_rate: float = 0.0,  # 0.0 to 1.0
+    simple_query_pct: float = 0.0, # % routed to cheap model
+):
+    model = MODELS[model_key]
+    cheap = MODELS["gpt-4o-mini"]
+    
+    monthly = daily_requests * 30
+    
+    # Split by routing
+    premium_requests = monthly * (1 - simple_query_pct)
+    cheap_requests = monthly * simple_query_pct
+    
+    # Input tokens (apply cache discount to premium)
+    cached_input = avg_input_tokens * cache_hit_rate
+    uncached_input = avg_input_tokens * (1 - cache_hit_rate)
+    
+    # Costs (assume cached tokens cost 10% of full price)
+    premium_input_cost = premium_requests * (
+        (uncached_input * model.input_per_1m / 1_000_000) +
+        (cached_input * model.input_per_1m * 0.1 / 1_000_000)
+    )
+    premium_output_cost = premium_requests * avg_output_tokens * model.output_per_1m / 1_000_000
+    cheap_cost = cheap_requests * (avg_input_tokens + avg_output_tokens) * cheap.input_per_1m / 1_000_000
+    
+    total = premium_input_cost + premium_output_cost + cheap_cost
+    return total
+
+# Compare scenarios
+scenarios = [
+    ("Baseline (GPT-4o, no optimization)", "gpt-4o", 0.0, 0.0),
+    ("With prompt caching (70% hit rate)",  "gpt-4o", 0.70, 0.0),
+    ("With routing (60% to mini)",          "gpt-4o", 0.0,  0.60),
+    ("Full optimization (both)",            "gpt-4o", 0.70, 0.60),
+]
+
+print("=== MONTHLY COST ESTIMATE ===")
+print("Assumptions: 10K daily requests, 2K input tokens, 500 output tokens")
+print()
+baseline = None
+for label, model, cache, routing in scenarios:
+    cost = estimate_monthly_cost(
+        daily_requests=10_000,
+        avg_input_tokens=2_000,
+        avg_output_tokens=500,
+        model_key=model,
+        cache_hit_rate=cache,
+        simple_query_pct=routing
+    )
+    if baseline is None:
+        baseline = cost
+    savings = (baseline - cost) / baseline * 100
+    print(f"{label}")
+    dollar = "$"
+    print(f"  Monthly cost: {dollar}{cost:,.0f}  (savings: {savings:.0f}%)")
+    print()`}
+/>
+
+<RoleCallout role="dev">
+Instrument every LLM call with token counts in your logging middleware  -  not as an afterthought. You cannot optimize what you don't measure. Log: model used, input tokens, output tokens, cache hit/miss, latency, and whether routing applied. Build a cost dashboard before you build advanced features.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Set cost budgets per feature  -  not just a global AI budget. "$X per 1,000 API calls" per feature. Alert when a feature exceeds its budget by 20%. This surfaces misuse patterns (users triggering expensive calls unexpectedly) and model behavior changes (output suddenly getting longer) before they become budget surprises.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+Prompt caching requires your cacheable prefix to be byte-for-byte identical across calls. A single changed character  -  a timestamp, a user ID, a dynamic greeting  -  invalidates the entire cache. Structure your prompt as: [static system prompt] then [dynamic user content]. Put ALL dynamic content at the end, never mixed into the cached prefix. Many teams discover this the hard way after seeing 0% cache hit rates.
+</Callout>
+
+## Interview Notes: Cost Levers
+
+The main cost levers are model routing, prompt caching, shorter context, retrieval pruning, output caps, batch APIs, embedding reuse, response caching, eval sampling, and provider/gateway rate limits. Always separate cost per request from cost per successful task; retries and failed tool loops can dominate spend.
+
+## Interview Practice
+
+1. What are the largest cost drivers in LLM applications?
+2. How does prompt caching reduce spend?
+3. When should you use model routing?
+4. How can evals themselves become expensive?
+5. Why measure cost per successful task instead of cost per request?
+6. What role do rate limits and gateways play in cost control?

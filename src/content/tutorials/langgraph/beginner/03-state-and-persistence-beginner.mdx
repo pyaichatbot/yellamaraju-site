@@ -1,0 +1,85 @@
+---
+title: "State & Persistence: Beginner"
+description: "Checkpoints & long-running agents"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 3
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","State & Persistence","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on State & Persistence at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+State is the shared memory of your graph - a Python TypedDict that every node can read and update. Without persistence, state dies when the process ends. With a checkpointer, LangGraph saves a snapshot after every super-step. This enables resuming after failure, multi-turn conversations, and human-in-the-loop workflows. MemorySaver is for development only - use PostgresSaver in production.
+
+## Key Facts
+
+- MemorySaver: in-process dict - dev/testing only, lost on restart
+- SqliteSaver: file-based SQLite - good for single-instance local persistence
+- PostgresSaver: production-grade, supports horizontal scaling and failover
+- thread_id: unique ID per conversation/session - required when using a checkpointer
+- graph.get_state(config): retrieve current state of any thread at any time
+
+## Reference Implementation
+
+```python
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_openai import ChatOpenAI
+
+model = ChatOpenAI(model="gpt-4o")
+
+def chat_node(state: MessagesState):
+    response = model.invoke(state["messages"])
+    return {"messages": [response]}
+
+graph = StateGraph(MessagesState)
+graph.add_node("chat", chat_node)
+graph.add_edge(START, "chat")
+graph.add_edge("chat", END)
+
+checkpointer = MemorySaver()
+app = graph.compile(checkpointer=checkpointer)
+
+config = {"configurable": {"thread_id": "user-123"}}
+
+# Turn 1
+app.invoke({"messages": [("user", "My name is Praveen")]}, config)
+
+# Turn 2 - agent loads checkpoint and remembers
+result = app.invoke({"messages": [("user", "What is my name?")]}, config)
+# "Your name is Praveen."
+```
+
+## Interview Q&A
+
+### Q1. Why is a checkpointer required for multi-turn conversations?
+
+Without a checkpointer, each invoke() starts with empty state - the agent has no memory of previous turns. A checkpointer saves the full state (including message history) after every super-step. On the next invocation with the same thread_id, LangGraph loads the checkpoint and the agent resumes with full context.
+
+### Q2. What is a thread_id and why does it matter?
+
+A thread_id is a unique identifier that groups a sequence of checkpoints into a single conversation. Each thread has its own independent checkpoint history. Use user ID plus session ID as thread_id in production. Without thread_id, the checkpointer cannot distinguish between different conversations.
+
+### Q3. Which checkpointer should I use in production?
+
+PostgresSaver or AsyncPostgresSaver for production. MemorySaver is development-only and is lost on restart. SqliteSaver is fine for local tools and single-process deployments. If using LangSmith Deployment (formerly LangGraph Platform), checkpointing is handled automatically.
+
+### Q4. Why does every persisted run need a thread_id?
+
+thread_id is the lookup key for checkpoint history. Without a stable thread_id, LangGraph cannot attach later turns, resumes, or time-travel requests to the same persisted state.
+
+### Q5. What is the beginner mistake with message state?
+
+The common mistake is replacing the messages list on every node. Use MessagesState or an add_messages reducer so new messages append without losing the conversation.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

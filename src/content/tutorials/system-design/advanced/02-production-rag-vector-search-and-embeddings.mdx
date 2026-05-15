@@ -1,0 +1,104 @@
+---
+title: "Production RAG, Vector Search, and Embeddings"
+description: "Design retrieval systems that balance recall, latency, grounding, and freshness."
+level: advanced
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 2
+totalModules: 5
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "45 min"
+prerequisites: []
+---
+RAG, or retrieval-augmented generation, grounds a model in external knowledge. The system is only as good as its ingestion, retrieval, permissions, freshness, and evaluation.
+
+## Production RAG Pipeline
+
+Ingestion path:
+
+```text
+Document -> Extract text -> Chunk -> Embed -> Store metadata -> Index vector and keyword search
+```
+
+Query path:
+
+```text
+Question -> Rewrite/normalize -> Retrieve -> Rerank -> Assemble context -> Generate -> Cite -> Evaluate/log
+```
+
+Fixed-size chunking is simple but can split ideas badly. Semantic chunking follows sections, paragraphs, or headings. Hierarchical chunking stores small child chunks for retrieval and larger parent chunks for context.
+
+Every chunk should carry `doc_id`, `chunk_id`, version, source URL, tenant, permissions, timestamps, and deletion status. If you cannot trace an answer back to chunks, you cannot debug grounding.
+
+## Vector Search And Hybrid Search
+
+Embeddings map text into vectors where semantic similarity becomes distance. Approximate nearest neighbor indexes trade exactness for speed. Common index families include IVF, HNSW, and product quantization.
+
+Vector search finds meaning but can miss exact terms, part numbers, statute names, and error codes. BM25 keyword search handles exact lexical relevance. Production RAG commonly uses hybrid search: retrieve candidates from both vector and keyword indexes, merge, then rerank.
+
+Search internals to know:
+
+- Inverted index maps terms to documents for keyword search.
+- BM25 scores documents based on term frequency, inverse document frequency, and length normalization.
+- Vector indexes narrow the candidate set before exact distance scoring.
+- Rerankers improve precision over the top candidates at extra latency.
+
+## Freshness, Permissions, And Evaluation
+
+Freshness requires document versioning and re-embedding. Deletions must remove chunks from retrieval, not just hide documents in the UI. For regulated data, permission filters must be applied before generation; never retrieve forbidden text and hope the model ignores it.
+
+Evaluate RAG on:
+
+- Retrieval recall: did the right chunks appear?
+- Faithfulness: did the answer stay supported by context?
+- Citation accuracy.
+- Latency and cost.
+- User corrections and human review outcomes.
+
+## Walkthrough: Compliance Q&A System
+
+Requirements: ingest regulatory PDFs and internal policies, answer compliance questions with citations, enforce tenant permissions, support EU data residency, and escalate low-confidence answers.
+
+Data model:
+
+```sql
+CREATE TABLE document_chunks (
+  chunk_id text PRIMARY KEY,
+  document_id text NOT NULL,
+  tenant_id text NOT NULL,
+  content text NOT NULL,
+  embedding vector,
+  metadata jsonb,
+  version int NOT NULL,
+  deleted_at timestamptz
+);
+```
+
+Architecture: uploads land in regional object storage. Metadata and audit logs live in PostgreSQL. Ingestion workers extract text, chunk by legal article or policy section, embed chunks, and build vector plus full-text indexes. The query service checks user permissions, retrieves with hybrid search, reranks candidates, assembles context with citations, and calls the model. Low confidence or conflicting sources route to human review.
+
+Back-of-envelope: 100,000 documents averaging 20 pages and 1,000 tokens per page is about 2 billion tokens to process. With 500-token chunks, expect roughly 4 million chunks before overlap. That number drives vector index size, ingestion throughput, and re-embedding cost.
+
+Failure modes: embedding provider outage pauses ingestion but should not break existing Q&A. Stale indexes should be visible in admin status. If permission checks fail, retrieval must fail closed.
+
+## Design Checklist
+
+- Choose chunking from document structure, not convenience alone.
+- Store metadata and permissions with every chunk.
+- Use hybrid search when exact terms matter.
+- Add reranking when top-K precision is poor.
+- Track chunk IDs through answer generation and citations.
+- Design deletion and re-indexing before launch.
+
+## Interview Practice
+
+1. Why can fixed-size chunks hurt answer quality?
+2. When is hybrid search better than vector-only retrieval?
+3. Explain BM25 in plain language.
+4. What metadata should every RAG chunk store?
+5. How do you enforce document permissions in RAG?
+6. Estimate chunks for 10 million pages of documents.
+7. What metrics prove retrieval quality is improving?
+8. How should the system handle a deleted source document?

@@ -1,0 +1,98 @@
+---
+title: "Cycles & Reflection: Intermediate"
+description: "Self-correction through loops"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 5
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Cycles & Reflection","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on Cycles & Reflection at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Reflection loops add a self-evaluation node after main generation. The evaluator critiques output and decides: good enough (exit) or needs revision (loop back). Common patterns: generate-critique-revise, plan-execute-evaluate, draft-review-refine. Each iteration costs tokens - design stopping criteria carefully. Use a separate judge LLM to avoid same-model self-bias.
+
+## Key Facts
+
+- Reflection: generate, critique with separate prompt, revise if needed
+- LLM-as-judge: separate model for evaluation reduces same-model self-bias
+- Max iterations guard: include an iteration_count with an int reducer and recursion_limit
+- Constitutional AI: evaluate against defined principles, rewrite if violated
+- Token cost: 3-iteration reflection costs 3-5x a single pass
+
+## Reference Implementation
+
+```python
+from typing import TypedDict, Annotated, List
+
+MAX_ITER = 3
+
+def add_int(old: int, new: int) -> int:
+    return old + new
+
+def append_list(old: List[str], new: List[str]) -> List[str]:
+    return old + new
+
+class ReflectionState(TypedDict):
+    task: str
+    draft: str
+    critiques: Annotated[List[str], append_list]
+    iteration: Annotated[int, add_int]
+    final: str
+
+def generate(state: ReflectionState):
+    if state.get("critiques"):
+        prompt = f"Task: {state['task']}\nFix this: {state['critiques'][-1]}"
+    else:
+        prompt = f"Complete: {state['task']}"
+    draft = f"Draft v{state.get('iteration', 0) + 1}"  # replace with llm call
+    return {"draft": draft, "iteration": 1}
+
+def critique(state: ReflectionState):
+    evaluation = "PASS" if state["iteration"] >= 2 else "Needs more depth"
+    return {"critiques": [evaluation]}
+
+def should_continue(state: ReflectionState) -> str:
+    if state["iteration"] >= MAX_ITER or "PASS" in state["critiques"][-1]:
+        return "finalize"
+    return "generate"
+
+def finalize(state: ReflectionState):
+    return {"final": state["draft"]}
+
+# Also invoke with a hard runtime guard:
+# app.invoke(input_state, {"recursion_limit": 10})
+```
+
+## Interview Q&A
+
+### Q1. What is a reflection loop and when does it improve output quality?
+
+A reflection loop is generate-evaluate-revise, repeated until quality is sufficient. It improves output for: long-form writing, code generation (compile-check-fix), complex reasoning (verify logic), and safety-critical content. It does not help much for simple factual retrieval where the first pass is already deterministic.
+
+### Q2. How do you avoid the sycophancy problem in self-reflection?
+
+Use a separate LLM as judge with a different prompt than the generator. Same-model self-critique often validates its own output. Use a stricter judge prompt with specific evaluation criteria. Have the judge produce a numeric score not just pass/fail - route back if below threshold. Using a different model family for judging is most effective.
+
+### Q3. What is the Plan-Execute-Evaluate pattern?
+
+A three-phase loop: Plan node (LLM breaks task into steps), Execute node (run each step with tools), Evaluate node (check if plan succeeded or needs replanning). Used in research agents, coding agents, and complex automation. LangGraph's cycle support makes this natural - the evaluate node loops back to plan if needed.
+
+### Q4. What error protects you from accidental infinite loops?
+
+LangGraph raises GraphRecursionError when execution exceeds the configured recursion_limit. Treat it as a production safety signal: log the state, show a recoverable error, and fix the routing or stopping criteria rather than simply increasing the limit.
+
+### Q5. Why should iteration be an int update rather than a list update?
+
+The reducer and update type must match. An integer counter should receive 1 and merge with add_int. Returning [1] to an int field is a common runtime bug because the next reducer call tries to add an int and a list.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

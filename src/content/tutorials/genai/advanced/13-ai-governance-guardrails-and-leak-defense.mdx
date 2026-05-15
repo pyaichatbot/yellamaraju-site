@@ -1,0 +1,187 @@
+---
+title: "AI Governance: Guardrails, Prompt-Leak Defense, and Oversight"
+description: "Implement governance controls that prevent data leaks, unsafe actions, and silent policy violations in agentic systems."
+level: advanced
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 13
+totalModules: 15
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["Governance", "Security", "Guardrails", "Prompt Leak", "Compliance"]
+date: 2026-05-14
+estimatedTime: "45 min"
+prerequisites: ["advanced/04-security-prompt-injection", "advanced/12-agent-evaluation-harness-trace-grading"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import Callout from '../../../../components/Callout.astro';
+
+## Governance Is a Runtime Architecture
+
+AI governance is not a paragraph in the system prompt. It is the combination of policy, controls, evidence, accountability, and review. For enterprise agents, governance must be enforced before input reaches the model, before tools execute, before output leaves the system, and after incidents occur.
+
+<Mermaid
+  title="Defense-in-Depth Guardrails"
+  chart={`
+flowchart LR
+  I[Input] --> P1[Input Policy Filter]
+  P1 --> R[Runtime Policy Engine]
+  R --> M[Model Call]
+  M --> T[Tool Call Gate]
+  T --> O[Output Safety Filter]
+  O --> A[Audit and Evidence Store]
+  A --> G[Governance Review]
+`}
+/>
+
+## Governance Frameworks to Know
+
+Interview-ready answers should reference practical frameworks without turning the answer into legal advice:
+
+| Framework | Why it matters |
+|---|---|
+| NIST AI RMF | Risk map, measure, manage, govern lifecycle |
+| ISO/IEC 42001 | AI management system expectations |
+| EU AI Act | Risk-based controls for AI systems in the EU |
+| SOC 2 / ISO 27001 | Security and operational controls around AI systems |
+| OWASP LLM Top 10 | Common LLM application security failure modes |
+
+Use these to structure product requirements: risk classification, documentation, human oversight, monitoring, incident response, and change management.
+
+## Policy-as-Code
+
+Put non-negotiable rules in deterministic code. The model can explain and reason, but the runtime decides whether an action is allowed.
+
+```ts
+type ToolRequest = {
+  actorId: string;
+  tenantId: string;
+  tool: string;
+  args: Record<string, unknown>;
+  dataClasses: Array<"public" | "internal" | "pii" | "secret" | "regulated">;
+};
+
+type PolicyDecision =
+  | { decision: "allow" }
+  | { decision: "deny"; reason: string }
+  | { decision: "approval_required"; reason: string; approverGroup: string };
+
+export function decide(req: ToolRequest): PolicyDecision {
+  if (req.dataClasses.includes("secret")) {
+    return { decision: "deny", reason: "secret_data_not_allowed_in_llm_path" };
+  }
+
+  if (req.tool === "refund.issue" && Number(req.args.amountUsd) > 500) {
+    return {
+      decision: "approval_required",
+      reason: "high_value_refund",
+      approverGroup: "finance_ops"
+    };
+  }
+
+  if (req.tool.endsWith(".delete")) {
+    return { decision: "approval_required", reason: "destructive_action", approverGroup: "admin" };
+  }
+
+  return { decision: "allow" };
+}
+```
+
+## Prompt-Leak Defense
+
+Prompt leaks happen when users or retrieved documents coax the model into revealing system instructions, hidden policies, credentials, or internal chain-of-thought. Good defenses are layered:
+
+- Never put secrets in prompts.
+- Keep system prompts short and non-sensitive.
+- Treat retrieved documents as untrusted instructions.
+- Use output filters for prompt disclosure patterns.
+- Store sensitive policy in code or server-side configuration, not natural language prompts.
+- Return concise reasoning summaries instead of hidden chain-of-thought.
+
+```py
+LEAK_PATTERNS = [
+    "system prompt",
+    "developer message",
+    "hidden instructions",
+    "ignore previous instructions",
+    "print your policy",
+]
+
+def screen_output(text: str) -> tuple[bool, str | None]:
+    lower = text.lower()
+    for pattern in LEAK_PATTERNS:
+        if pattern in lower:
+            return False, f"possible_prompt_leak:{pattern}"
+    return True, None
+```
+
+Output screening is not sufficient by itself, but it catches common failures and creates evidence for tuning.
+
+## Guardrail Placement
+
+| Layer | Example control |
+|---|---|
+| Input | Prompt-injection classifier, PII detector, file type allowlist |
+| Retrieval | Source trust ranking, document sanitization, tenant filtering |
+| Planning | Policy-aware tool selection and approval prediction |
+| Tool execution | Authz, schema validation, idempotency, rate limits |
+| Output | PII redaction, citation checks, refusal templates |
+| Monitoring | Drift alerts, incident review, audit exports |
+
+## OWASP LLM Top 10 Mapping
+
+Common enterprise risks include prompt injection, sensitive information disclosure, insecure output handling, excessive agency, overreliance, vector-store poisoning, and supply-chain risk. Map each risk to a control and an eval case.
+
+```yaml
+risk_register:
+  - risk: prompt_injection_indirect
+    control: retrieval_sanitization_and_instruction_hierarchy
+    eval_suite: evals/security/indirect_injection.yaml
+  - risk: excessive_agency
+    control: policy_engine_and_human_approval
+    eval_suite: evals/security/high_risk_tools.yaml
+  - risk: pii_leakage
+    control: data_classification_and_output_redaction
+    eval_suite: evals/security/pii_redaction.yaml
+```
+
+## Governance Evidence
+
+For audits and incident response, retain evidence without retaining unnecessary sensitive content:
+
+- Prompt template version and model version.
+- Tool name, risk tier, decision, and approver.
+- Policy decision and reason.
+- Eval suite version that approved the release.
+- Redacted trace IDs and incident links.
+- Data classification labels, not raw secrets.
+
+<RoleCallout role="dev">
+Build guardrails as runtime middleware and policy services. Prompts can describe policy, but code must enforce policy.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Maintain adversarial suites for prompt leaks, cross-tenant data access, indirect prompt injection, unsafe tool calls, and output redaction failures.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Define critical-action taxonomies with legal, compliance, and operations before launch. Governance failures are product failures.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+If governance can be disabled by a feature flag on high-risk paths, delivery pressure will eventually bypass it. Make core controls non-bypassable.
+</Callout>
+
+## Interview Practice
+
+1. Why is AI governance more than a system prompt?
+2. How would you map OWASP LLM risks to concrete runtime controls?
+3. What belongs in policy-as-code instead of prompt instructions?
+4. How do you defend against prompt leaks without storing secrets in prompts?
+5. What governance evidence should be retained for an audit?
+6. How should human approval integrate with guardrails?
+7. What is excessive agency, and how do you constrain it?
+8. How do frameworks like NIST AI RMF or ISO 42001 influence product requirements?
+

@@ -1,0 +1,180 @@
+---
+title: "Cost/Latency Dashboard"
+description: "Seeing every token spent and every millisecond burned"
+level: advanced
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 6
+totalModules: 7
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Cost/Latency Dashboard","Production"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Seeing every token spent and every millisecond burned
+
+## Why This Dashboard Matters
+
+At production scale, LLM costs can spiral from $5K/month to $500K/month without warning. A single poorly written prompt that adds 2000 tokens per call, multiplied by 10M calls/month = $60,000 of wasted spend.
+
+**The three things you must observe in production LLM systems:**
+1. **Cost**: Token usage, spend by team/feature/model
+2. **Latency**: P50/P95/P99 response times, TTFT (time-to-first-token) for streaming
+3. **Quality**: Error rate, hallucination rate, user satisfaction
+
+**Karpathy principle:** "You cannot optimize what you cannot measure." At AI companies, observability is the first thing built, not the last.
+
+**TTFT (Time To First Token)** - especially important for streaming UX. Users perceive streaming response starting as the "response time" - they'll wait 30s total if they see the first token in 1s. Optimize TTFT separately from total latency.
+
+### The F1 Race Car Telemetry Analogy
+
+An F1 team gets 200 data points per second from every sensor on the car. They don't guess why a tire is wearing unevenly - they see it in the data and fix it mid-race. Your LLM dashboard is this telemetry. Cost spike at 3am? You see which endpoint, which model, which team caused it, and fix it before the next morning.
+
+
+## Dashboard Architecture
+
+**Must-have dashboard panels:**
+
+**Cost panels:**
+- Total spend today/MTD vs. budget (with burn rate projection)
+- Cost by team/product/endpoint (who's spending what)
+- Cost per successful response (efficiency metric - cache hits lower this)
+- Model cost comparison (same use case, different models - pick the cheapest that meets quality bar)
+- Token usage breakdown: input vs. output (output costs 3-5x more, optimize generation length)
+
+**Latency panels:**
+- P50, P95, P99 latency by endpoint (not average - averages hide tail latency)
+- TTFT (time to first token) for streaming endpoints
+- Latency by model (small vs. large model comparison)
+- Slow query log (top-10 slowest requests - often reveal prompt issues)
+
+**Quality panels:**
+- Error rate by provider (catch provider degradation before users do)
+- Retry rate (high retries = rate limit or reliability issue)
+- Cache hit rate (low cache hit = missed optimization opportunity)
+- Eval score trend (correlate with code deploys to catch regressions)
+
+```text
+┌───────────────────────────────────────────────────────────────────┐
+│               COST / LATENCY OBSERVABILITY STACK                   │
+│                                                                     │
+│  LLM Gateway / SDK                                                  │
+│  (Instrument every LLM call)                                        │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │                   TELEMETRY LAYER                           │  │
+│  │                                                             │  │
+│  │  OpenTelemetry Spans:                                       │  │
+│  │  • model, prompt_name, version, endpoint                    │  │
+│  │  • input_tokens, output_tokens, total_cost                  │  │
+│  │  • latency_ms, ttft_ms, streaming: true/false               │  │
+│  │  • user_id, session_id, team_id                             │  │
+│  │  • cache_hit: true/false                                    │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌──────────┐   ┌──────────────┐   ┌─────────────────────────┐   │
+│  │ Kafka /  │   │  ClickHouse  │   │   Grafana / Datadog      │   │
+│  │ Kinesis  │──▶│  (analytics  │──▶│   Dashboards            │   │
+│  │ (stream) │   │  time-series)│   │   • Cost by team        │   │
+│  └──────────┘   └──────────────┘   │   • Latency percentiles │   │
+│                                    │   • Model comparison     │   │
+│                                    │   • Anomaly alerts       │   │
+│                                    └─────────────────────────┘   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **Only tracking average latency:** P50 might be 800ms but P99 is 30s. 1% of users experience terrible UX. Always track percentiles. Set SLOs on P95 and P99, not average.
+- **No cost attribution:** One bill to the company's credit card. No way to know which team or feature is driving the cost spike. Attribution by team/endpoint/model is non-negotiable at scale.
+- **Synchronous logging in hot path:** Writing telemetry data in the same thread as the LLM call adds 10-50ms per request. Always async-emit telemetry to a queue.
+- **No anomaly detection:** A 10x cost spike happens at 2am. Nobody notices until the credit card is maxed. Set automated alerts: &gt;2x normal spend/hour, &gt;5x normal error rate.
+
+
+## Practical Example: OTel Spans, ClickHouse, SLO Burn
+
+```python
+from opentelemetry import trace
+
+tracer = trace.get_tracer("llm-gateway")
+
+def call_model(prompt: str, tenant: str, model: str):
+    with tracer.start_as_current_span("llm.completion") as span:
+        input_tokens = len(prompt.split())
+        output_tokens = 120
+        cost_usd = input_tokens * 0.00000015 + output_tokens * 0.0000006
+        span.set_attribute("llm.tenant", tenant)
+        span.set_attribute("llm.model", model)
+        span.set_attribute("llm.prompt_tokens", input_tokens)
+        span.set_attribute("llm.completion_tokens", output_tokens)
+        span.set_attribute("llm.cost_usd", cost_usd)
+        span.set_attribute("llm.cache_hit", False)
+        return {"text": "answer", "cost_usd": cost_usd}
+```
+
+```sql
+CREATE TABLE llm_spans (
+  ts DateTime,
+  tenant LowCardinality(String),
+  model LowCardinality(String),
+  endpoint LowCardinality(String),
+  latency_ms UInt32,
+  ttft_ms UInt32,
+  input_tokens UInt32,
+  output_tokens UInt32,
+  cost_usd Float64,
+  error UInt8
+) ENGINE = MergeTree
+ORDER BY (tenant, endpoint, ts);
+
+SELECT
+  tenant,
+  quantile(0.95)(latency_ms) AS p95_latency,
+  sum(cost_usd) AS spend,
+  sum(error) / count() AS error_rate
+FROM llm_spans
+WHERE ts > now() - INTERVAL 1 HOUR
+GROUP BY tenant
+ORDER BY spend DESC;
+```
+
+SLO burn-rate alerts catch fast outages before monthly reports do. If the SLO is 99.5% success, the error budget is 0.5%. A 2-hour window burning 14x budget pages immediately; a 6-hour window burning 6x creates a high-priority ticket. Grafana should show cost, latency, quality, cache hit rate, provider errors, TTFT, and burn rate on the same dashboard so teams can see whether a cost optimization hurt quality.
+
+
+## Interview Q&A
+
+### How would you reduce LLM costs by 40% without hurting quality?
+
+(1) Semantic caching: cache responses for similar queries (20-30% reduction). (2) Model routing: use small models (claude-haiku, gpt-4o-mini) for simple queries, large models for complex (10-20% reduction). (3) Prompt compression: remove redundant whitespace, use efficient phrasings (5-10% token reduction). (4) Batch API: 50% discount for non-real-time workloads. (5) Output length control: instruct models to be concise, set max_tokens. Measure quality before/after each change.
+
+### What observability stack would you recommend?
+
+OpenTelemetry for instrumentation (standard, works with all providers). Kafka for telemetry streaming (decouple from hot path). ClickHouse for analytics queries (fast on token/cost time-series). Grafana for dashboards. PagerDuty for alerts. For LLM-specific: LangSmith, Langfuse, or Helicone provide pre-built LLM dashboards if you don't want to build from scratch.
+
+## Interview Practice
+
+1. Which OpenTelemetry span attributes are essential for LLM calls?
+2. Why is TTFT separate from total latency?
+3. How would you model token costs in ClickHouse?
+4. What Grafana panels belong on an LLM production dashboard?
+5. How do SLO burn-rate alerts differ from static threshold alerts?
+6. How do you attribute shared prompt or gateway costs to teams?
+7. What signals reveal prompt bloat?
+8. How do you correlate deploys with latency or quality regressions?
+9. How do you avoid adding observability latency to the hot path?
+10. What is cost per successful response and why is it useful?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

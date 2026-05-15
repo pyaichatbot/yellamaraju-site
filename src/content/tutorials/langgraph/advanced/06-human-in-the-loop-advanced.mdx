@@ -1,0 +1,95 @@
+---
+title: "Human-in-the-Loop: Advanced"
+description: "Interrupt, approve, edit"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 6
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Human-in-the-Loop","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on Human-in-the-Loop at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Enterprise HITL patterns: multi-approver workflows requiring N of M approvers, time-bounded approvals auto-rejecting after timeout, and approval chains from junior to senior to executive. LangGraph preserves every interrupt payload and resume input in checkpoint history automatically - enabling complete audit trails for regulated industries.
+
+## Key Facts
+
+- Multi-approver: loop through approvers via interrupt(), each reviews independently
+- Timeout: external scheduler calls reject+resume after TTL - graph cannot self-timeout
+- Audit trail: every interrupt payload and resume input stored in checkpoint history
+- 4-eyes principle: require two independent approvals before high-risk actions
+- Streaming HITL: astream_events() + interrupt() enables real-time human oversight
+
+## Reference Implementation
+
+```python
+from langgraph.types import interrupt
+from typing import TypedDict, List, Annotated
+import operator
+
+class MultiApprovalState(TypedDict):
+    transaction: dict
+    approvals: Annotated[List[dict], operator.add]
+    required_approvers: List[str]
+    final_status: str
+
+def request_approval(state: MultiApprovalState):
+    approved_by = [a["approver"] for a in state["approvals"] if a["approved"]]
+    remaining = [a for a in state["required_approvers"] if a not in approved_by]
+
+    if not remaining:
+        return {"final_status": "approved"}
+
+    decision = interrupt({
+        "transaction": state["transaction"],
+        "approver_role": remaining[0],
+        "already_approved_by": approved_by,
+    })
+
+    record = {"approver": remaining[0],
+              "approved": decision.get("approved", False),
+              "comment": decision.get("comment", "")}
+
+    if not decision.get("approved"):
+        return {"approvals": [record], "final_status": "rejected"}
+    return {"approvals": [record]}
+
+def check_status(state: MultiApprovalState) -> str:
+    if state.get("final_status"):
+        return "finalize"
+    approved = sum(1 for a in state["approvals"] if a["approved"])
+    return "execute" if approved >= len(state["required_approvers"]) else "request_approval"
+```
+
+## Interview Q&A
+
+### Q1. How would you design a HITL system for the financial 4-eyes principle?
+
+Store required_approvers=['compliance_officer', 'risk_manager'] in state. Loop through approvers via interrupt() - each reviews independently with no initial knowledge of others' decisions. Store each approval record with timestamp, approver ID, and comment via append reducer. Only proceed if all required approvers approved. LangGraph preserves every interrupt payload and resume input in checkpoint history for complete audit trails.
+
+### Q2. How do you handle HITL timeout when an approver never responds?
+
+External scheduler (cron, Celery beat) queries your database for thread_ids with pending interrupts older than the TTL. The scheduler calls graph.update_state(config, &#123;'timeout_reason': 'expired'&#125;) followed by graph.invoke(None, config). The resuming node checks if timeout_reason is set and routes to a rejection or escalation path. The graph cannot self-timeout - it is suspended.
+
+### Q3. How do you expose a HITL interface to non-technical business users?
+
+Build a review UI that polls your database for pending reviews, renders the interrupt payload as a structured form, and submits the decision to a FastAPI endpoint that calls update_state() and invoke(None, config). LangSmith Studio provides this for technical users. Build a tailored domain-specific UI on top of the LangGraph Server REST API for business users.
+
+### Q4. How should resume endpoints be secured?
+
+Authorize by tenant, user, role, thread ownership, and pending approval type before resuming. Log the reviewer, decision, payload hash, and checkpoint_id so audits can prove who resumed what.
+
+### Q5. Why must side effects before interrupt be idempotent?
+
+The node can be re-entered around an interrupt boundary. If it sent an email or charged a card before pausing, retry/resume behavior can duplicate that side effect unless the operation is idempotent.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

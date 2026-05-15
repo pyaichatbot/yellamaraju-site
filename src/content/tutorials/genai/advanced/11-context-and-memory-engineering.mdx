@@ -1,0 +1,180 @@
+---
+title: "Context and Memory Engineering for Enterprise Agents"
+description: "Design memory layers and context budgets that improve quality and lower cost in long-running enterprise workflows."
+level: advanced
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 11
+totalModules: 15
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["Context Engineering", "Memory", "Prompt Caching", "Cost"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["intermediate/05-context-window-management", "intermediate/06-memory-patterns"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import Callout from '../../../../components/Callout.astro';
+
+## Memory Is a System, Not a Feature
+
+Enterprise agents need several memory layers with different trust, cost, and retention rules. Dumping every conversation into the next prompt is expensive, risky, and often lower quality than deliberate context assembly.
+
+<Mermaid
+  title="Enterprise Context Assembly"
+  chart={`
+flowchart LR
+  U[Current User Turn] --> A[Context Assembler]
+  S[System and Policy Blocks] --> A
+  M[Short-Term Session Memory] --> A
+  E[Entity Memory] --> A
+  R[RAG Retrieval] --> A
+  T[Recent Tool Results] --> A
+  A --> B[Budget and Trust Ranking]
+  B --> L[LLM Request]
+`}
+/>
+
+## Memory Types
+
+| Layer | Purpose | Retention | Risk |
+|---|---|---|---|
+| Session buffer | Recent turns | Minutes to days | Token bloat |
+| Summary memory | Compact conversation state | Days to months | Summary drift |
+| Entity memory | Stable facts about users/accounts | Policy-defined | Privacy and stale data |
+| Episodic memory | Past task outcomes | Policy-defined | Wrong transfer to new context |
+| RAG retrieval | External knowledge | Source lifecycle | Prompt injection from content |
+| Tool-result cache | Avoid repeated calls | Short TTL | Stale operational state |
+
+## Context Budgeting
+
+Context windows are large but not free. Good systems reserve budget before adding optional content.
+
+```py
+from dataclasses import dataclass
+
+@dataclass
+class ContextBlock:
+    name: str
+    text: str
+    tokens: int
+    priority: int
+    trust: int
+
+BUDGET = 32_000
+RESERVED = {
+    "system": 2_000,
+    "response": 2_000,
+    "tool_schemas": 4_000,
+    "safety_margin": 1_000,
+}
+
+def assemble_context(blocks: list[ContextBlock]) -> list[ContextBlock]:
+    available = BUDGET - sum(RESERVED.values())
+    selected: list[ContextBlock] = []
+
+    for block in sorted(blocks, key=lambda b: (b.priority, b.trust), reverse=True):
+        if block.tokens <= available:
+            selected.append(block)
+            available -= block.tokens
+
+    return selected
+```
+
+Budgeting is also a quality tool. High-trust policy and recent task state should beat low-trust old memories even if the old memories are semantically similar.
+
+## Prompt Caching and Stable Prefixes
+
+Many providers can cache repeated prompt prefixes. Put stable content first: system policy, tool instructions, rubrics, and long static reference blocks. Put volatile user turns and retrieved chunks later.
+
+```text
+[stable] system policy
+[stable] tool usage rules
+[stable] output contract
+[semi-stable] account profile summary
+[volatile] current task
+[volatile] retrieved documents
+[volatile] recent tool results
+```
+
+This improves latency and cost without changing model quality. It also makes traces easier to compare because the front of the prompt is stable across runs.
+
+## Compression Strategies
+
+| Strategy | Use when | Failure mode |
+|---|---|---|
+| Summarization | Long chat history | Drops important details |
+| Extractive memory | Need exact user preferences | Misses implicit facts |
+| Prompt compression | Need shorter context fast | Can remove safety constraints if careless |
+| Retrieval re-ranking | Many candidate chunks | Slow if reranker is expensive |
+| Hierarchical summaries | Long-running projects | Summary drift across generations |
+
+Never compress policy, authz, or tool safety instructions with the same lossy summarizer used for chat history.
+
+## Conflict Resolution
+
+Memory can disagree with retrieval or current user input. Encode the rule explicitly:
+
+```ts
+type Evidence = {
+  source: "current_user" | "tool_result" | "retrieved_doc" | "profile_memory" | "summary_memory";
+  text: string;
+  observedAt: string;
+  trust: number;
+};
+
+function rankEvidence(e: Evidence): number {
+  const freshnessPenalty = Date.now() - Date.parse(e.observedAt) > 30 * 86400_000 ? 10 : 0;
+  const sourceWeight = {
+    current_user: 100,
+    tool_result: 95,
+    retrieved_doc: 80,
+    profile_memory: 60,
+    summary_memory: 40
+  }[e.source];
+  return sourceWeight + e.trust - freshnessPenalty;
+}
+```
+
+Current user intent and fresh tool results usually outrank old memory. For regulated workflows, authoritative systems of record must outrank user claims.
+
+## Privacy and Retention
+
+Memory is personal data when it contains user preferences, account facts, or conversation history. Production designs need:
+
+- Purpose limitation: store memory only for a product reason.
+- Retention windows by memory type.
+- Delete/export paths for user data rights.
+- Tenant isolation and row-level authz.
+- PII redaction in logs and eval datasets.
+- Memory provenance so bad memories can be removed.
+
+<RoleCallout role="dev">
+Introduce a context assembler service. Do not let feature code append arbitrary strings directly into model prompts.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Test stale and conflicting memories. The agent should prefer fresh, trusted evidence and explain uncertainty when sources disagree.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Define retention and deletion behavior as product requirements. Infinite memory sounds useful until compliance, privacy, and user trust are considered.
+</RoleCallout>
+
+<Callout type="tip" title="Cost Lever">
+Prompt caching, context ranking, and summary refresh policies often reduce cost more than switching to a smaller model.
+</Callout>
+
+## Interview Practice
+
+1. Compare session memory, summary memory, entity memory, and RAG retrieval.
+2. Why should context assembly be a separate runtime layer?
+3. How do prompt caching and stable prefixes reduce cost?
+4. What can go wrong with lossy prompt compression?
+5. How should an agent resolve conflicts between old memory and fresh tool results?
+6. What privacy controls are needed for long-term memory?
+7. How would you test for stale memory regressions?
+8. Why is a larger context window not a complete memory strategy?
+

@@ -1,0 +1,182 @@
+---
+title: "Batch Inference Worker"
+description: "Processing millions of LLM calls efficiently and cheaply"
+level: advanced
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 4
+totalModules: 7
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Batch Inference Worker","Infrastructure"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Processing millions of LLM calls efficiently and cheaply
+
+## What Is Batch Inference?
+
+**Batch inference** is processing multiple LLM requests together in scheduled jobs rather than responding to each one in real-time. 
+
+**When to use batch vs. real-time:**
+- **Real-time**: User is waiting for response (chatbots, copilots) -&gt; optimize for latency
+- **Batch**: No one waiting in real-time (document processing, data labeling, content generation at scale) -&gt; optimize for throughput and cost
+
+**Why batch is dramatically cheaper:**
+- Anthropic's Batch API: 50% discount on all models
+- OpenAI Batch API: 50% discount
+- GPU utilization goes from ~30% (interactive) to &gt;90% (batch) via continuous batching
+- Can use spot/preemptible instances (70% cheaper) since failures can be retried
+
+**Real use cases:**
+- Nightly processing of 1M customer support tickets for categorization
+- Weekly generation of 500K product descriptions
+- Daily eval runs across your entire golden test suite
+- Bulk document summarization for knowledge base ingestion
+
+### The Factory vs. Artisan Analogy
+
+Real-time inference is a bespoke tailor - making one garment at a time, immediately, at premium price. Batch inference is a factory - collecting 10,000 orders, running the machines 24 hours straight, delivering everything next morning at 10% of the per-unit cost. Same quality, massively different economics.
+
+
+## Batch Worker Architecture
+
+**Key design decisions:**
+
+**Concurrency control:** LLM APIs have rate limits (tokens/min, requests/min). Use a semaphore or token bucket to cap concurrent requests. Implement exponential backoff with jitter on 429s.
+
+**Checkpointing:** For 1M item jobs, failures will happen. Store progress at item level (completed IDs in Redis or DB). On restart, skip completed items. Idempotency key = document ID + job ID.
+
+**Cost optimization:**
+- Use Anthropic/OpenAI Batch API (50% discount) for jobs with &gt;24hr SLA
+- Spot instances for workers - if killed, resume from checkpoint
+- Prompt compression: remove whitespace, use efficient tokens
+- Cache: deduplicate identical inputs before sending
+
+**Monitoring:**
+- Items processed/hour (throughput)
+- Estimated completion time
+- Cost per item (running total)
+- Error rate (DLQ size)
+- Token usage (watch for prompt explosion on edge cases)
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  BATCH INFERENCE SYSTEM                          │
+│                                                                   │
+│  INPUT LAYER                                                      │
+│  S3 / GCS bucket or Database table                               │
+│  (1M documents queued for processing)                            │
+│          │                                                        │
+│          ▼                                                        │
+│  ┌───────────────┐                                               │
+│  │ JOB SCHEDULER │ <- Trigger: cron, event, or API              │
+│  │ (Airflow /    │                                               │
+│  │  Temporal)    │                                               │
+│  └───────┬───────┘                                               │
+│          │                                                        │
+│          ▼                                                        │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                 WORKER POOL                             │    │
+│  │                                                         │    │
+│  │  Worker 1: batch 1-10K   │ Worker 2: batch 10K-20K    │    │
+│  │  Worker 3: batch 20K-30K │ Worker 4: batch 30K-40K    │    │
+│  │  (Each worker: read -> call LLM -> write result -> ack)  │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│          │                                                        │
+│          ▼                                                        │
+│  ┌───────────────┐    ┌──────────────┐    ┌────────────────┐   │
+│  │  DEAD LETTER  │    │   RESULTS    │    │  MONITORING    │   │
+│  │  QUEUE (DLQ)  │    │  (S3/DB)     │    │  progress %    │   │
+│  │  failed items │    │              │    │  ETA, costs    │   │
+│  └───────────────┘    └──────────────┘    └────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **No checkpointing:** Processing 800K of 1M items, server dies, start over from 0. Always checkpoint at granular level. Use idempotent writes (upsert, not insert).
+- **Synchronous error handling:** One bad document crashes the whole batch. Catch per-item exceptions, send to DLQ, continue processing. Review DLQ separately.
+- **No rate limit awareness:** Spinning up 100 workers all hitting the API simultaneously -&gt; 429 storm -&gt; backoff storm -&gt; job takes 10x longer than expected. Always calculate max concurrency from API rate limits.
+- **Ignoring batch API discounts:** Using real-time API for non-urgent jobs. 50% discount is massive at scale. 1M tokens at $3.00 -&gt; $1.50 with batch API. On 1B tokens/month: $1.5M savings annually.
+
+
+## Inference Engine Fundamentals for Batch Workers
+
+Batch workers are where inference-engine details become money. **Prefill** processes the prompt and builds the KV cache; **decode** generates one token at a time using that cache. Long prompts are prefill-heavy. Many short completions are decode-heavy. **KV cache** stores attention keys and values per layer so decode does not recompute the full prompt each token.
+
+**PagedAttention** treats KV cache like virtual memory pages, reducing fragmentation and letting engines pack more requests on the GPU. **Continuous batching** admits new requests as others finish, instead of waiting for a fixed batch to drain. **Flash Attention** reduces memory traffic during attention, especially in prefill. **Speculative decoding** drafts tokens with a small model and verifies them with a larger model. **Prefix caching** reuses KV cache for shared system prompts or repeated document prefixes.
+
+vLLM is the common open-source choice for PagedAttention and continuous batching. TGI is Hugging Face's production server with strong model ecosystem support. TensorRT-LLM is best when you can invest in NVIDIA-specific optimization. Triton is a lower-level serving layer for custom ensembles and mixed model workloads.
+
+```python
+import asyncio
+from collections import deque
+
+class ContinuousBatcher:
+    def __init__(self, max_batch: int = 8):
+        self.queue = deque()
+        self.max_batch = max_batch
+
+    def submit(self, request: dict) -> None:
+        request["phase"] = "prefill"
+        self.queue.append(request)
+
+    async def engine_step(self):
+        batch = [self.queue.popleft() for _ in range(min(self.max_batch, len(self.queue)))]
+        for req in batch:
+            if req["phase"] == "prefill":
+                req["kv_cache_pages"] = len(req["prompt"]) // 512 + 1
+                req["phase"] = "decode"
+                self.queue.append(req)
+            elif req["max_new_tokens"] > 0:
+                req["max_new_tokens"] -= 1
+                self.queue.append(req)
+            else:
+                print("done", req["id"])
+
+async def main():
+    batcher = ContinuousBatcher()
+    for i in range(20):
+        batcher.submit({"id": i, "prompt": "shared system prompt\nuser text", "max_new_tokens": 3})
+    while batcher.queue:
+        await batcher.engine_step()
+
+asyncio.run(main())
+```
+
+
+## Interview Q&A
+
+### How do you handle partial failures in a batch job?
+
+Three-tier error handling: (1) Retry transient errors (timeout, rate limit) with exponential backoff, max 3 retries. (2) Send permanent errors (invalid input, context overflow) to a DLQ with error metadata. (3) After job completes, process DLQ separately - often with human review or a different prompt. Report: X% succeeded, Y% retried and succeeded, Z% failed (link to DLQ).
+
+### How would you process 100M documents in 24 hours?
+
+Calculate: 100M / 24hr = ~1.2M docs/hr = ~333 docs/sec. If avg LLM call = 2s and 10 concurrent requests/worker -&gt; 5 docs/sec/worker -&gt; need 67 workers. Use spot GPU instances with Kubernetes job. Partition by doc ID range. Checkpoint every 1000 docs. Monitor via CloudWatch/Grafana. Anthropic Batch API gives 50% discount, factor into cost modeling.
+
+## Interview Practice
+
+1. What is the difference between prefill and decode?
+2. Why does KV cache dominate memory during long generation?
+3. How does PagedAttention improve GPU utilization?
+4. What problem does continuous batching solve compared with static batching?
+5. When does Flash Attention help most?
+6. How does speculative decoding trade extra compute for lower latency?
+7. Compare vLLM, TGI, TensorRT-LLM, and Triton for batch serving.
+8. How would prefix caching reduce cost for repeated system prompts?
+9. How do you checkpoint a 100M item batch job?
+10. What metrics prove a batch worker is GPU-bound versus API-rate-bound?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

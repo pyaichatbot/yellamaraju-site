@@ -1,0 +1,241 @@
+---
+title: "RAG + Reranking"
+description: "Grounding LLMs in truth — the #1 production AI pattern"
+level: intermediate
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 2
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","RAG + Reranking","Core"]
+date: 2026-05-14
+estimatedTime: "30 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Grounding LLMs in truth - the #1 production AI pattern
+
+## What Is RAG?
+
+**RAG (Retrieval-Augmented Generation)** is the most important pattern in production LLM systems. Instead of relying on what the model memorized during training (which gets stale), RAG dynamically fetches relevant external knowledge at query time and includes it in the context.
+
+**The core problem RAG solves:**
+- LLMs hallucinate when asked about information they weren't trained on (post-cutoff events, private company data, specialized domain knowledge)
+- Fine-tuning is expensive and creates knowledge that goes stale
+- RAG is cheaper, fresher, and more auditable
+
+**RAG reduces hallucination rates by 40-60% in production systems** compared to base models (DataCamp, 2026).
+
+### The Open-Book Exam Analogy
+
+Imagine a closed-book exam vs. open-book. A closed-book model memorizes everything but forgets details and makes things up under pressure. A RAG model takes an open-book exam - it retrieves the right pages, reads them, and answers based on what's in front of it. The answer is grounded, citable, and auditable. This is why regulated industries (finance, healthcare, legal) almost exclusively use RAG.
+
+
+## Full RAG Architecture
+
+**Why two-stage retrieval (retrieve then rerank)?**
+
+**Stage 1 - Recall phase:** Get the top-100 candidates fast using:
+- **Dense retrieval**: Embed query -&gt; find nearest neighbors in vector space (semantic understanding)
+- **Sparse retrieval**: BM25/TF-IDF for keyword matching (exact term precision)
+- **Hybrid**: Combine both with Reciprocal Rank Fusion (RRF)
+
+*Why not use a cross-encoder for initial retrieval?* Because cross-encoders compare query × document pairs, which is O(n) at query time - too slow for millions of documents.
+
+**Stage 2 - Precision phase (Reranking):** Take top-100, rerank with a cross-encoder:
+- Cross-encoder jointly encodes query + document -&gt; extremely accurate relevance score
+- Cohere Rerank, BGE Reranker, ms-marco-MiniLM are common choices
+- Reduces top-100 to top-5 with much higher precision
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                   PRODUCTION RAG SYSTEM (2025)                       │
+│                                                                       │
+│  INDEXING PIPELINE (offline)                                         │
+│  Documents -> Chunker -> Embedder -> Vector DB + BM25 Index            │
+│                                                                       │
+│  QUERY PIPELINE (online, per request)                                │
+│                                                                       │
+│  User Query                                                           │
+│      │                                                                │
+│      ▼                                                                │
+│  ┌───────────────┐                                                    │
+│  │ Query Rewriter │ <- (Optional: expand, decompose, HyDE)           │
+│  └───────┬───────┘                                                    │
+│          │                                                            │
+│    ┌─────┴──────────────────────────┐                                │
+│    │                                │                                 │
+│    ▼                                ▼                                 │
+│  Dense Retrieval              Sparse Retrieval                        │
+│  (Embedding + ANN)            (BM25 / TF-IDF)                       │
+│    │                                │                                 │
+│    └─────────────┬──────────────────┘                                │
+│                  │ top-K candidates (e.g. 100)                       │
+│                  ▼                                                    │
+│         ┌───────────────┐                                            │
+│         │   RERANKER    │  <- Cross-encoder (Cohere, BGE, etc.)     │
+│         │ (Cross-Encoder)│                                           │
+│         └───────┬───────┘                                            │
+│                 │ top-N results (e.g. 5)                             │
+│                 ▼                                                    │
+│         ┌───────────────┐                                            │
+│         │  Context      │                                            │
+│         │  Assembly     │ <- "Lost in the middle" mitigation         │
+│         └───────┬───────┘                                            │
+│                 │                                                    │
+│                 ▼                                                    │
+│              LLM Generation                                           │
+│                 │                                                    │
+│                 ▼                                                    │
+│           Final Answer + Citations                                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+
+## Advanced RAG Techniques
+
+**Query Transformation:**
+- **HyDE (Hypothetical Document Embeddings)**: Generate a hypothetical answer, then use IT as the retrieval query. Works because the embedding space of a well-formed answer is closer to relevant documents than a short query.
+- **Sub-query decomposition**: Break "What were Apple's revenue and net profit in Q3 2024 and how did it compare to Q3 2023?" into 4 separate retrieval queries.
+- **Query expansion**: Use LLM to generate synonyms and related terms before retrieval.
+
+**Chunking Strategies (crucial and often overlooked):**
+- **Fixed-size chunking**: 512 tokens with 10% overlap. Fast, simple, ignores structure.
+- **Semantic chunking**: Split at topic boundaries (embed sentences, split where similarity drops). Better for long documents.
+- **Hierarchical chunking**: Index both paragraph-level AND document-level summaries. At query time, match on summary, retrieve full paragraph.
+- **Small-to-big**: Index small chunks for precision retrieval, expand to surrounding context for generation.
+
+**The "Lost in the Middle" Problem:**
+Research shows LLMs lose &gt;30% accuracy for context in the middle of the prompt. **Fix**: Place the most relevant chunks at the beginning AND end of the context. Never bury critical information in the middle.
+
+
+## Anti-Patterns
+
+- **Naive chunking:** Splitting documents every 512 tokens with no regard for sentence or paragraph boundaries. Chunks become semantically incoherent. Retrieval quality tanks.
+- **No reranking:** Passing top-5 from vector search directly to the LLM. Dense retrieval has high recall but low precision - you're sending noisy context and getting hallucinations.
+- **One retrieval call per query:** Complex queries need multiple retrievals. 'Compare Apple and Microsoft revenue' needs two separate lookups. Single retrieval misses one.
+- **Embedding model mismatch:** Using a generic embedding model for a specialized domain (legal, medical). Domain-specific embeddings dramatically outperform generic ones.
+- **Stale vector index:** Not updating the index when documents change. Users retrieve outdated information with full confidence. Implement incremental indexing with soft deletes.
+
+
+## System Design: Enterprise Knowledge Base
+
+**Design a RAG system for a 10M document legal knowledge base with 10K QPS**
+
+**Indexing pipeline:**
+- PDF/DOCX -&gt; Unstructured.io -&gt; clean text
+- Semantic chunking (avg 300 tokens, max 512)
+- Embed with domain-tuned model (e.g., legal-bert-large)
+- Store in pgvector (scale) or Pinecone (managed)
+- Also index in Elasticsearch for BM25
+
+**Query pipeline:**
+- HyDE query expansion for complex legal queries
+- Hybrid retrieval: dense (top-100) + sparse (top-100) -&gt; RRF merge -&gt; top-100
+- Cross-encoder reranker -&gt; top-5
+- Context assembly with citation metadata
+- LLM generation with "answer only from provided context" instruction
+
+**Scale considerations:**
+- ANN index (HNSW) for sub-10ms vector search
+- Reranker batch size optimization (GPU inference, 8 queries/batch)
+- Cache top-100 retrieval results for common queries (TTL: 1 hour)
+- Async indexing for document updates (Kafka -&gt; worker -&gt; upsert)
+
+### Non-Functional Requirements
+
+- E2E latency &lt; 2s at P95
+- Retrieval recall@5 &gt; 0.85
+- Index update lag &lt; 30 minutes
+- 99.9% availability with multi-AZ vector DB
+
+
+## Practical Example: Hybrid Retrieval, RRF, Upserts
+
+The core production loop is not "vector search only." You usually combine dense HNSW recall, BM25 recall, freshness filters, reranking, and idempotent upserts.
+
+```sql
+-- pgvector-style schema; in production pair this with an HNSW index.
+CREATE TABLE rag_chunks (
+  chunk_id TEXT PRIMARY KEY,
+  doc_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  embedding vector(768) NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX rag_chunks_hnsw
+ON rag_chunks USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 128);
+
+-- Freshness-aware upsert for incremental indexing.
+INSERT INTO rag_chunks (chunk_id, doc_id, body, embedding, updated_at)
+VALUES ($1, $2, $3, $4, now())
+ON CONFLICT (chunk_id) DO UPDATE
+SET body = EXCLUDED.body,
+    embedding = EXCLUDED.embedding,
+    updated_at = EXCLUDED.updated_at,
+    deleted_at = NULL;
+```
+
+```python
+def reciprocal_rank_fusion(rankings: list[list[str]], k: int = 60) -> list[tuple[str, float]]:
+    scores: dict[str, float] = {}
+    for ranking in rankings:
+        for rank, doc_id in enumerate(ranking, start=1):
+            scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)
+    return sorted(scores.items(), key=lambda item: item[1], reverse=True)
+
+def rerank_colbert(query_tokens, doc_token_vectors):
+    # ColBERT late interaction: max similarity per query token, then sum.
+    return sum(max(q @ d for d in doc_token_vectors) for q in query_tokens)
+
+dense_ids = ["c9", "c1", "c7"]   # HNSW ANN recall
+bm25_ids = ["c1", "c4", "c9"]    # sparse lexical recall
+print(reciprocal_rank_fusion([dense_ids, bm25_ids])[:5])
+```
+
+HNSW works by building a navigable small-world graph over vectors. `M` controls graph degree and memory; `ef_search` controls query-time recall versus latency. Matryoshka Representation Learning (MRL) lets you truncate embeddings, for example 768 dimensions down to 256, while preserving ranking quality. Quantization stores vectors in lower precision to reduce RAM; use reranking to recover precision. ColBERT improves precision with late interaction, while RRF is the simple, robust way to merge dense and sparse rank lists. Freshness is operational: updates must be upserted, stale chunks soft-deleted, and retrieval filtered by tenant, ACL, and document version.
+
+
+## Interview Q&A
+
+### When would you choose RAG over fine-tuning?
+
+RAG: knowledge is external/private, updates frequently, needs citations, domain coverage is broad. Fine-tuning: you need specific behavior/style changes, latency is critical (no retrieval step), or you want to compress domain knowledge into weights. In practice, RAG + fine-tuning often work together: fine-tune for behavior, RAG for knowledge.
+
+### What's the difference between bi-encoder and cross-encoder retrieval?
+
+Bi-encoder (used in initial retrieval): encodes query and document INDEPENDENTLY. Pre-computes document embeddings offline. O(1) lookup at query time via ANN. High recall, moderate precision. Cross-encoder (used in reranking): encodes query AND document JOINTLY. Sees the full context of both. Much more accurate relevance scoring but O(n) - only feasible on small candidate sets.
+
+### How do you handle multi-hop reasoning in RAG?
+
+Iterative retrieval: retrieve -&gt; generate intermediate reasoning -&gt; retrieve again using the reasoning as a new query. Also called 'chain-of-thought RAG' or 'ReAct'. Example: 'What is the CEO of the company that acquired Figma?' -&gt; first retrieve Figma acquisition -&gt; then retrieve CEO of the acquirer.
+
+### How do you evaluate a RAG system?
+
+Use the RAGAS framework: Context Recall (did you retrieve the right chunks?), Context Precision (were retrieved chunks useful?), Answer Faithfulness (is the answer grounded in retrieved context?), Answer Relevance (does the answer address the question?). Run on a golden dataset with human-verified reference answers.
+
+## Interview Practice
+
+1. How does HNSW trade memory, recall, and latency?
+2. Why do dense retrieval and BM25 fail on different query types?
+3. How does Reciprocal Rank Fusion combine sparse and dense results?
+4. When would you use a cross-encoder versus ColBERT as the reranker?
+5. What is Matryoshka Representation Learning and why does it help retrieval cost?
+6. How do vector quantization choices affect recall and memory?
+7. How do you support document updates, deletes, ACL changes, and freshness?
+8. What retrieval metrics would you track separately from answer metrics?
+9. How do you debug a hallucinated answer caused by the wrong retrieved chunk?
+10. How would you design RAG for multi-tenant data isolation?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

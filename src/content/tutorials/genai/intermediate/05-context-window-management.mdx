@@ -1,0 +1,317 @@
+---
+title: "Context Window Management"
+description: "Context windows are finite and expensive. Learn the truncation strategies, context budgeting, and chunking patterns that keep your AI app fast and affordable."
+level: intermediate
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 5
+totalModules: 8
+roles: ["dev"]
+tags: ["Context Window", "Token Management", "Truncation", "Chunking"]
+date: 2026-05-14
+estimatedTime: "25 min"
+prerequisites: ["beginner/02-understanding-llms"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import CodePlayground from '../../../../components/CodePlayground.astro';
+
+## The Context Window Constraint
+
+Every LLM processes a fixed-size window of tokens at once. GPT-4o supports 128K tokens; Claude supports up to 200K. These numbers sound large until you realize:
+
+- A system prompt: 500-2,000 tokens
+- A 10-turn conversation: 2,000-8,000 tokens
+- A single PDF document: 5,000-50,000 tokens
+- A code file: 1,000-20,000 tokens
+
+Add them together for a real-world application and the window fills up fast. And you need to leave room for the **response**  -  the model can't generate tokens it has no room for.
+
+## Context Budget Planning
+
+Think of the context window as a budget with four line items:
+
+<Mermaid
+  title="Context Budget Visualization"
+  chart={`
+flowchart LR
+    subgraph budget["128K Token Budget"]
+        SP[System Prompt\n~1,000 tokens]
+        HIST[Conversation History\n~8,000 tokens]
+        DOCS[Retrieved Documents\n~50,000 tokens]
+        HEAD[Response Headroom\n~4,000 tokens]
+        FREE[Available\n~65,000 tokens]
+    end
+
+    style SP fill:#fef3c7,stroke:#d97706,color:#b45309
+    style HIST fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style DOCS fill:#f3e8ff,stroke:#7c3aed,color:#7c3aed
+    style HEAD fill:#fef2f2,stroke:#ef4444,color:#dc2626
+    style FREE fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+**Rule of thumb:** allocate your budget explicitly before building.
+
+| Component | Typical Allocation |
+|---|---|
+| System prompt | 1,000-2,000 tokens (fixed) |
+| Conversation history | 8,000-16,000 tokens (managed) |
+| Retrieved documents | Up to 50% of remaining budget |
+| Response headroom | 2,000-4,000 tokens (reserved) |
+
+If any component exceeds its allocation, you need a truncation strategy.
+
+## Three Truncation Strategies
+
+Not all truncation is equal. The right strategy depends on what you're willing to lose.
+
+<Mermaid
+  title="Truncation Strategy Comparison"
+  chart={`
+flowchart TD
+    subgraph sw["Sliding Window"]
+        SW1[Keep last N messages] --> SW2[Drop oldest first]
+        SW2 --> SW3[Simple, predictable\nLoses early context]
+    end
+
+    subgraph sum["Summarization"]
+        SM1[Summarize old messages] --> SM2[Replace with summary]
+        SM2 --> SM3[Lossy but\npreserves key facts]
+    end
+
+    subgraph imp["Importance-Based"]
+        IM1[Score each message] --> IM2[Keep highest-score]
+        IM2 --> IM3[Smart but complex\nRequires scoring logic]
+    end
+
+    style sw fill:#fef3c7,stroke:#d97706
+    style sum fill:#f3e8ff,stroke:#7c3aed
+    style imp fill:#dcfce7,stroke:#16a34a
+`}
+/>
+
+**Sliding window**  -  keep only the last N messages. Simple to implement and reason about. The downside: the model loses early context that might be critical (e.g., the user's initial goal stated in message 1).
+
+**Summarization**  -  when history gets too long, have the LLM summarize older messages into a compact paragraph. Replace the old messages with the summary. Keeps key facts at the cost of detail.
+
+**Importance-based**  -  assign a score to each message (recency, explicit importance markers, user-flagged content) and keep the highest-scoring messages. Most powerful but most complex to maintain.
+
+Most production systems use a hybrid: sliding window for short sessions, summarization when sessions exceed a threshold.
+
+## Counting Tokens Accurately
+
+The only reliable way to stay within budget is to count tokens **before** sending the request.
+
+```python
+import tiktoken
+
+def count_tokens(text: str, model: str = "gpt-4o") -> int:
+    """Count tokens in a string using the model's tokenizer."""
+    enc = tiktoken.encoding_for_model(model)
+    return len(enc.encode(text))
+
+def count_messages_tokens(messages: list[dict], model: str = "gpt-4o") -> int:
+    """Count total tokens in a messages array including overhead."""
+    enc = tiktoken.encoding_for_model(model)
+    total = 3  # every reply is primed with <|start|>assistant<|message|>
+    for msg in messages:
+        total += 4  # per-message overhead
+        total += len(enc.encode(msg.get("content", "")))
+        total += len(enc.encode(msg.get("role", "")))
+    return total
+```
+
+Install with `pip install tiktoken`. This is the same tokenizer OpenAI uses internally.
+
+## Build It: Context Manager Class
+
+<CodePlayground
+  language="python"
+  title="Context Manager with Token Tracking and Truncation"
+  code={`from dataclasses import dataclass, field
+from typing import Optional
+
+try:
+    import tiktoken
+    HAS_TIKTOKEN = True
+except ImportError:
+    HAS_TIKTOKEN = False
+
+# Simple fallback token estimator (if tiktoken not installed)
+def estimate_tokens(text: str) -> int:
+    """Rough estimate: 1 token ≈ 4 characters."""
+    return max(1, len(text) // 4)
+
+def count_tokens(text: str, model: str = "gpt-4o") -> int:
+    if HAS_TIKTOKEN:
+        try:
+            enc = tiktoken.encoding_for_model(model)
+            return len(enc.encode(text))
+        except Exception:
+            pass
+    return estimate_tokens(text)
+
+@dataclass
+class ContextManager:
+    model: str = "gpt-4o"
+    max_tokens: int = 128_000
+    response_headroom: int = 4_000
+    system_prompt: str = ""
+    history: list[dict] = field(default_factory=list)
+    _system_tokens: int = field(default=0, init=False)
+
+    def __post_init__(self):
+        self._system_tokens = count_tokens(self.system_prompt, self.model)
+
+    @property
+    def available_tokens(self) -> int:
+        return self.max_tokens - self._system_tokens - self.response_headroom
+
+    @property
+    def used_tokens(self) -> int:
+        total = 0
+        for msg in self.history:
+            total += count_tokens(msg.get("content", ""), self.model)
+            total += 4  # per-message overhead
+        return total
+
+    @property
+    def remaining_tokens(self) -> int:
+        return self.available_tokens - self.used_tokens
+
+    def add_message(self, role: str, content: str) -> None:
+        msg_tokens = count_tokens(content, self.model) + 4
+        self.history.append({
+            "role": role,
+            "content": content,
+            "_tokens": msg_tokens,
+        })
+        # Truncate if over budget
+        self._truncate_if_needed()
+
+    def _truncate_if_needed(self) -> None:
+        """Sliding window: drop oldest messages (but never the first user message)."""
+        while self.used_tokens > self.available_tokens and len(self.history) > 1:
+            dropped = self.history.pop(0)
+            print(f"[ContextManager] Dropped message: role={dropped['role']}, "
+                  f"tokens={dropped.get('_tokens', '?')}")
+
+    def get_messages(self) -> list[dict]:
+        """Return messages ready to send to the API (without _tokens key)."""
+        return [
+            {"role": m["role"], "content": m["content"]}
+            for m in self.history
+        ]
+
+    def get_full_context(self) -> list[dict]:
+        """System prompt + history, API-ready."""
+        msgs = []
+        if self.system_prompt:
+            msgs.append({"role": "system", "content": self.system_prompt})
+        msgs.extend(self.get_messages())
+        return msgs
+
+    def status(self) -> str:
+        return (
+            f"Tokens: {self.used_tokens}/{self.available_tokens} used "
+            f"({self.remaining_tokens} remaining) | "
+            f"Messages: {len(self.history)}"
+        )
+
+# --- DEMO ---
+
+cm = ContextManager(
+    model="gpt-4o",
+    max_tokens=128_000,
+    response_headroom=4_000,
+    system_prompt="You are a helpful assistant.",
+)
+
+# Simulate a conversation
+exchanges = [
+    ("user", "Hi, I'm researching context window management in LLMs."),
+    ("assistant", "Context windows define how much text an LLM can process at once."),
+    ("user", "What's the typical size for modern models?"),
+    ("assistant", "GPT-4o supports 128K tokens; Claude supports up to 200K tokens."),
+    ("user", "How should I handle long conversations?"),
+    ("assistant", "Use sliding window truncation or summarization to stay within budget."),
+]
+
+for role, content in exchanges:
+    cm.add_message(role, content)
+    print(cm.status())
+
+print(f"\\nFull context has {len(cm.get_full_context())} messages")
+print(f"Ready to send to API: {cm.get_messages()[-1]['content'][:60]}...")
+`}
+/>
+
+This `ContextManager` tracks token usage in real time and automatically drops the oldest messages when the budget is exceeded. In production you'd replace the sliding window truncation with a summarization step.
+
+## Adding Summarization Truncation
+
+When the sliding window drops messages, you lose context. A better approach for long-running conversations:
+
+```python
+def summarize_old_messages(messages: list[dict], client) -> str:
+    """Summarize old messages into a compact paragraph."""
+    conversation_text = "\n".join(
+        f"{m['role'].upper()}: {m['content']}" for m in messages
+    )
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Summarize this conversation in 3-5 sentences, "
+                f"preserving all key facts and decisions:\n\n{conversation_text}"
+            )
+        }],
+        max_tokens=300,
+        temperature=0,
+    )
+    return response.choices[0].message.content
+
+def truncate_with_summary(cm: ContextManager, client) -> None:
+    """Replace oldest 50% of history with a summary when over budget."""
+    if cm.remaining_tokens < 2000:  # Low on budget
+        midpoint = len(cm.history) // 2
+        old_messages = cm.history[:midpoint]
+        summary = summarize_old_messages(old_messages, client)
+        # Replace old messages with summary message
+        cm.history = [
+            {"role": "system", "content": f"[Conversation summary]: {summary}"},
+            *cm.history[midpoint:]
+        ]
+```
+
+<RoleCallout role="dev">
+**Token counting should be a first-class concern in your architecture, not an afterthought.** Build it into your request layer so that every message going out has had its token budget validated. The few milliseconds it takes to count tokens is trivial compared to the cost of an API error or a truncated response. Use `tiktoken` directly  -  API token counts in response objects tell you what you already spent, not what you're about to spend.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+**Context window overflow is silent in many APIs  -  the model just ignores earlier content without warning.** Older OpenAI API versions return a `context_length_exceeded` error. Newer ones silently truncate from the beginning. In both cases, your application gets degraded behavior with no visible error. Always count tokens before sending, not after. Set up an alert if any request exceeds 80% of your context budget  -  that's your signal to improve your truncation strategy.
+</Callout>
+
+## What's Next
+
+Managing context windows is about controlling what the model remembers within a single request. In the next tutorial you'll tackle long-term memory across sessions  -  the patterns that let your AI remember users across conversations.
+
+## Interview Notes: Long Context Mechanics
+
+Long context is not free memory. Attention cost, retrieval quality, and positional behavior still matter. KV cache speeds up generation by reusing previous attention keys and values, while RoPE and ALiBi are positional strategies that help models understand token order across long inputs.
+
+A strong answer explains that context management is ranking and budgeting: reserve space for system policy, tool schemas, retrieved evidence, recent conversation, and response tokens before adding optional history.
+
+## Interview Practice
+
+1. What consumes tokens in a real request?
+2. Why should response budget be reserved before adding context?
+3. How do truncation, summarization, and retrieval differ?
+4. What is the KV cache, and why does it matter?
+5. Why is long context not a replacement for retrieval?
+6. How do RoPE/ALiBi relate to long-context behavior?

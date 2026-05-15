@@ -1,0 +1,94 @@
+---
+title: "Multi-Agent Systems: Advanced"
+description: "Supervisor + specialist teams"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 10
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Multi-Agent Systems","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on Multi-Agent Systems at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Enterprise multi-agent architecture: hierarchical supervisor-of-supervisors with 3 tiers, dynamic agent spawning, agent registries with semantic capability search, and cross-agent memory via a durable Store. Production challenges: deadlock detection, circuit breakers for failing agents, cost attribution per specialist tagged in LangSmith, and SLA monitoring per agent type.
+
+## Key Facts
+
+- Hierarchical: top supervisor -&gt; domain supervisors -&gt; specialists (3 tiers)
+- Agent registry: durable Store with capabilities, semantic search selects the right agent
+- Circuit breaker: if specialist fails N times, route to fallback or human escalation
+- Cost attribution: tag LangSmith traces by agent_name for per-specialist cost breakdown
+- Command(goto=...): recommended supervisor routing pattern in v1.0+
+- langgraph-supervisor and langgraph-swarm provide packaged orchestration patterns
+
+## Reference Implementation
+
+```python
+from langgraph.types import Command
+from langgraph.store.postgres import AsyncPostgresStore
+from typing import TypedDict, Annotated, List, Dict
+import operator
+
+class EnterpriseState(TypedDict):
+    task: str
+    messages: Annotated[List, operator.add]
+    agent_costs: Annotated[Dict, lambda a, b: {**a, **b}]
+    routing_log: Annotated[List[str], operator.add]
+
+async def enterprise_supervisor(state: EnterpriseState, *, store: AsyncPostgresStore):
+    # Production routing should use a model/router over registry metadata.
+    route = await route_with_structured_output(
+        task=state["task"],
+        candidates=["researcher", "coder", "writer"],
+    )
+    agent = route.agent_name
+
+    # Circuit breaker check
+    info = await store.aget(("agents",), agent)
+    if info and info.value["errors"] >= 3:
+        agent = "human_escalation"
+
+    return Command(
+        goto=agent,
+        update={
+            "routing_log": [f"Routed to: {agent}"],
+            "agent_costs": {agent: 0.001}
+        }
+    )
+
+async with AsyncPostgresStore.from_conn_string(DB_URI) as store:
+    await store.aput(("agents",), "researcher", {"caps": ["search", "facts"], "errors": 0})
+```
+
+## Interview Q&A
+
+### Q1. How would you design a hierarchical multi-agent system for enterprise compliance?
+
+Three-tier hierarchy: CEO-Supervisor receives the full task and decomposes into regulatory domains (GDPR, SOX, HIPAA). Domain supervisors one per regulation coordinate specialist agents for that domain. Specialist agents include clause analyzer, citation retriever, risk scorer, and report generator with targeted tools. State flows down with task context and up with results. Each tier has its own checkpoint namespace for independent audit trails.
+
+### Q2. How do you implement a circuit breaker for a failing specialist agent?
+
+Track error counts in the LangGraph Store or Redis. In the supervisor routing function, check error count before routing: if error_count &gt;= threshold, route to a fallback agent or escalate to human review. Use exponential backoff: after circuit opens, test the agent again after a cooldown period. Log all circuit-breaker events to LangSmith for postmortem analysis.
+
+### Q3. How do you do cost attribution across multiple agents in a multi-agent system?
+
+Tag each LangSmith trace with the agent_name via config metadata: config['metadata']['agent_name'] = 'researcher'. In each agent node, capture token usage from response.usage_metadata and add to an agent_costs dict in state. Export LangSmith API data to your BI tool and aggregate by agent_name to identify which specialist is most expensive.
+
+### Q4. Why is InMemoryStore wrong for enterprise production?
+
+InMemoryStore is process-local and disappears on restart. It also cannot be shared across worker pods. Enterprise registries, circuit breakers, and cross-thread memory need a durable store such as AsyncPostgresStore, Redis-backed infrastructure, or the managed LangSmith Deployment store.
+
+### Q5. When is hardcoded supervisor routing inappropriate?
+
+Hardcoded keyword routing is brittle when tasks mix domains, use synonyms, or need policy-aware escalation. Production supervisors should route with structured model output over a registry, validate the destination against an allowlist, and fall back to a safe human or generalist path.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

@@ -1,0 +1,99 @@
+---
+title: "Multi-Agent Systems: Beginner"
+description: "Supervisor + specialist teams"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 10
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Multi-Agent Systems","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on Multi-Agent Systems at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Multi-agent systems have multiple specialized agents collaborating on a task. Instead of one agent doing everything and hitting context limits, you divide the work: a Research Agent, a Code Agent, a Writing Agent - each with focused prompts, minimal tools, and high accuracy in their domain. A Supervisor coordinates them, routing work to the right specialist at each step.
+
+## Key Facts
+
+- Supervisor pattern: central coordinator routes to specialists - most common in production
+- Swarm pattern: agents hand off peer-to-peer based on their own assessment
+- Network/Mesh: any agent calls any other - most flexible, hardest to debug
+- Tool-based handoff: supervisor calls agents as tools - recommended in v1.0+
+- Each specialist can be a separate compiled StateGraph used as a subgraph
+
+## Reference Implementation
+
+```python
+from langgraph.prebuilt import create_react_agent
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+
+model = ChatOpenAI(model="gpt-4o")
+
+@tool
+def search_notes(query: str) -> str:
+    """Search the team's approved notes."""
+    return f"Relevant notes for {query}: use LangGraph for stateful agent loops."
+
+@tool
+def style_guide(topic: str) -> str:
+    """Return writing guidance for a topic."""
+    return f"Write about {topic} with citations, caveats, and concise examples."
+
+# Focused specialist agents
+research_agent = create_react_agent(model, tools=[search_notes],
+    prompt="Research specialist. Find accurate information only.")
+writer_agent = create_react_agent(model, tools=[style_guide],
+    prompt="Writing specialist. Produce polished content only.")
+
+# Tool-based handoff - recommended pattern in v1.0+
+@tool
+def delegate_to_researcher(query: str) -> str:
+    """Research specialist: web search, fact-finding."""
+    result = research_agent.invoke({"messages": [("user", query)]})
+    return result["messages"][-1].content
+
+@tool
+def delegate_to_writer(request: str) -> str:
+    """Writing specialist: blog posts, summaries."""
+    result = writer_agent.invoke({"messages": [("user", request)]})
+    return result["messages"][-1].content
+
+supervisor = create_react_agent(
+    model,
+    tools=[delegate_to_researcher, delegate_to_writer],
+    prompt="Coordinate specialists. NEVER do specialist work yourself."
+)
+```
+
+## Interview Q&A
+
+### Q1. What are the main multi-agent patterns in LangGraph?
+
+Three patterns: Supervisor - a central orchestrator routes to specialized agents and controls all communication flow, best for structured workflows. Swarm - agents hand off to each other peer-to-peer based on their own assessment, best for fluid collaboration. Network/Mesh - any agent can call any other, most flexible but hardest to trace and debug in production.
+
+### Q2. Why use multiple agents instead of one powerful agent?
+
+Single agents hit ceilings: prompt length (many tools confuse the model), tool selection errors, and prompt dilution (long system prompts mean forgotten rules). Specialists have short focused prompts, fewer tools, and higher accuracy. Independent testing is easier. When an agent shows growing prompts and falling accuracy, it is time to split into specialists.
+
+### Q3. How does the supervisor pattern work in LangGraph?
+
+The supervisor is an LLM node that receives conversation state and decides which agent to invoke next or returns FINISH to terminate. Each specialist runs, appends output to shared state, and returns control to the supervisor. The supervisor evaluates progress and routes to the next needed specialist.
+
+### Q4. Why should specialist agents have real tools?
+
+An agent with tools=[] is only another chat model with a different prompt. Specialist agents should have domain-specific tools, such as search, calculators, code execution, or data access, so delegation changes capability rather than just wording.
+
+### Q5. What is a safe beginner rule for supervisor routing?
+
+Let the supervisor route based on the user's task and specialist descriptions, but add a maximum step count and a final-answer route. Hardcoded keyword routing is acceptable for demos, not for real multi-agent systems where tasks are ambiguous.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

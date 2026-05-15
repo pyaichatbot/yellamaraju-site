@@ -1,0 +1,88 @@
+---
+title: "Cycles & Reflection: Beginner"
+description: "Self-correction through loops"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 5
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Cycles & Reflection","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on Cycles & Reflection at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Unlike traditional directed acyclic graphs, LangGraph explicitly supports cycles - edges that loop back to earlier nodes. This enables agentic behavior: an agent can try something, evaluate the result, and try again. The simplest loop is a ReAct cycle: call LLM, use tool if needed, call LLM again with tool result, decide to continue or stop. Always protect loops with a recursion_limit.
+
+## Key Facts
+
+- Cycle = an edge pointing back to an earlier node
+- ReAct loop: agent -&gt; tools -&gt; agent (repeats until LLM gives final answer)
+- recursion_limit: default 25 steps, set in config per invocation
+- Step counter in state: best practice to prevent runaway loops
+- Always have a done exit branch in any loop's conditional edge
+
+## Reference Implementation
+
+```python
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.prebuilt import ToolNode, tools_condition
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+
+@tool
+def calculator(expression: str) -> str:
+    """Evaluate a math expression."""
+    return f"Result: 42"  # simplified
+
+model = ChatOpenAI(model="gpt-4o").bind_tools([calculator])
+tool_node = ToolNode([calculator])
+
+def agent(state: MessagesState):
+    response = model.invoke(state["messages"])
+    return {"messages": [response]}
+
+graph = StateGraph(MessagesState)
+graph.add_node("agent", agent)
+graph.add_node("tools", tool_node)
+graph.add_edge(START, "agent")
+graph.add_conditional_edges("agent", tools_condition)
+graph.add_edge("tools", "agent")  # creates the ReAct loop
+
+app = graph.compile()
+result = app.invoke(
+    {"messages": [("user", "What is 42 * 17?")]},
+    {"recursion_limit": 10}
+)
+```
+
+## Interview Q&A
+
+### Q1. What makes LangGraph different from LangChain chains in terms of loops?
+
+LangChain chains are directed acyclic graphs - they cannot loop back. LangGraph explicitly supports cycles, the defining feature of true agent behavior. An agent needs to loop: try, evaluate, try again. Without cycles, you would have to pre-specify the exact number of tool calls, which is impossible for dynamic tasks.
+
+### Q2. How do you prevent infinite loops in LangGraph?
+
+Three layers: recursion_limit in config (hard cap on total steps), step_count in state with a conditional edge routing to END when exceeded, and a loop exit condition in the routing function itself. Always verify your conditional edge has a path to END - draw the graph with app.get_graph().draw_mermaid_png() to spot missing exits.
+
+### Q3. What is the ReAct pattern and how does LangGraph implement it?
+
+ReAct (Reasoning + Acting) alternates between LLM reasoning steps and tool actions. In LangGraph: agent node calls LLM, tools_condition routes to ToolNode if a tool is called, ToolNode executes and adds result to messages, then routes back to agent. Loop continues until the LLM generates a final answer without calling any more tools.
+
+### Q4. What prevents a ReAct loop from running forever?
+
+The model must eventually stop calling tools, and the graph should also have recursion_limit plus application-level step counters. Production agents should treat repeated identical tool calls as a loop signal.
+
+### Q5. Why is ToolNode better than manually calling tools in the model node?
+
+ToolNode standardizes tool dispatch, ToolMessage formatting, parallel tool calls, and tool error handling. Keeping model reasoning and tool execution separate also makes traces easier to debug.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

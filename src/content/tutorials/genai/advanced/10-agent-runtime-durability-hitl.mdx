@@ -1,0 +1,218 @@
+---
+title: "Agent Runtime Durability: Checkpoints, Resume, and Human Approval"
+description: "Build agent workflows that survive crashes, pauses, and human approvals without corrupting state or duplicating side effects."
+level: advanced
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 10
+totalModules: 15
+roles: ["dev", "qa", "pm"]
+tags: ["Runtime", "Durability", "HITL", "State", "Reliability"]
+date: 2026-05-14
+estimatedTime: "45 min"
+prerequisites: ["advanced/09-enterprise-mcp-tool-architecture"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## Stateless Agent Loops Break in Production
+
+A simple agent loop keeps state in memory: think, call a tool, observe, repeat. That is fine for demos. In production, a restart between `charge_card` and `write_receipt` can duplicate money movement or leave the user with no visible status.
+
+Durable agent runtimes solve this by persisting state before and after every meaningful step. The runtime can resume from the last committed checkpoint instead of starting over.
+
+<Mermaid
+  title="Durable Agent Execution"
+  chart={`
+flowchart TD
+  A[Receive Task] --> B[Create Run Record]
+  B --> C[Plan Step]
+  C --> D[Persist Checkpoint]
+  D --> E{Needs Approval?}
+  E -->|Yes| F[Pause and Notify Human]
+  F --> G[Resume with Decision]
+  E -->|No| H[Execute Tool]
+  G --> H
+  H --> I[Persist Tool Result]
+  I --> J{More Steps?}
+  J -->|Yes| C
+  J -->|No| K[Complete Run]
+`}
+/>
+
+## The Runtime State Model
+
+Use explicit state instead of implicit call stacks. A durable run record should be inspectable by operators and resumable by workers.
+
+```sql
+create table agent_runs (
+  run_id text primary key,
+  tenant_id text not null,
+  actor_id text not null,
+  status text not null check (status in (
+    'queued', 'running', 'waiting_approval', 'succeeded', 'failed', 'cancelled'
+  )),
+  current_step integer not null default 0,
+  input_json jsonb not null,
+  output_json jsonb,
+  error_json jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table agent_checkpoints (
+  run_id text not null references agent_runs(run_id),
+  step_index integer not null,
+  state_json jsonb not null,
+  created_at timestamptz not null default now(),
+  primary key (run_id, step_index)
+);
+
+create table tool_effects (
+  idempotency_key text primary key,
+  run_id text not null,
+  tool_name text not null,
+  request_json jsonb not null,
+  response_json jsonb,
+  status text not null check (status in ('started', 'completed', 'failed'))
+);
+```
+
+## Idempotent Tool Execution
+
+Side effects must be safe under retries. Persist an idempotency key before the write. If the worker crashes, the next worker can decide whether the effect already happened.
+
+```py
+import hashlib
+import json
+
+async def run_tool_once(db, tool_name: str, args: dict, run_id: str):
+    stable = json.dumps({"tool": tool_name, "args": args}, sort_keys=True)
+    key = hashlib.sha256(f"{run_id}:{stable}".encode()).hexdigest()
+
+    existing = await db.fetch_one(
+        "select status, response_json from tool_effects where idempotency_key = $1",
+        key,
+    )
+    if existing and existing["status"] == "completed":
+        return existing["response_json"]
+
+    await db.execute(
+        """
+        insert into tool_effects(idempotency_key, run_id, tool_name, request_json, status)
+        values ($1, $2, $3, $4, 'started')
+        on conflict (idempotency_key) do nothing
+        """,
+        key, run_id, tool_name, json.dumps(args),
+    )
+
+    result = await call_external_tool(tool_name, args, idempotency_key=key)
+
+    await db.execute(
+        """
+        update tool_effects
+        set response_json = $2, status = 'completed'
+        where idempotency_key = $1
+        """,
+        key, json.dumps(result),
+    )
+    return result
+```
+
+## Human-in-the-Loop Approval
+
+Human approval is a state transition, not a chat message. Store the approval request with the exact proposed action and resume only from that checkpoint.
+
+```ts
+type ApprovalRequest = {
+  runId: string;
+  stepIndex: number;
+  action: "refund.issue" | "customer.update" | "email.send";
+  proposedInput: Record<string, unknown>;
+  riskReason: string;
+  expiresAt: string;
+};
+
+async function requireApproval(req: ApprovalRequest) {
+  await db.approvals.insert({ ...req, status: "pending" });
+  await db.runs.update(req.runId, { status: "waiting_approval" });
+  await notifyReviewer(req);
+}
+
+async function resumeAfterApproval(runId: string, approved: boolean, reviewerId: string) {
+  const approval = await db.approvals.findPending(runId);
+  await db.approvals.update(approval.id, {
+    status: approved ? "approved" : "rejected",
+    reviewerId
+  });
+
+  if (!approved) {
+    await db.runs.update(runId, { status: "failed", error_json: { reason: "approval_rejected" } });
+    return;
+  }
+
+  await enqueueRun(runId, { resumeFromStep: approval.stepIndex });
+}
+```
+
+## Retry Policy by Failure Type
+
+| Failure | Retry? | Notes |
+|---|---|---|
+| Provider timeout before response | Yes | Use idempotency for writes |
+| Validation error | No | Fix prompt, schema, or caller |
+| Permission denied | No | Escalate authz or product flow |
+| Rate limit | Yes | Exponential backoff and queue fairness |
+| Human rejection | No | Mark as business failure |
+| Worker crash | Resume | Load latest checkpoint |
+
+Retries without replay semantics are not durability. Durability means you can explain what happened and safely continue.
+
+## Resume Testing
+
+A good QA plan injects failures at every boundary:
+
+```py
+async def test_resume_does_not_duplicate_ticket(db, agent):
+    run_id = await agent.start({"task": "open a high priority support ticket"})
+
+    await agent.run_until(step="before_tool_result_persisted", run_id=run_id)
+    await agent.simulate_worker_crash(run_id)
+
+    await agent.resume(run_id)
+    effects = await db.fetch_all("select * from tool_effects where run_id = $1", run_id)
+
+    assert len([e for e in effects if e["tool_name"] == "ticket.create"]) == 1
+    assert await agent.status(run_id) == "succeeded"
+```
+
+<RoleCallout role="dev">
+Design the run state table before the agent loop. If state is not durable, retries, approvals, and cancellation will be unreliable.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Crash testing is mandatory: after checkpoint write, during tool call, after tool return, during approval wait, and during resume.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Approval rules need product language: which actions pause, who can approve, what SLA applies, and what users see while waiting.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+“Retry on failure” can corrupt external systems when writes are not idempotent. Make idempotency and checkpoints part of the first design, not a patch.
+</Callout>
+
+## Interview Practice
+
+1. Why is an in-memory ReAct loop insufficient for enterprise workflows?
+2. What should be stored in an agent checkpoint?
+3. How do idempotency keys prevent duplicate side effects?
+4. Describe a safe human-approval state transition for a high-risk tool call.
+5. Which failures should be retried, and which should fail fast?
+6. How would you test crash recovery around tool execution?
+7. What is the difference between retrying a step and replaying from a checkpoint?
+8. How should user-visible status map to internal runtime states?
+

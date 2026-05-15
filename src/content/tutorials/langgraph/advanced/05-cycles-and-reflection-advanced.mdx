@@ -1,0 +1,95 @@
+---
+title: "Cycles & Reflection: Advanced"
+description: "Self-correction through loops"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 5
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Cycles & Reflection","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on Cycles & Reflection at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Advanced patterns: LATS (Language Agent Tree Search) combines reflection with Monte Carlo Tree Search - generate multiple candidates via Send API fan-out, score each, expand the most promising. Confidence threshold routing stops the loop when the LLM reports high confidence via structured output. Cost control is critical: use cheap models for critique, expensive only for final generation.
+
+## Key Facts
+
+- LATS: Send API fan-out + scoring + tree pruning for planning problems
+- Confidence threshold: route to END only when structured output confidence &gt; 0.85
+- Parallel critique: fan-out to multiple critics, aggregate weighted scores
+- Cost control: cheap model for critique, expensive model for final generation only
+- Streaming reflection: astream_events() streams intermediate drafts to UI
+
+## Reference Implementation
+
+```python
+from langgraph.types import Send
+from typing import TypedDict, Annotated, List
+import operator
+
+def add_int(old: int, new: int) -> int:
+    return old + new
+
+class LATSState(TypedDict):
+    task: str
+    candidates: Annotated[List[str], operator.add]
+    scores: Annotated[List[float], operator.add]
+    iteration: Annotated[int, add_int]
+    best_candidate: str
+
+def generate_candidates(state: LATSState):
+    # Fan-out: generate 3 diverse candidates in parallel
+    return [Send("gen_one", {"task": state["task"], "seed": i}) for i in range(3)]
+
+def gen_one(state: dict):
+    draft = f"Candidate {state['seed']}: {state['task'][:30]}"
+    return {"candidates": [draft]}
+
+def score_all(state: LATSState):
+    # judge_llm.invoke each candidate in production
+    scores = [0.6 + i * 0.1 for i in range(len(state["candidates"]))]
+    best_idx = scores.index(max(scores))
+    return {
+        "scores": scores,
+        "best_candidate": state["candidates"][best_idx],
+        "iteration": 1
+    }
+
+def should_continue(state: LATSState) -> str:
+    if state["iteration"] >= 3 or max(state["scores"], default=0) > 0.85:
+        return "end"
+    return "generate_candidates"
+```
+
+## Interview Q&A
+
+### Q1. How would you implement a confidence-based loop that stops when certain enough?
+
+Add a confidence field to state. In your generation node, prompt the LLM to output confidence 0-1 alongside the answer using with_structured_output. In the routing function: if confidence &gt; threshold (e.g., 0.85) route to END; else route back to generate with previous result as context. Calibrate the threshold empirically using your eval dataset.
+
+### Q2. Explain LATS and when to use it over simple reflection.
+
+LATS generates multiple candidate responses, evaluates each, expands the most promising, and backtracks dead ends - like MCTS. Use it when: the answer space is large and diverse, simple reflection converges to the same bad local optimum, or you have budget for 10-50 LLM calls per query. Standard reflection suffices for most production use cases.
+
+### Q3. How do you control costs in production reflection loops?
+
+Use a cheap fast model for critique (GPT-4o-mini, Claude Haiku), expensive model only for final generation. Cap iterations at 2-3 and measure quality uplift per iteration - often diminishing returns after round 2. Track cost per query in LangSmith and set budget alerts. Cache critiques for identical drafts.
+
+### Q4. Why combine Send with reflection?
+
+Send lets you generate or critique multiple candidates in parallel, then reduce their scores before choosing the next branch. This gives reflection breadth without hiding all work inside one opaque node.
+
+### Q5. What makes LATS expensive?
+
+LATS expands multiple candidates over multiple iterations, so model calls grow quickly. Use strict depth limits, candidate pruning, cached scores, and cheaper judge models to keep search from dominating cost.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

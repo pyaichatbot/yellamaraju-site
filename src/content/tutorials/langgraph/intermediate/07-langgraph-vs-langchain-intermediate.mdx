@@ -1,0 +1,83 @@
+---
+title: "LangGraph vs LangChain: Intermediate"
+description: "When to use graphs over chains"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 7
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","LangGraph vs LangChain","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on LangGraph vs LangChain at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+The core architectural decision is LCEL chain vs. StateGraph. LCEL (LangChain Expression Language) pipe composition is linear and efficient - great for RAG pipelines. StateGraph adds mutable shared state, cycles, and checkpointing. The two are composable: LangGraph nodes can contain LCEL chains internally, giving you streaming and batching from LCEL with persistence and loops from LangGraph.
+
+## Key Facts
+
+- LCEL: composable pipes, lazy evaluation, built-in streaming and batching
+- StateGraph: mutable state, cycles, checkpointing, HITL - the production agent layer
+- Hybrid: LangGraph nodes can contain LCEL chains internally
+- LangGraph vs CrewAI: LangGraph is lower-level with more control; CrewAI higher-level
+- LangGraph vs AutoGen: similar goals, different APIs; LangGraph more Pythonic
+
+## Reference Implementation
+
+```python
+# Hybrid: LCEL chain inside a LangGraph node - best of both
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from langgraph.graph import StateGraph, START, END, MessagesState
+
+# LCEL chain: gets streaming, retries, batching
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    ("placeholder", "{messages}")
+])
+model = ChatOpenAI(model="gpt-4o")
+llm_chain = prompt | model  # LCEL pipe
+
+def agent_node(state: MessagesState):
+    # LangGraph node wraps LCEL chain
+    response = llm_chain.invoke({"messages": state["messages"]})
+    return {"messages": [response]}
+
+# LangGraph manages state, loops, checkpointing
+graph = StateGraph(MessagesState)
+graph.add_node("agent", agent_node)
+graph.add_edge(START, "agent")
+graph.add_edge("agent", END)
+app = graph.compile()
+```
+
+## Interview Q&A
+
+### Q1. How does LangGraph compare to AutoGen and CrewAI?
+
+LangGraph: lowest level, most control, explicit state machine, best for custom complex agents with deep observability needs. CrewAI: higher-level with predefined roles and crews, easier to start, less flexibility for custom routing. AutoGen: Microsoft's framework, strong for coding assistants. Production teams choose LangGraph for custom routing, specific state schemas, or deep LangSmith integration.
+
+### Q2. Why do companies like Uber and LinkedIn choose LangGraph?
+
+Production requirements: explicit traceable state machines not prompt spaghetti, durable execution that survives failures, first-class human-in-the-loop support, LangSmith observability, and model-agnostic deployment. Companies with compliance, reliability, and audit requirements need the control LangGraph provides. Simpler alternatives break under production load.
+
+### Q3. When is LangGraph overkill?
+
+If your use case is: a single-turn Q&A bot, a RAG pipeline without agentic steps, a simple document classifier, or any stateless single-LLM-call application - use LCEL chains or raw API calls. LangGraph's power comes with complexity: more code, more to debug, steeper learning curve. Over-engineering simple tasks with LangGraph is a real anti-pattern.
+
+### Q4. How does the Functional API change migration strategy?
+
+It lets teams add LangGraph persistence, retries, streaming, and interrupts without first drawing an explicit StateGraph. That is useful when existing production code is already organized as Python functions.
+
+### Q5. What should remain in LangChain after adopting LangGraph?
+
+Models, prompts, retrievers, output parsers, tools, and LCEL subchains should remain LangChain components. LangGraph should own orchestration: state, branching, loops, checkpointing, and multi-actor coordination.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

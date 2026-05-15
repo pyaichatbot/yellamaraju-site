@@ -1,0 +1,98 @@
+---
+title: "Multi-Agent Systems: Intermediate"
+description: "Supervisor + specialist teams"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 10
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Multi-Agent Systems","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on Multi-Agent Systems at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Tool-based handoff (recommended for v1.0+) treats each specialist agent as a LangChain tool. The supervisor's prompt describes when to use each specialist-tool. This gives full control over what context each specialist receives, cleaner LangSmith traces as tool calls are distinct events, and easier prompt engineering. Context bloat is a common failure mode - add summarization after N turns.
+
+## Key Facts
+
+- Tool-based handoff: supervisor calls agents as tools - recommended since v1.0
+- Subgraph: each specialist is a compiled StateGraph used as a node
+- No tool overlap: each specialist owns exactly one domain - prevents scope creep
+- Context bloat: shared message history grows - add summarization node after N turns
+- Supervisor prompt must forbid doing specialist work directly
+
+## Reference Implementation
+
+```python
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent
+from langchain_openai import ChatOpenAI
+
+model = ChatOpenAI(model="gpt-4o")
+
+@tool
+def search_kb(query: str) -> str:
+    """Search the internal knowledge base."""
+    return f"KB result for {query}: include source ids in the answer."
+
+@tool
+def run_static_check(code: str) -> str:
+    """Run a lightweight static check over code."""
+    return "No obvious syntax errors found."
+
+research_agent = create_react_agent(model, tools=[search_kb],
+    prompt="Research ONLY. No code, no writing.")
+code_agent = create_react_agent(model, tools=[run_static_check],
+    prompt="Code ONLY. No research, no writing.")
+
+@tool
+def delegate_to_researcher(query: str) -> str:
+    """Research specialist: web search, fact-finding, data gathering."""
+    result = research_agent.invoke({"messages": [("user", query)]})
+    return result["messages"][-1].content
+
+@tool
+def delegate_to_coder(task: str) -> str:
+    """Code specialist: writing, debugging, and testing Python code."""
+    result = code_agent.invoke({"messages": [("user", task)]})
+    return result["messages"][-1].content
+
+supervisor = create_react_agent(
+    model,
+    tools=[delegate_to_researcher, delegate_to_coder],
+    prompt="""Coordinate specialists. Synthesize results into a final answer.
+    NEVER do specialist work yourself - always delegate."""
+)
+```
+
+## Interview Q&A
+
+### Q1. What is tool-based handoff and why is it recommended now?
+
+Tool-based handoff treats each specialist agent as a LangChain tool the supervisor can call. This gives: full control over what context each specialist receives by crafting the tool input string, cleaner traces in LangSmith where tool calls are distinct events, and easier prompt engineering. It supersedes graph-based multi-agent for most v1.0+ use cases.
+
+### Q2. How do you prevent context bloat in a multi-agent system?
+
+Add a context management node: after N turns or when message count exceeds threshold, run a summarization node that condenses older messages into a summary and replaces them. For tool-based handoff, pass only the relevant excerpt to each specialist, not the full conversation history. Use LangChain's trim_messages() utility with a token limit.
+
+### Q3. How do you handle state isolation between specialist agents?
+
+Subgraph approach: each specialist has its own TypedDict with private keys. At the subgraph boundary, define InputState (subset of parent state passed in) and OutputState (what the subgraph returns). LangGraph handles schema translation. For tool-based handoff, isolation is natural - the tool call passes only a string input and receives a string output.
+
+### Q4. What create_react_agent parameters matter in production?
+
+The practical parameters are model, tools, prompt, response_format, state_schema, checkpointer, store, interrupt_before, interrupt_after, and debug. Use state_schema when you need custom state, store for long-term memory, and interrupts for approval gates around risky actions.
+
+### Q5. When should you use langgraph-supervisor or langgraph-swarm?
+
+Use langgraph-supervisor when you want a packaged supervisor handoff pattern with less boilerplate. Use langgraph-swarm for peer-to-peer agent handoffs where no single supervisor should control the conversation. Use hand-written graphs when routing, audit, or state isolation needs are custom.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

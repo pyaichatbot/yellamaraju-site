@@ -1,0 +1,108 @@
+---
+title: "Reliability Basics for AI Products"
+description: "Use SLIs, SLOs, health checks, observability, circuit breakers, and autoscaling to keep user trust."
+level: beginner
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 3
+totalModules: 4
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+Reliability is the discipline of keeping the user promise when machines, networks, vendors, queues, databases, and humans fail. AI products add more variability because model latency, token count, safety checks, and external tool calls can change per request.
+
+## SLIs, SLOs, SLAs, And Error Budgets
+
+An SLI is the measurement: successful request rate, p95 latency, time to first token, queue age, or safety classifier false-negative rate.
+
+An SLO is the internal target: "99.9 percent of chat responses start streaming within 2 seconds over 30 days."
+
+An SLA is the external contract with consequences: credits, termination rights, or support escalation.
+
+An error budget is the allowed failure implied by the SLO. A 99.9 percent monthly availability SLO allows about 43 minutes of unavailability per 30 days. If the budget is burning too fast, slow releases and focus on reliability work.
+
+## Health Checks
+
+Use separate checks:
+
+- Liveness: should the process be restarted?
+- Readiness: should this instance receive traffic?
+- Dependency health: are database, cache, queue, model gateway, and safety service reachable?
+
+Do not make readiness fail just because one optional dependency is degraded. Instead, expose degraded mode and route traffic accordingly.
+
+## Observability Triangle
+
+Logs explain what happened in one event. Metrics show aggregate health over time. Traces show the path of a request across services.
+
+For AI systems, add domain metrics:
+
+- Time to first token.
+- Tokens per second.
+- Input and output token count.
+- Model error rate by provider and model.
+- Safety block rate and appeal rate.
+- Tool call latency and failure rate.
+
+## Circuit Breakers And Retries
+
+A circuit breaker prevents a failing dependency from consuming all resources. It has three states:
+
+| State | Behavior |
+| --- | --- |
+| Closed | Calls flow normally. Failures are counted. |
+| Open | Calls fail fast or use fallback. The dependency gets time to recover. |
+| Half-open | A small number of probe calls test recovery. Success closes the breaker; failure opens it again. |
+
+Retries help with transient failures but can amplify outages. Use bounded retries, deadlines, idempotency, and jitter. Jitter randomizes retry timing so every client does not retry at the same instant.
+
+```text
+base delay: 100 ms
+attempt 1: random 0 to 100 ms
+attempt 2: random 0 to 200 ms
+attempt 3: random 0 to 400 ms
+stop after deadline
+```
+
+## Autoscaling
+
+Scale stateless services on CPU, memory, request rate, or latency. Scale queue consumers on queue depth and oldest message age. Scale inference workers on GPU utilization, batch queue length, and time to first token. Always define scale-down behavior so the system does not kill in-flight work.
+
+## Walkthrough: Reliable AI Chat Endpoint
+
+Requirements: answer user prompts, stream tokens, enforce safety, and keep p95 time to first token under 2 seconds for normal prompts.
+
+Architecture: the API gateway authenticates and rate limits. A chat service validates input, calls an input safety classifier, sends the request to a model gateway, streams tokens through SSE, runs output safety checks, and records usage events to a queue.
+
+Failure modes:
+
+- Model provider timeout: retry once with jitter if the request has not started streaming, then fail over to a smaller model or return a clear degraded message.
+- Safety classifier down: fail closed for high-risk surfaces; fail open only for low-risk internal tools with audit logging.
+- Usage queue down: buffer briefly; if still unavailable, continue serving only if billing can be reconstructed from request logs.
+- Streaming connection drops: stop generation if possible and mark the request incomplete.
+
+Operations: alerts should watch SLO burn rate, model error rate, queue age, and sudden safety block changes. Dashboards should split metrics by tenant, region, model, and endpoint.
+
+## Design Checklist
+
+- Define SLIs before dashboards.
+- Calculate the error budget from the SLO.
+- Add liveness and readiness checks with degraded modes.
+- Use circuit breakers around external services.
+- Retry only idempotent operations or operations protected by idempotency keys.
+- Add jitter, deadlines, and fallback behavior.
+
+## Interview Practice
+
+1. Convert a 99.9 percent monthly availability SLO into downtime minutes.
+2. What is the difference between an SLI, SLO, and SLA?
+3. Why should readiness and liveness be separate checks?
+4. Explain closed, open, and half-open circuit breaker states.
+5. Why can retries make an outage worse?
+6. Where would you use jitter in an LLM serving system?
+7. What metrics would you add for streamed model responses?
+8. When should an AI safety dependency fail closed?

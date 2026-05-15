@@ -1,0 +1,117 @@
+---
+title: "System Design Foundations for AI Builders"
+description: "Learn the vocabulary behind scalable products before applying it to AI systems."
+level: beginner
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 1
+totalModules: 4
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+System design is the skill of turning a user promise into a system that can keep that promise under real traffic, failure, cost, and team constraints. For AI builders, the same fundamentals apply whether the backend serves static images, API responses, embeddings, or streamed model tokens.
+
+## Start With The Promise
+
+Open with the user-visible outcome before naming infrastructure:
+
+- What action is the user taking?
+- How fast should it feel?
+- What data must be correct immediately?
+- What can be stale for a few seconds or minutes?
+- What should happen when a dependency fails?
+
+For example, "Design a URL shortener" is not about Redis first. It is about creating a short link, redirecting users quickly, preventing collisions, and handling popular links without falling over.
+
+## Back-Of-Envelope Estimation
+
+Use rough math to size the design before selecting components. The goal is not exactness; it is to show that your architecture matches the order of magnitude.
+
+| Step | Question | Example shortcut |
+| --- | --- | --- |
+| Users | How many daily or monthly active users? | 10 million DAU |
+| Actions | How many reads and writes per user per day? | 10 reads, 1 write |
+| QPS | Divide daily events by 86,400 and multiply peak by 3 to 10 | 100 million reads/day is about 1,200 average QPS, maybe 6,000 peak QPS |
+| Storage | Records times bytes per record times retention | 1 billion links times 500 bytes is about 500 GB before indexes |
+| Bandwidth | QPS times response size | 6,000 QPS times 1 KB is about 6 MB/s |
+| Hot keys | Which objects get disproportionate traffic? | celebrity links, viral posts, login endpoints |
+| SLO | What target matters? | 99.9 percent successful redirects under 100 ms |
+
+Say assumptions out loud. Interviewers care more about defensible reasoning than perfect numbers.
+
+## Core Building Blocks
+
+Vertical scaling means buying a bigger machine. It is simple and useful early, but it has a ceiling and can become expensive. Horizontal scaling means adding more machines behind a load balancer. It gives better failure isolation, but introduces coordination, deployment, and data consistency concerns.
+
+Load balancers distribute traffic across healthy instances. L4 load balancers route at the TCP or UDP level and are fast and generic. L7 load balancers understand HTTP paths, headers, cookies, and hostnames, so they can route `/api` differently from `/static` or send premium tenants to isolated pools.
+
+CDNs serve cacheable content from edge locations near users. They are excellent for images, video, JavaScript, downloads, and sometimes API responses with short TTLs. A pull CDN fetches from origin on first miss; a push CDN receives content proactively. Always mention `Cache-Control`, TTLs, invalidation, and the danger of caching personalized or price-sensitive data incorrectly.
+
+Caching keeps frequently accessed data in fast storage. Common patterns:
+
+- Cache-aside: application checks cache, then database, then writes cache.
+- Read-through: cache layer knows how to load missing data.
+- Write-through: writes go to cache and database together.
+- Write-behind: cache accepts writes and flushes later, trading durability for speed.
+
+Use caches for hot, repeatable reads. Avoid caching everything; memory is finite and stale data can be worse than slower data.
+
+## Monolith, Services, And CAP
+
+A monolith is often the right starting point: one deployable unit, one database, simple debugging, and fewer network failures. Microservices help when independent teams need separate deployment, scaling, ownership, or data boundaries. A distributed monolith is the worst middle ground: many services that still require coordinated releases and shared databases.
+
+CAP says that under a network partition, a distributed system must choose between consistency and availability. Partition tolerance is not optional once the system spans machines. CP systems prefer correctness during partitions, often rejecting or delaying requests. AP systems prefer availability, accepting temporary divergence and reconciling later.
+
+In interviews, connect CAP to product behavior:
+
+- Payments, inventory reservations, and permissions usually lean CP.
+- Feeds, likes, analytics, and presence often lean AP.
+
+## Walkthrough: URL Shortener
+
+Requirements: create short links, redirect short links, support custom aliases, expire links, and show basic analytics. Assume 10 million new links per day, 100 million redirects per day, 6,000 peak redirect QPS, and a 99.9 percent redirect SLO under 100 ms.
+
+APIs:
+
+```http
+POST /links
+GET /{code}
+GET /links/{code}/stats
+```
+
+Data model:
+
+| Table | Key fields |
+| --- | --- |
+| links | code, long_url, owner_id, created_at, expires_at |
+| click_events | code, timestamp, country, referrer, user_agent |
+
+Architecture: an L7 load balancer routes create and redirect traffic to stateless API servers. Link metadata lives in a durable SQL database or key-value store. Redis caches hot code-to-URL mappings. A CDN or edge worker can cache permanent redirects for public links with short TTLs. Click events go to a queue so redirects are not slowed by analytics writes.
+
+Code generation: use a 64-bit ID from a sequence or ID service and encode it in Base62. This avoids random collision loops. Custom aliases require a uniqueness check.
+
+Trade-offs: SQL is simpler for ownership, expiration, and custom aliases. A key-value store is faster for redirects at very high scale. Analytics should be eventually consistent; redirect correctness matters more than real-time stats.
+
+Failure behavior: if Redis is down, read from the database and degrade latency. If analytics queue is down, sample or drop click events after logging the incident. If the database is down, redirects for cached hot links can continue until TTL expiry, but new link creation should fail clearly.
+
+## Design Checklist
+
+- Define the user promise and failure mode.
+- Estimate reads, writes, storage, peak QPS, and bandwidth.
+- Decide which data must be strongly consistent and which can be eventual.
+- Add load balancing, caching, CDN, and database choices only after the sizing.
+- State one fallback per dependency.
+
+## Interview Practice
+
+1. Estimate QPS and storage for a URL shortener with 50 million daily redirects.
+2. Why would you use Base62 IDs instead of random short codes?
+3. Which parts of a URL shortener can be cached at the CDN?
+4. When would a URL shortener choose a key-value store over PostgreSQL?
+5. Explain CP versus AP using link creation and click analytics.
+6. What changes when one short link receives 20 percent of all traffic?
+7. How would you keep redirects working during a database outage?

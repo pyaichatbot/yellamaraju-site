@@ -1,0 +1,89 @@
+---
+title: "Nodes & Edges: Intermediate"
+description: "Modular building blocks"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 2
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Nodes & Edges","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on Nodes & Edges at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+ToolNode from langgraph.prebuilt is a production-ready node that inspects the last AIMessage for tool_calls, dispatches each to the matching tool, and appends ToolMessage results back to state. It handles parallel tool calls automatically. Multiple edges from one source node creates parallel fan-out - both destination nodes execute in the same super-step and their outputs merge via reducers.
+
+## Key Facts
+
+- ToolNode: prebuilt node executing tool calls from LLM messages automatically
+- tools_condition: prebuilt router - 'tools' if tool was called, END if final answer
+- ToolNode(handle_tool_errors=True): converts tool failures into ToolMessage errors
+- InjectedState/InjectedStore: pass graph state or store values into tools safely
+- Multiple edges from one source = parallel fan-out (both nodes run concurrently)
+- async nodes: use async def and await graph.ainvoke() for non-blocking execution
+- MessagesState has add_messages reducer that prevents duplicate messages
+
+## Reference Implementation
+
+```python
+from langgraph.prebuilt import InjectedState, ToolNode, tools_condition
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from typing_extensions import Annotated
+
+@tool
+def get_weather(city: str, state: Annotated[dict, InjectedState]) -> str:
+    """Get current weather for a city."""
+    user_tz = state.get("timezone", "UTC")
+    return f"Weather in {city}: 22C, Sunny"
+
+tools = [get_weather]
+model = ChatOpenAI(model="gpt-4o").bind_tools(tools)
+
+def call_model(state: MessagesState):
+    response = model.invoke(state["messages"])
+    return {"messages": [response]}
+
+tool_node = ToolNode(tools, handle_tool_errors=True)
+
+graph = StateGraph(MessagesState)
+graph.add_node("agent", call_model)
+graph.add_node("tools", tool_node)
+graph.add_edge(START, "agent")
+graph.add_conditional_edges("agent", tools_condition)
+graph.add_edge("tools", "agent")  # loop back after tool use
+app = graph.compile()
+```
+
+## Interview Q&A
+
+### Q1. How does ToolNode work and why use it over a custom dispatcher?
+
+ToolNode inspects the last AIMessage in state for tool_calls, looks up the matching tool by name, executes it, and appends a ToolMessage result back to state. Writing your own requires handling dispatch logic, error cases, and message formatting manually. ToolNode also handles parallel tool calls from a single LLM response automatically.
+
+### Q2. What happens when you add two edges from the same source node?
+
+Both destination nodes are scheduled for the same super-step - they execute in parallel. This is fan-out. The results are merged back using your state reducers. If two parallel nodes write to the same state key without a reducer, you get a merge conflict error. Always use Annotated reducers for keys that multiple nodes write.
+
+### Q3. How do you handle errors inside a node without crashing the graph?
+
+Return an error field in the state dict and use a conditional edge to route to a fallback node. For infrastructure-level retries, wrap with try/except inside the node and return a retry signal. LangGraph's checkpointing stores per-task writes - if a node in a super-step fails, successful sibling nodes do not re-run on resume.
+
+### Q4. What does handle_tool_errors=True change?
+
+ToolNode catches tool exceptions and returns an error ToolMessage instead of crashing the whole graph. The LLM can then recover, ask for clarification, or choose a different tool. Keep it false for fail-fast tests where exceptions should surface immediately.
+
+### Q5. When do you use InjectedState or InjectedStore?
+
+Use InjectedState when a tool needs read-only context from the current graph state without exposing that parameter to the model. Use InjectedStore when a tool needs long-term memory. Both keep sensitive implementation details out of the tool schema shown to the LLM.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

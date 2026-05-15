@@ -1,0 +1,205 @@
+---
+title: "LLM Gateway"
+description: "The intelligent traffic controller for all your model calls"
+level: intermediate
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 4
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","LLM Gateway","Infrastructure"]
+date: 2026-05-14
+estimatedTime: "25 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** The intelligent traffic controller for all your model calls
+
+## What Is an LLM Gateway?
+
+An **LLM Gateway** sits between your application code and every LLM provider (OpenAI, Anthropic, Azure OpenAI, Bedrock, local models). It's the single chokepoint through which all LLM traffic flows - giving you control, visibility, and resilience.
+
+**Core responsibilities:**
+- **Routing**: Send request to the right model/provider based on cost, latency, capability
+- **Rate limiting**: Prevent runaway costs and enforce per-user quotas
+- **Caching**: Return cached responses for semantically identical queries (massive cost reduction)
+- **Fallback**: If OpenAI is down, route to Anthropic automatically
+- **Observability**: Log every request/response for debugging and cost attribution
+- **Auth**: API key management, per-team budgets
+
+Think of it as **NGINX for LLMs** - but with AI-specific intelligence.
+
+### The Air Traffic Control Analogy
+
+ATC doesn't fly planes - it ensures all planes (LLM requests) go to the right runway (model), don't collide (rate limits), know about weather/closures (provider outages), and are tracked (observability). Without ATC, planes (requests) make their own routing decisions, which is chaos at scale.
+
+
+## Architecture
+
+**Routing strategies:**
+
+**1. Cost-optimized routing**: Simple queries -&gt; small model (gpt-4o-mini, $0.15/1M tokens); complex reasoning -&gt; large model (Claude Opus, $15/1M tokens). Classifier determines complexity tier.
+
+**2. Latency-sensitive routing**: Real-time user-facing -&gt; fastest available endpoint; batch jobs -&gt; queue-based, cheapest option.
+
+**3. Capability routing**: Code generation -&gt; Codex/DeepSeek-Coder; reasoning -&gt; o3/Claude; embeddings -&gt; text-embedding-3-large.
+
+**4. Fallback chains**: 
+```
+Primary: claude-opus-4 (Anthropic) 
+  -> On timeout/5xx: claude-sonnet-4 (Anthropic)
+  -> On full outage: gpt-4o (OpenAI)
+  -> On secondary failure: llama-3.1-70b (local)
+```
+
+**Semantic caching:**
+Embed the incoming query. If cosine similarity &gt; 0.97 with a cached query, return the cached response. Works especially well for FAQ-type queries. Can reduce LLM calls by 20-40% in enterprise deployments. Tools: GPTCache, Redis + vector similarity.
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│                        LLM GATEWAY                                  │
+│                                                                      │
+│  Incoming Request                                                    │
+│       │                                                              │
+│       ▼                                                              │
+│  ┌────────────┐  ┌─────────────┐  ┌─────────────┐  ┌───────────┐ │
+│  │    Auth    │-> │  Rate Limit │-> │    Cache    │-> │  Router   │ │
+│  │ (API key / │  │ (per user / │  │ (semantic   │  │  (cost /  │ │
+│  │  OAuth)    │  │  per team)  │  │  + exact)   │  │  latency  │ │
+│  └────────────┘  └─────────────┘  └─────────────┘  └─────┬─────┘ │
+│                                                            │        │
+│                          ┌─────────────────────────────────┤        │
+│                          │                                 │        │
+│                    ┌─────▼──────┐                  ┌──────▼─────┐ │
+│                    │  Primary   │                  │  Fallback  │ │
+│                    │  Provider  │                  │  Provider  │ │
+│                    │ (Anthropic)│                  │  (OpenAI)  │ │
+│                    └─────┬──────┘                  └──────┬─────┘ │
+│                          │                                 │        │
+│                          └─────────────┬───────────────────┘        │
+│                                        │                            │
+│                                        ▼                            │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │           OBSERVABILITY LAYER                               │  │
+│  │  Latency | Tokens | Cost | Error rate | Model version      │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **Direct provider calls from app code:** Each microservice calls OpenAI directly with its own API key. No central cost visibility, no rate limiting, no fallback. One rogue service can exhaust the company's API quota.
+- **No semantic caching:** Paying full price for 'What are your business hours?' asked 10,000 times/day. Semantic caching typically reduces this category by 80%.
+- **Hard fallback to same provider:** Falling back to another OpenAI model when OpenAI has an outage. True resilience requires cross-provider fallback.
+- **Synchronous cost tracking:** Tracking token costs in the hot path adds latency. Async emit cost events to a queue; process them out-of-band.
+
+
+## Practical Example: Quotas, Idempotency, PII Scrubbing
+
+```python
+import hashlib
+import re
+import time
+from dataclasses import dataclass
+
+EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}")
+
+def scrub_pii(text: str) -> str:
+    return EMAIL.sub("[EMAIL]", text)
+
+@dataclass
+class TokenBucket:
+    capacity: int
+    refill_per_sec: float
+    tokens: float
+    updated_at: float
+
+    def allow(self, cost: int = 1) -> bool:
+        now = time.time()
+        self.tokens = min(self.capacity, self.tokens + (now - self.updated_at) * self.refill_per_sec)
+        self.updated_at = now
+        if self.tokens >= cost:
+            self.tokens -= cost
+            return True
+        return False
+
+class CircuitBreaker:
+    def __init__(self, threshold: int = 3, cooldown_sec: int = 30):
+        self.failures = 0
+        self.opened_at = 0.0
+        self.threshold = threshold
+        self.cooldown_sec = cooldown_sec
+
+    def state(self) -> str:
+        if self.failures < self.threshold:
+            return "closed"
+        return "half_open" if time.time() - self.opened_at > self.cooldown_sec else "open"
+
+    def record(self, ok: bool) -> None:
+        if ok:
+            self.failures = 0
+        else:
+            self.failures += 1
+            if self.failures == self.threshold:
+                self.opened_at = time.time()
+
+idempotency_cache = {}
+tenant_buckets = {"acme": TokenBucket(100, 10, 100, time.time())}
+breaker = CircuitBreaker()
+
+def gateway_completion(tenant: str, prompt: str, idem_key: str):
+    if idem_key in idempotency_cache:
+        return idempotency_cache[idem_key]
+    if not tenant_buckets[tenant].allow(cost=max(1, len(prompt) // 500)):
+        return {"status": 429, "retry_after": 5}
+    if breaker.state() == "open":
+        return {"status": 503, "provider": "fallback"}
+
+    safe_prompt = scrub_pii(prompt)
+    request_hash = hashlib.sha256((tenant + safe_prompt).encode()).hexdigest()
+    response = {"status": 200, "request_hash": request_hash, "text": "model response"}
+    idempotency_cache[idem_key] = response
+    breaker.record(ok=True)
+    return response
+```
+
+Token bucket handles bursty traffic; leaky bucket smooths traffic; sliding-window counters are easiest for compliance reports. Circuit breakers protect provider outages: closed means normal, open means fail fast or fallback, half-open sends a small probe before restoring traffic. Track quotas by requests, tokens, and dollars because one long prompt can cost more than hundreds of short requests. Scrub or tokenize PII before logs, cache keys, traces, and provider calls when policy requires it.
+
+
+## Interview Q&A
+
+### How would you implement per-tenant rate limiting in an LLM gateway?
+
+Token bucket or sliding window algorithm per tenant ID. Store state in Redis (fast, distributed). Limits by: requests/minute, tokens/minute, $ spend/day. Return 429 with Retry-After header. Implement soft limits (warning at 80%) before hard limits. Separate limits for streaming vs. batch endpoints.
+
+### How do you handle streaming responses in an LLM gateway?
+
+Proxy the SSE (Server-Sent Events) stream through the gateway. Can't cache mid-stream, so cache only completed responses. Count tokens as stream completes (using tiktoken estimate or provider's usage field). For fallback during streaming: detect connection drop, restart from scratch on fallback provider (can't resume mid-stream).
+
+### What open source LLM gateway options exist?
+
+LiteLLM (most popular, 100+ providers), Portkey, Kong AI Gateway, Traefik with LLM plugins. For enterprise: AWS Bedrock Gateway, Azure AI Gateway. LiteLLM gives unified API across OpenAI, Anthropic, Cohere, Replicate - critical for avoiding vendor lock-in.
+
+## Interview Practice
+
+1. Compare token bucket, leaky bucket, and sliding-window rate limits.
+2. How do you enforce tenant quotas by dollars and tokens, not just requests?
+3. What is the half-open state in a circuit breaker?
+4. How do idempotency keys prevent duplicate charges or duplicate tool actions?
+5. Where should PII scrubbing happen in the request lifecycle?
+6. How do you safely cache streaming responses?
+7. What fallback policy avoids retry storms during provider outages?
+8. How do you route between hosted APIs and self-hosted inference engines?
+9. What fields must be emitted for observability and cost attribution?
+10. How would you test a gateway without calling external providers?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

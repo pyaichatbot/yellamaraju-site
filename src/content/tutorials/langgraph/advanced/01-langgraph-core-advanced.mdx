@@ -1,0 +1,96 @@
+---
+title: "LangGraph Core: Advanced"
+description: "Stateful multi-actor graph runtime"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 1
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","LangGraph Core","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on LangGraph Core at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+LangGraph's execution engine supports parallel fan-out/fan-in via the Send API, subgraphs as nodes with schema translation, and the Command type for atomic routing+state updates. The Send API enables true map-reduce: fan out to a node once per item, collect via reducer, fan in. A Command returned from a node is more powerful than conditional edges because it atomically routes AND updates state.
+
+## Key Facts
+
+- Send API: dynamically dispatch work to nodes mid-execution for map-reduce
+- Command type: return a goto plus update command for atomic routing + state update
+- Subgraphs: compile a StateGraph and use it as a node in a parent graph
+- Parallel fan-out: add multiple edges from one node - they execute concurrently
+- Recursion limit: default 25 steps; configurable per invocation via config dict
+
+## Reference Implementation
+
+```python
+from langgraph.types import Send, Command
+from langgraph.graph import StateGraph, START, END
+from typing import TypedDict, List, Annotated
+import operator
+
+class MapState(TypedDict):
+    docs: List[str]
+    summaries: Annotated[List[str], operator.add]
+    final_summary: str
+
+def router(state: MapState):
+    # Fan-out: spawn one summarize node per document
+    return [Send("summarize", {"doc": doc}) for doc in state["docs"]]
+
+def summarize(state: dict):
+    return {"summaries": [f"Summary: {state['doc'][:40]}"]}
+
+def aggregate(state: MapState):
+    combined = " | ".join(state["summaries"])
+    return {"final_summary": combined}
+
+graph = StateGraph(MapState)
+graph.add_node("summarize", summarize)
+graph.add_node("aggregate", aggregate)
+# path_map keeps visualization and validation explicit for dynamic Send targets.
+graph.add_conditional_edges(START, router, path_map=["summarize"])
+graph.add_edge("summarize", "aggregate")
+graph.add_edge("aggregate", END)
+
+# Command: atomic routing + state update from inside a node
+def supervisor(state):
+    return Command(
+        goto="worker",
+        update={"routing_log": [f"dispatched to worker"]}
+    )
+```
+
+## Interview Q&A
+
+### Q1. Explain the Send API and when to use it over a loop inside a node.
+
+The Send API dynamically dispatches work to a named node multiple times in a single step - each dispatch gets its own state slice. Use it for map-reduce: fan out to 'summarize' once per document, collect via reducer, then fan in to 'aggregate'. A loop inside one node is synchronous and cannot benefit from LangGraph's parallel execution or per-task checkpointing.
+
+The fan-in node should write a different state key, such as final_summary, rather than appending its aggregate back into the same summaries reducer. Otherwise later nodes see both the individual map results and the combined result in one list.
+
+### Q2. What is the Command return type and why is it more powerful than conditional edges?
+
+Command lets a node simultaneously route execution AND update state atomically. With add_conditional_edges, routing and state mutation are separate steps. Command is essential when you need to pass computed routing data and update state in one operation - for example, a supervisor that both selects the next agent AND injects a task description into state.
+
+### Q3. How do subgraphs work and when should you use them?
+
+Compile a StateGraph and pass it as the value to add_node(). The subgraph has its own state schema; LangGraph handles schema translation at the boundary. Use subgraphs for modularity in large systems - a retrieval subgraph reused across multiple parent graphs, or when you want separate checkpointing granularity per functional area.
+
+### Q4. What does path_map add to conditional edges?
+
+path_map lists the possible destinations a router can return, including dynamic Send targets. It improves graph validation and visualization, and it prevents a typo in a route string from becoming an invisible runtime path.
+
+### Q5. Why should map-reduce reducers avoid writing the aggregate to the map list?
+
+Reducers accumulate every write. If aggregate returns a summaries update containing the combined value, the combined value is appended to the same list as per-document summaries. Use a separate final_summary key so downstream nodes do not double-count or re-summarize mixed granularities.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

@@ -1,0 +1,105 @@
+---
+title: "LangGraph Core: Intermediate"
+description: "Stateful multi-actor graph runtime"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 1
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","LangGraph Core","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on LangGraph Core at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+LangGraph models execution as a state machine using the Pregel bulk synchronous parallel model. At each super-step, all scheduled nodes run potentially in parallel and write outputs to shared state via reducer functions. The graph API is best for explicit orchestration; the Functional API is best when you want the same runtime features with ordinary Python functions. The MessagesState built-in uses add_messages reducer to accumulate chat history correctly.
+
+## Key Facts
+
+- Super-step: single tick where all scheduled nodes execute simultaneously
+- Annotated[list, operator.add]: appends plain lists; use add_messages for chat messages
+- MessagesState: built-in state class with add_messages reducer for chat apps
+- Functional API: @entrypoint defines a workflow, @task defines retriable/checkpointed units
+- add_conditional_edges() unchanged from v0.1 through v1.0
+- 70M+ monthly downloads across the LangChain ecosystem
+
+## Reference Implementation
+
+```python
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.prebuilt import create_react_agent
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+
+@tool
+def capital_lookup(country: str) -> str:
+    """Look up a known capital city."""
+    return {"france": "Paris"}.get(country.lower(), "Unknown")
+
+model = ChatOpenAI(model="gpt-4o")
+
+# MessagesState uses add_messages, which preserves message IDs and coerces tuples.
+class AgentState(MessagesState):
+    step_count: int
+
+# Prebuilt ReAct agent with a real tool.
+agent = create_react_agent(model, tools=[capital_lookup])
+result = agent.invoke({
+    "messages": [("user", "What is the capital of France?")]
+})
+```
+
+## Functional API Alternative
+
+```python
+from langgraph.func import entrypoint, task
+
+@task
+def draft_answer(question: str) -> str:
+    return f"Draft answer for: {question}"
+
+@task
+def check_answer(answer: str) -> str:
+    return "approved" if "Draft" in answer else "revise"
+
+@entrypoint()
+def qa_workflow(question: str) -> dict:
+    answer = draft_answer(question).result()
+    status = check_answer(answer).result()
+    return {"answer": answer, "status": status}
+
+result = qa_workflow.invoke("Explain LangGraph reducers")
+```
+
+Use StateGraph when you need visual graph structure, conditional edges, or multi-agent topology. Use the Functional API when your workflow is already a Python call tree but still needs checkpointing, streaming, retries, persistence, or human interrupts.
+
+## Interview Q&A
+
+### Q1. What is a super-step in LangGraph execution?
+
+A super-step is a single execution tick where all nodes scheduled for that step run - potentially in parallel. LangGraph creates a checkpoint at each super-step boundary. For a graph START-&gt;A-&gt;B-&gt;END, there are separate super-steps for input, node A, and node B. You can only resume execution from a super-step checkpoint boundary.
+
+### Q2. How do Annotated type hints control state merging?
+
+Annotated types attach a reducer function that controls how state is merged when a node returns an update. Annotated[list, operator.add] means new list values are appended rather than replaced. Without a reducer, the last writer wins. For chat history, prefer MessagesState or Annotated[list, add_messages] because add_messages handles message IDs and type coercion better than raw list concatenation.
+
+### Q3. How does MessagesState differ from a plain TypedDict?
+
+MessagesState is a built-in subclass of TypedDict that includes messages: Annotated[list, add_messages]. The add_messages reducer from langchain_core handles deduplication and type coercion (tuples to HumanMessage/AIMessage). It saves boilerplate and is the recommended starting point for any chat-based LangGraph agent.
+
+### Q4. When should you choose the Functional API over StateGraph?
+
+Choose the Functional API when the workflow is naturally expressed as Python functions and you want LangGraph durability around each task. Choose StateGraph when topology is the product: conditional routing, graph visualization, parallel fan-out, or supervisors that need explicit nodes and edges.
+
+### Q5. Why is add_messages safer than operator.add for chat state?
+
+operator.add only concatenates lists. add_messages understands LangChain message objects, coerces shorthand tuples, and updates messages by ID instead of blindly duplicating them. That matters when a tool call, retry, or human edit replaces a previous message.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

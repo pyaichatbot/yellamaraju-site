@@ -1,0 +1,95 @@
+---
+title: "Evaluation: Advanced"
+description: "Trace analysis & metrics"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 9
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Evaluation","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on Evaluation at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Enterprise eval infrastructure: custom evaluator libraries for domain-specific metrics (GDPR compliance, financial accuracy), simulation-based testing where agents interact with simulated environments, and pairwise comparison where two agent versions are judged head-to-head. Sophisticated eval suites can cost as much as production traffic - budget accordingly.
+
+## Key Facts
+
+- Simulation testing: agent interacts with a simulated customer or environment LLM
+- Pairwise eval: compare two versions on same input, LLM judge picks winner
+- Human eval pipeline: labelers create gold standard ground truth datasets
+- Eval cost control: use cheap judge model, cache evaluations of identical outputs
+- Regression baseline: pin a golden graph version as the permanent benchmark
+
+## Reference Implementation
+
+```python
+from langsmith.evaluation import evaluate_comparative
+
+def pairwise_judge(runs, example):
+    old_output = runs[0].outputs.get("answer", "")
+    new_output = runs[1].outputs.get("answer", "")
+    # Warning: length is not quality. Longer answers often hide regressions.
+    score = judge_with_rubric(
+        input=example.inputs,
+        baseline=old_output,
+        candidate=new_output,
+        rubric=["correctness", "grounding", "tool_trajectory", "conciseness"],
+    )
+    return {"key": "preference", "score": score}
+
+results = evaluate_comparative(
+    [
+        lambda x: old_app.invoke(x),   # baseline
+        lambda x: new_app.invoke(x)    # challenger
+    ],
+    evaluators=[pairwise_judge],
+    data="customer-scenarios-v2"
+)
+
+# Simulation-based testing
+class CustomerSimulator:
+    def respond(self, agent_message: str, scenario: dict) -> str:
+        # sim_llm.invoke(realistic customer response prompt)
+        return f"Simulated response to: {agent_message[:50]}"
+
+def simulate_conversation(example):
+    sim = CustomerSimulator()
+    config = {"configurable": {"thread_id": f"eval-{example['id']}"}}
+    for turn in range(5):
+        customer_msg = sim.respond("Hello", example["scenario"])
+        result = app.invoke({"messages": [("user", customer_msg)]}, config)
+    return result
+```
+
+## Interview Q&A
+
+### Q1. How do you build an eval framework for compliance automation where correctness is legally defined?
+
+Legal compliance eval requires ground truth from lawyers, not just LLM judges. Build: a dataset of regulatory clauses with legally-verified answers labeled by compliance lawyers, a rule-based evaluator checking required keywords from regulatory text, an LLM judge calibrated against lawyer labels with Cohen's kappa above 0.7, and a false-negative evaluator since missing compliance issues are worse than false positives.
+
+### Q2. How do you detect agent quality degradation before users notice?
+
+Multi-signal monitoring: online eval sampling 15% of traces with LLM judge, step count drift (increasing average steps suggests looping), human feedback thumbs up/down tracked weekly, and error rate spikes in tool calls. Set LangSmith alerts on all four signals. Correlate degradation events with model updates or upstream data changes.
+
+### Q3. What is simulation-based testing and when is it more valuable than dataset evaluation?
+
+Simulation-based testing has an agent interact with a simulated environment - another LLM playing a customer, a mock API, or a synthetic database. Valuable when real interactions are too expensive to collect, you need to test rare edge cases at scale, or quality requires multi-turn dynamics that static datasets cannot capture.
+
+### Q4. Why is output length a dangerous quality proxy?
+
+Length correlates poorly with correctness. A verbose answer can be wrong, unsafe, or ungrounded, while a concise answer can be ideal. Treat length only as a style or budget metric; quality gates need rubrics, reference checks, trajectory checks, and human-calibrated judge prompts.
+
+### Q5. How do you evaluate streaming and tool trajectories?
+
+Capture stream events and final traces. Assert event order for key milestones, expected tool calls, retry behavior, interrupt payloads, and final answer quality. For regressions, compare both the final output and the sequence of node/tool events so a shortcut answer does not pass by accident.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

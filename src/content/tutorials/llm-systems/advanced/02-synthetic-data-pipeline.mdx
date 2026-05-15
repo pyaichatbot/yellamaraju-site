@@ -1,0 +1,172 @@
+---
+title: "Synthetic Data Pipeline"
+description: "Teaching AI with AI-generated training data"
+level: advanced
+path: llm-systems
+pathTitle: "LLM Systems Engineering"
+pathOrder: 2
+module: 2
+totalModules: 7
+roles: ["dev","qa","pm"]
+tags: ["LLM Systems","Synthetic Data Pipeline","Advanced"]
+date: 2026-05-14
+estimatedTime: "25 min"
+prerequisites: []
+---
+Start here if you need to explain, design, or operate this pattern in a production LLM system.
+
+**Outcome:** Teaching AI with AI-generated training data
+
+## What Is Synthetic Data?
+
+**Synthetic data** is AI-generated training examples used to train or fine-tune models. It's a core technique at all frontier labs because:
+
+1. **Privacy**: Real user data has PII, legal restrictions. Synthetic data is clean.
+2. **Quantity**: You can generate millions of examples for rare scenarios.
+3. **Quality control**: You define exactly what signals to train on.
+4. **Cost**: Generating 10K examples with GPT-4 costs ~$50. Collecting and labeling real examples costs 100x more.
+
+**Andrej Karpathy's insight:** *"The best data is data that teaches the model what you want, precisely. Synthetic data lets you engineer those exact teaching moments."*
+
+OpenAI trained GPT-4's math reasoning partly on synthetic step-by-step solutions. Anthropic uses synthetic data for Constitutional AI (RLAIF). Meta used synthetic data to train LLaMA 3's coding abilities.
+
+### The Flight Simulator Analogy
+
+Real pilots train in flight simulators before flying real planes. Synthetic data is the flight simulator for AI. You can create impossible scenarios (engine failure + storm + night), get unlimited practice, with zero real-world risk. The model learns from engineered perfect examples, then applies that learning to messy real-world data.
+
+
+## Synthetic Data Pipeline Architecture
+
+**Key synthetic data techniques:**
+
+**Self-Instruct**: Use a strong LLM to generate instruction-response pairs from a seed set. The model learns to follow instructions it generates for itself.
+
+**Evol-Instruct (used in WizardLM)**: Iteratively evolve simple prompts into complex ones (add constraints, deepen reasoning, change persona) to create diverse difficulty levels.
+
+**Persona-based generation**: "You are a confused first-year medical student. Ask an unclear question about drug interactions." Generates realistic edge cases that real users produce.
+
+**Back-translation**: Generate the answer first, then generate the question that would produce that answer. Ensures answer quality.
+
+**RLAIF (Reinforcement Learning from AI Feedback)**: Anthropic's technique. Generate many candidate outputs, use a "preference model" trained on Constitutional AI principles to score them, use scores as reward signal for RLHF.
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                 SYNTHETIC DATA PIPELINE                          │
+│                                                                   │
+│  SEED DATA (10-100 real examples)                                │
+│       │                                                           │
+│       ▼                                                           │
+│  ┌───────────────┐                                               │
+│  │ GENERATOR LLM │  <- Strong frontier model (GPT-4, Claude)     │
+│  │               │    Persona-based prompting                    │
+│  │  Generates:   │    Adversarial augmentation                   │
+│  │  • Inputs     │    Edge case injection                        │
+│  │  • Outputs    │                                               │
+│  │  • Chain of   │                                               │
+│  │    Thought    │                                               │
+│  └───────┬───────┘                                               │
+│          │ 100K-10M examples                                      │
+│          ▼                                                        │
+│  ┌───────────────┐                                               │
+│  │ QUALITY FILTER│  <- Deduplication (MinHash / SimHash)         │
+│  │               │    Rule-based filtering (length, format)      │
+│  │               │    LLM scoring (quality rubric)               │
+│  │               │    Reward model scoring                       │
+│  └───────┬───────┘                                               │
+│          │ curated subset                                         │
+│          ▼                                                        │
+│  ┌───────────────┐                                               │
+│  │   DEBIASING   │  <- Check demographic balance                 │
+│  │               │    Check topic distribution                   │
+│  │               │    Red-teaming for safety                     │
+│  └───────┬───────┘                                               │
+│          │                                                        │
+│          ▼                                                        │
+│     Fine-tune target model                                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+
+## Anti-Patterns
+
+- **Training on unfiltered synthetic data:** Generator LLM produces confident-sounding but wrong answers. Without quality filtering, you train the target model to be confidently wrong. Always verify generated outputs against ground truth or with a separate verifier model.
+- **No deduplication:** LLMs generate redundant examples. Training on 1000 near-duplicate examples of the same concept wastes compute and biases the model. Use MinHash or embedding-based dedup.
+- **Distribution mismatch:** Generating synthetic data that looks nothing like real user queries. Model performs well on synthetic evals, fails on production. Always validate synthetic data distribution against real production data.
+- **Privacy leakage in seeds:** Using real customer data as seeds - the generated synthetic data retains statistical patterns that can be used to re-identify individuals. Always anonymize seeds first.
+
+
+## Practical Example: Mixtures, Formats, and Decontamination
+
+```python
+import hashlib
+import json
+import random
+
+def alpaca(instruction: str, output: str, input_text: str = "") -> dict:
+    return {"instruction": instruction, "input": input_text, "output": output}
+
+def chatml(system: str, user: str, assistant: str) -> str:
+    return (
+        "<|im_start|>system\n" + system + "<|im_end|>\n"
+        "<|im_start|>user\n" + user + "<|im_end|>\n"
+        "<|im_start|>assistant\n" + assistant + "<|im_end|>"
+    )
+
+def sha(text: str) -> str:
+    return hashlib.sha256(text.lower().strip().encode()).hexdigest()
+
+eval_hashes = {sha("What is your refund policy?")}
+mixture = {"sharegpt": 0.4, "alpaca": 0.3, "domain_synthetic": 0.3}
+examples = [
+    ("domain_synthetic", alpaca("Classify refund ticket", "billing")),
+    ("alpaca", alpaca("Summarize this clause", "The vendor may terminate.")),
+]
+
+filtered = []
+for source, example in examples:
+    text = json.dumps(example, sort_keys=True)
+    if sha(text) in eval_hashes:
+        continue  # decontamination: never train on eval examples
+    if random.random() <= mixture[source]:
+        filtered.append({"source": source, "example": example})
+
+print(json.dumps(filtered, indent=2))
+```
+
+ShareGPT data is conversation-shaped; Alpaca is instruction/input/output; ChatML is model-chat serialization. Keep formats explicit so you do not train the model on malformed role boundaries. Data mixtures matter: blend real human data, synthetic instructions, safety refusals, domain examples, and general capability examples to avoid catastrophic forgetting. RLAIF uses AI feedback as a reward signal; DPO trains directly from preferred/rejected pairs without an RL loop. TIES and DARE-style merging help combine adapters or data-trained variants, but eval every mixture. A production flywheel samples failures, generates synthetic variants, filters them, trains, evaluates on real held-out data, and feeds new failures back in.
+
+
+## Interview Q&A
+
+### How do you verify the quality of synthetic data?
+
+Multi-layer verification: (1) Rule-based: format, length, uniqueness checks. (2) LLM-as-Judge: rate quality on rubric (correctness, relevance, safety). (3) Reward model scoring if you have one. (4) Train on a small subset and eval on real data before committing to full fine-tune. Track model performance on held-out real data - not just synthetic eval.
+
+### What is the 'model collapse' problem with synthetic data?
+
+If you train a model on its own outputs, then train the next version on THOSE outputs, and repeat - quality degrades each generation. Information is lost, the model becomes increasingly generic and confidently wrong. Prevention: always include real human data in every training run. Never train exclusively on synthetic data for multiple generations.
+
+### When would you use synthetic data vs. human labeling?
+
+Synthetic data: for coverage at scale, rare scenarios, data augmentation, when privacy prevents real data use. Human labeling: for calibrating LLM judges, for subtle preference signals (style, tone), for safety-critical decisions. Best practice: use synthetic data for bulk training, human labels for reward model calibration and eval set curation.
+
+## Interview Practice
+
+1. How do ShareGPT, Alpaca, and ChatML formats differ?
+2. What is decontamination and how do you detect train/eval overlap?
+3. How do you choose a data mixture for domain adaptation?
+4. What is the difference between RLAIF and DPO?
+5. How do you prevent model collapse when using synthetic data repeatedly?
+6. What filters should run before synthetic data reaches training?
+7. How do you validate synthetic data against real production distribution?
+8. What should be human-labeled even if most data is synthetic?
+9. How does a synthetic data flywheel improve over time?
+10. When would you discard high-quality synthetic data?
+
+
+## Practical Checklist
+
+- Identify the user-visible failure this pattern prevents.
+- Name the runtime component that owns the behavior.
+- Define one metric that proves the pattern is working.
+- Add one regression scenario before shipping changes.

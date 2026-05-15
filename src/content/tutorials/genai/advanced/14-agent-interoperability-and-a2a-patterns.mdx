@@ -1,0 +1,188 @@
+---
+title: "Agent Interoperability and A2A Patterns"
+description: "Design multi-agent systems with clear contracts so teams can mix runtimes and frameworks without brittle rewrites."
+level: advanced
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 14
+totalModules: 15
+roles: ["dev", "qa", "pm"]
+tags: ["Multi-Agent", "Interoperability", "A2A", "Architecture"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["advanced/02-multi-agent-orchestration", "advanced/09-enterprise-mcp-tool-architecture"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import Callout from '../../../../components/Callout.astro';
+
+## Protocols Over Frameworks
+
+Multi-agent systems become hard to maintain when every agent assumes the same framework, memory shape, tool runtime, and prompt conventions. Agent-to-agent (A2A) design uses stable contracts so agents can delegate work across teams, vendors, and runtimes.
+
+Interoperability does not require every agent to think the same way. It requires them to exchange tasks, capabilities, status, errors, and evidence in predictable shapes.
+
+<Mermaid
+  title="A2A-Oriented Multi-Agent Topology"
+  chart={`
+flowchart TD
+  S[Supervisor Agent] --> X[Shared A2A Contract Layer]
+  X --> D1[Support Agent]
+  X --> D2[Billing Agent]
+  X --> D3[Risk Agent]
+  D1 --> O[Observability]
+  D2 --> O
+  D3 --> O
+  X --> P[Policy and Authz]
+`}
+/>
+
+## A2A Envelope
+
+Use an envelope that separates routing metadata from task content. This makes delegation auditable and versionable.
+
+```ts
+type A2AEnvelope<T = unknown> = {
+  protocol: "a2a";
+  version: "1.0";
+  messageId: string;
+  traceId: string;
+  parentRunId?: string;
+  sender: {
+    agentId: string;
+    tenantId: string;
+    actorId?: string;
+  };
+  recipient: {
+    capability: string;
+    agentId?: string;
+  };
+  deadlineMs: number;
+  cancellationToken?: string;
+  payload: T;
+};
+
+type ResearchTask = {
+  question: string;
+  requiredSources: string[];
+  outputFormat: "bullets" | "brief" | "json";
+};
+```
+
+## Capability Advertisement
+
+Agents should advertise what they can do, what inputs they accept, and what guarantees they provide.
+
+```json
+{
+  "agent_id": "billing-agent-v2",
+  "capabilities": [
+    {
+      "name": "invoice.explain",
+      "input_schema_ref": "schemas/invoice-explain.v1.json",
+      "output_schema_ref": "schemas/explanation.v1.json",
+      "max_latency_ms": 15000,
+      "requires_scopes": ["billing:read"],
+      "data_classes": ["pii", "internal"]
+    },
+    {
+      "name": "refund.recommend",
+      "input_schema_ref": "schemas/refund-recommend.v1.json",
+      "output_schema_ref": "schemas/refund-recommendation.v1.json",
+      "requires_approval_before_execution": true
+    }
+  ]
+}
+```
+
+A supervisor can route by capability instead of knowing implementation details. That lets one team move from LangChain to LangGraph, another use a custom runtime, and another expose an MCP-backed service.
+
+## Error Taxonomy
+
+Interoperability fails when every agent invents its own errors. Use standard categories.
+
+| Error | Meaning | Caller behavior |
+|---|---|---|
+| `invalid_request` | Payload failed schema | Do not retry |
+| `permission_denied` | Missing scope or tenant access | Do not retry |
+| `capability_unavailable` | Agent cannot perform task now | Try fallback |
+| `deadline_exceeded` | Task exceeded time budget | Retry or degrade |
+| `needs_clarification` | Agent needs more input | Ask user or planner |
+| `policy_blocked` | Governance rule stopped action | Escalate or refuse |
+
+## Delegation with Timeouts and Cancellation
+
+```py
+import asyncio
+
+class A2AError(Exception):
+    def __init__(self, code: str, message: str):
+        self.code = code
+        super().__init__(message)
+
+async def delegate(client, envelope):
+    try:
+        return await asyncio.wait_for(
+            client.send(envelope),
+            timeout=envelope["deadlineMs"] / 1000,
+        )
+    except asyncio.TimeoutError as exc:
+        await client.cancel(envelope.get("cancellationToken"))
+        raise A2AError("deadline_exceeded", "Delegated agent exceeded deadline") from exc
+```
+
+Cancellation is part of the contract. Without it, a delegated agent may continue running and execute side effects after the supervisor has already failed over.
+
+## Framework Boundaries
+
+LangChain is still useful for chains and integrations, but LangGraph-style state machines are a better mental model for long-lived, branching, resumable agents. In A2A systems, hide the framework behind adapters:
+
+```ts
+interface AgentAdapter {
+  capabilities(): Promise<Capability[]>;
+  invoke(envelope: A2AEnvelope): Promise<A2AEnvelope>;
+  cancel(token: string): Promise<void>;
+  health(): Promise<{ status: "ok" | "degraded" | "down" }>;
+}
+```
+
+The contract survives even if the internal implementation changes from LangChain to LangGraph, AutoGen, CrewAI, a custom planner, or a human-backed workflow.
+
+## Interoperability Testing
+
+- Contract tests for every schema.
+- Mixed-version tests between v1 and v2 agents.
+- Timeout, cancellation, and duplicate message tests.
+- Partial outage tests with fallback agents.
+- Trace propagation tests across all delegated calls.
+- Security tests for cross-tenant delegation.
+
+<RoleCallout role="dev">
+Define protocol schemas first, then build adapters. This prevents framework lock-in and keeps agents replaceable.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Run interoperability tests with mixed versions, partial outages, duplicate messages, and cancellation races.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Use capability contracts to define team ownership. The support agent owns support semantics; the supervisor owns routing and user experience.
+</RoleCallout>
+
+<Callout type="tip" title="Migration Strategy">
+Start with one delegated domain flow and enforce compatibility in CI before expanding A2A across the organization.
+</Callout>
+
+## Interview Practice
+
+1. What problem does A2A solve in multi-agent systems?
+2. What fields belong in an agent-to-agent task envelope?
+3. How does capability advertisement reduce framework coupling?
+4. Why are timeouts and cancellation part of the protocol, not just implementation details?
+5. Compare LangChain chains with LangGraph-style durable state machines.
+6. What error categories should be standardized for interoperable agents?
+7. How would you test mixed-version agent compatibility?
+8. How should trace IDs propagate across delegated agent calls?
+

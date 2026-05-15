@@ -1,0 +1,89 @@
+---
+title: "State & Persistence: Advanced"
+description: "Checkpoints & long-running agents"
+level: advanced
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 3
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","State & Persistence","Agents"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+This lesson focuses on State & Persistence at the advanced level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Production state management requires schema evolution strategies (new fields with defaults so old checkpoints stay valid), time-travel debugging via get_state_history(), AsyncPostgresSaver for async compilation, and durable Store implementations for cross-thread memory. State schemas should be versioned like database schemas. The Store supports namespaced key-value with semantic search for agent memory systems.
+
+## Key Facts
+
+- Time travel: graph.get_state_history(config) returns all checkpoints for a thread
+- Fork: invoke with a past checkpoint_id in config to branch from that point
+- Schema evolution: new fields must have defaults so old checkpoints remain valid
+- AsyncPostgresSaver: required for async graph compilation in high-throughput production
+- Checkpoint namespace: separates graph versions/subgraphs inside the same thread
+- checkpoint_writes: stores per-task writes for retry-safe parallel recovery
+
+## Reference Implementation
+
+```python
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+import asyncio
+
+async def production_agent():
+    DB_URI = "postgresql://user:pass@host:5432/agents_db"
+
+    async with AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer:
+        await checkpointer.setup()  # creates tables if not exist
+
+        app = graph.compile(checkpointer=checkpointer)
+        config = {"configurable": {"thread_id": "prod-789"}}
+
+        result = await app.ainvoke(
+            {"messages": [("user", "Start audit")]}, config
+        )
+
+        # Time-travel: inspect all checkpoints
+        history = [c async for c in app.aget_state_history(config)]
+        print(f"Total checkpoints: {len(history)}")
+
+        # Fork from a past checkpoint. Omit fresh input so prior messages are preserved.
+        past_config = {"configurable": {
+            "thread_id": "fork-789",
+            "checkpoint_ns": "audit-agent",
+            "checkpoint_id": history[2].config["configurable"]["checkpoint_id"]
+        }}
+        forked = await app.ainvoke(None, past_config)
+```
+
+## Interview Q&A
+
+### Q1. How do you implement time-travel debugging in a production LangGraph system?
+
+Use graph.get_state_history(config) to list all checkpoints for a thread. Each has a checkpoint_id and full state snapshot. To re-run from a specific point, invoke with that checkpoint_id in the config - LangGraph loads that snapshot and continues from there. In LangSmith Studio this is visual: click any step to fork and re-run.
+
+Do not pass `{"messages": []}` when forking unless you intentionally want to add or overwrite input. Pass None with the past checkpoint_id to resume from that checkpoint's stored state; this preserves the message history.
+
+### Q2. How would you handle LangGraph state schema migrations in production?
+
+Treat it like a database migration: add new fields with default values so old checkpoints remain valid, never rename or remove fields without a migration step, and version your state schema. For breaking changes, write a migration script that reads old checkpoints and re-saves them with the new schema via checkpointer.put().
+
+### Q3. What is the performance difference between MemorySaver and AsyncPostgresSaver?
+
+MemorySaver has zero serialization overhead but is single-process and not fault-tolerant. AsyncPostgresSaver adds serialization, network RTT, and disk IO per checkpoint - typically 5 to 50ms depending on payload. Use asyncpg connection pooling, compress large state fields, and consider Redis for hot state with Postgres as the durable backup.
+
+### Q4. What tables should you expect from Postgres checkpointing?
+
+Expect checkpoints for checkpoint metadata, checkpoint_blobs for serialized channel values, and checkpoint_writes for per-task writes within a super-step. The exact schema can change by package version, so run the saver setup/migration code that matches your installed langgraph-checkpoint-postgres version.
+
+### Q5. Why does checkpoint_ns matter for forks and subgraphs?
+
+checkpoint_ns lets one thread hold separate histories for graph versions, assistants, or subgraphs. It prevents a fork or child graph from accidentally reading the wrong checkpoint lineage when several workflows share a thread_id.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

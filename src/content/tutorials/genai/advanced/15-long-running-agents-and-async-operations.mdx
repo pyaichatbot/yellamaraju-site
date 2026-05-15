@@ -1,0 +1,217 @@
+---
+title: "Long-Running Agents and Async Operations"
+description: "Build background agent workflows with polling, cancellation, retries, and user-visible progress for enterprise reliability."
+level: advanced
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 15
+totalModules: 15
+roles: ["dev", "qa", "pm"]
+tags: ["Async", "Background Jobs", "Reliability", "Operations"]
+date: 2026-05-14
+estimatedTime: "40 min"
+prerequisites: ["advanced/10-agent-runtime-durability-hitl", "advanced/12-agent-evaluation-harness-trace-grading"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import Callout from '../../../../components/Callout.astro';
+
+## Why Async Matters
+
+Enterprise workflows often exceed a single HTTP request window. A procurement review, migration plan, incident investigation, or document analysis job may run for minutes or hours, pause for approval, call several tools, and stream progress to the user.
+
+Treat long-running agents as jobs with explicit lifecycle management, not as synchronous chat completions.
+
+<Mermaid
+  title="Async Agent Job Lifecycle"
+  chart={`
+stateDiagram-v2
+  [*] --> queued
+  queued --> running
+  running --> waiting_approval
+  waiting_approval --> running
+  running --> succeeded
+  running --> failed
+  running --> cancelling
+  cancelling --> cancelled
+`}
+/>
+
+## Job API Contract
+
+A clean async API returns a stable job ID immediately, then exposes status, events, cancellation, and final output.
+
+```ts
+// POST /agent-jobs
+export type CreateJobResponse = {
+  jobId: string;
+  status: "queued";
+  statusUrl: string;
+  eventsUrl: string;
+  cancelUrl: string;
+};
+
+// GET /agent-jobs/:jobId
+export type JobStatus = {
+  jobId: string;
+  status: "queued" | "running" | "waiting_approval" | "succeeded" | "failed" | "cancelled";
+  progress: {
+    currentStep: number;
+    totalSteps?: number;
+    label: string;
+  };
+  result?: unknown;
+  error?: { code: string; message: string; retryable: boolean };
+  updatedAt: string;
+};
+```
+
+The frontend should never infer state from timing or logs. It should render the server-provided status.
+
+## Worker Queue Pattern
+
+```py
+import asyncio
+from enum import Enum
+
+class JobState(str, Enum):
+    queued = "queued"
+    running = "running"
+    waiting_approval = "waiting_approval"
+    succeeded = "succeeded"
+    failed = "failed"
+    cancelled = "cancelled"
+
+async def worker_loop(queue, db, agent):
+    while True:
+        job_id = await queue.get()
+        job = await db.jobs.get(job_id)
+
+        if job.state == JobState.cancelled:
+            continue
+
+        await db.jobs.update(job_id, state=JobState.running)
+
+        try:
+            async for event in agent.run_stream(job.input, resume_from=job.checkpoint):
+                await db.events.insert(job_id=job_id, event=event)
+                if await db.jobs.is_cancel_requested(job_id):
+                    await agent.cancel(job_id)
+                    await db.jobs.update(job_id, state=JobState.cancelled)
+                    break
+
+            else:
+                await db.jobs.update(job_id, state=JobState.succeeded)
+        except RetryableProviderError as exc:
+            await queue.retry(job_id, delay_seconds=backoff(job.attempts))
+        except Exception as exc:
+            await db.jobs.update(job_id, state=JobState.failed, error={"message": str(exc)})
+```
+
+This loop assumes the underlying agent writes checkpoints and tool effects as covered in Tutorial 10.
+
+## Streaming Progress
+
+Use streaming for user-visible progress, not just final tokens. Server-sent events are simple and fit many web apps.
+
+```ts
+// GET /agent-jobs/:jobId/events
+export async function streamJobEvents(jobId: string, send: (event: string) => void) {
+  for await (const event of eventStore.follow(jobId)) {
+    send(`event: ${event.type}\n`);
+    send(`data: ${JSON.stringify(event)}\n\n`);
+
+    if (["succeeded", "failed", "cancelled"].includes(event.type)) {
+      break;
+    }
+  }
+}
+```
+
+Progress events should be meaningful: “retrieving invoices,” “waiting for approval,” “drafting response,” “validating policy.” Avoid exposing raw chain-of-thought.
+
+## Polling with Backoff
+
+Not every client can hold a stream. Polling should use backoff and server hints.
+
+```ts
+async function pollJob(jobId: string) {
+  let delay = 1000;
+
+  while (true) {
+    const res = await fetch(`/agent-jobs/${jobId}`);
+    const job = await res.json();
+    render(job);
+
+    if (["succeeded", "failed", "cancelled"].includes(job.status)) return job;
+
+    delay = Math.min(delay * 1.5, 10000);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
+```
+
+## Batch API Pattern
+
+Batching improves cost and throughput for offline workloads such as nightly document tagging, eval runs, or large embedding jobs. Do not use batch mode when the user expects interactive latency.
+
+```json
+{"custom_id":"case-001","method":"POST","url":"/v1/responses","body":{"model":"fast-model","input":"Classify ticket A"}}
+{"custom_id":"case-002","method":"POST","url":"/v1/responses","body":{"model":"fast-model","input":"Classify ticket B"}}
+```
+
+Track each item independently so one bad input does not fail the whole business process.
+
+## Cancellation and Compensation
+
+Cancellation means “stop future work.” It does not automatically undo completed side effects. Define compensation behavior per tool:
+
+| Tool type | Cancellation behavior |
+|---|---|
+| Read-only retrieval | Stop immediately |
+| Draft generation | Discard draft |
+| Email send | Cannot unsend; require approval before send |
+| Ticket create | Add cancellation comment or close ticket |
+| Payment/refund | Use domain-specific reversal flow if allowed |
+
+## Operational SLOs
+
+Long-running agents need operations dashboards:
+
+- Queue depth and oldest queued job.
+- P50/P95/P99 completion time by job type.
+- Stuck jobs by state.
+- Approval wait time.
+- Retry counts and provider error rates.
+- Cost per completed job.
+- Cancellation rate and compensation failures.
+
+<RoleCallout role="dev">
+Expose stable job IDs, status APIs, event streams, and cancellation endpoints. Build the lifecycle first, then attach the agent.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Test cancel-while-running, retry-after-timeout, duplicate polling, stream reconnects, approval expiry, and worker crashes.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Define status language and escalation paths. Users need to know whether a job is queued, working, waiting on someone, or failed with a next step.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+Without cancellation semantics, orphaned workflows can continue executing side effects after users abandon the task or supervisors fail over.
+</Callout>
+
+## Interview Practice
+
+1. Why should long-running agents be modeled as jobs instead of synchronous requests?
+2. What endpoints should an async agent API expose?
+3. How do streaming events differ from exposing chain-of-thought?
+4. When is polling acceptable, and how should backoff work?
+5. What is the difference between cancellation and compensation?
+6. When should you use a batch API instead of interactive calls?
+7. What SLOs would you monitor for long-running agent operations?
+8. How do durable checkpoints from Tutorial 10 support async workers?
+

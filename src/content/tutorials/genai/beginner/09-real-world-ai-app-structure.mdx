@@ -1,0 +1,135 @@
+---
+title: "How Real-World AI Applications Are Structured"
+description: "The 4-layer architecture of production AI apps: UI, API, AI engine, and data. Where failures happen at each layer and how to design for resilience."
+level: beginner
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 9
+totalModules: 9
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["AI Architecture", "Production AI", "System Design", "Layers"]
+date: 2026-05-14
+estimatedTime: "18 min"
+prerequisites: ["01-what-is-genai"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 4-Layer Mental Model
+
+Every production AI application has the same underlying structure, regardless of what it does. Understanding this architecture helps you debug problems, write better requirements, and make smarter design decisions.
+
+The four layers:
+
+1. **UI Layer**  -  how users interact (chat interface, form, API endpoint)
+2. **API Layer**  -  your backend: authentication, rate limiting, business logic
+3. **AI Engine Layer**  -  prompt construction, model calls, output validation
+4. **Data Layer**  -  vector stores, document repositories, caches, databases
+
+<Mermaid
+  title="The 4-Layer AI Application Architecture"
+  chart={`
+flowchart TB
+    U([User]) --> UI["UI Layer\nChat interface, forms, API"]
+    UI --> API["API Layer\nAuth · Rate limiting · Business logic"]
+    API --> AIE["AI Engine Layer\nPrompt builder · Model calls · Output parser"]
+    AIE --> DATA["Data Layer\nVectorDB · Document store · Cache · DB"]
+    DATA --> AIE
+    AIE --> API
+    API --> UI
+
+    UI -.->|failure: slow/broken UX| F1["❌ UX fail"]
+    API -.->|failure: auth · timeouts| F2["❌ API fail"]
+    AIE -.->|failure: hallucinations · schema| F3["❌ AI fail"]
+    DATA -.->|failure: stale data · missing| F4["❌ Data fail"]
+
+    style AIE fill:#f3e8ff,stroke:#7c3aed,color:#7c3aed
+    style DATA fill:#fef3c7,stroke:#d97706,color:#b45309
+`}
+/>
+
+## What Can Go Wrong at Each Layer
+
+Understanding failure modes is the most important thing you can do before building.
+
+**UI Layer failures:**
+- Streaming responses that hang or cut off
+- No loading states while AI thinks (feels broken to users)
+- No graceful handling when AI returns an error
+
+**API Layer failures:**
+- Rate limiting  -  your users hit provider limits you didn't anticipate
+- Timeouts  -  LLM calls take 5-30 seconds; your API timeout was set to 10s
+- Auth errors cascading into confusing UI states
+
+**AI Engine Layer failures:**
+- Hallucinated content that looks real
+- Schema violations breaking downstream parsing
+- Prompt injection attacks from user input
+- Context window exhaustion mid-conversation
+
+**Data Layer failures:**
+- Stale vector index (documents updated but embeddings not refreshed)
+- Missing context (user's previous conversation not retrieved)
+- Cache serving wrong responses to different users
+
+## The "AI is Just a Layer" Principle
+
+This is the most important architectural insight: **the AI is one component in a larger system**, not the system itself.
+
+<Callout type="info" title="The Key Principle">
+The best AI applications are the ones where you could swap out the model and the rest of the app keeps working. Design for model independence  -  your prompt builder, validator, and business logic should be model-agnostic.
+</Callout>
+
+This means:
+- Abstract the model behind an interface (easy to swap GPT-4 for Claude)
+- Validate at the boundary (AI Engine output → API Layer validation)
+- Test each layer independently (mock the AI layer to test the API layer)
+
+## The "AI Feature" Ownership Map
+
+One common org failure: no one owns the AI Engine Layer. Developers own the API, designers own the UI, but the prompts, evals, and output validation fall through the cracks.
+
+Assign explicit ownership:
+- **UI Layer** → Frontend team
+- **API Layer** → Backend team  
+- **AI Engine Layer** → AI/ML engineer or designated backend dev
+- **Data Layer** → Data/Platform team
+
+<RoleCallout role="dev">
+Own the AI Engine Layer explicitly. This means: prompt versioning in code (not a Notion doc), output validation before any response hits the API layer, and a fallback for every model call. The AI Engine Layer is where the most subtle bugs live  -  treat it with the same rigor as your payment processing code.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Test each layer independently. Mock the AI Engine Layer (return a fixed response) to test the API and UI layers. Test the AI Engine Layer in isolation against your eval suite. End-to-end tests that go through all 4 layers are valuable but expensive  -  don't make them your only testing strategy.
+</RoleCallout>
+
+<RoleCallout role="ba">
+Use this diagram when writing AI feature specs. Map each requirement to a layer: "the system should handle 1000 concurrent users" = API Layer concern. "The AI should return structured data" = AI Engine Layer concern. "Previously retrieved documents should be available" = Data Layer concern. Unambiguous specs make for better engineering conversations.
+</RoleCallout>
+
+<RoleCallout role="pm">
+When an AI feature breaks in production, this diagram is your incident response guide. "Users are seeing wrong answers" → AI Engine Layer issue. "The feature is slow" → could be API Layer (timeouts) or AI Engine Layer (slow model). "Users can't save their results" → Data Layer. Knowing the layer helps you prioritize the right team for investigation.
+</RoleCallout>
+
+## You're Ready for the Intermediate Track
+
+You now have the mental models to build real AI features. The Beginner track gave you the fundamentals  -  how AI works, how to call APIs, how to structure prompts, and how applications are built.
+
+The Intermediate track takes you into implementation: building a RAG system, creating agents, evaluating your AI, and managing production concerns like context windows and memory.
+
+<Callout type="tip" title="Before you continue">
+The most valuable thing you can do before starting the Intermediate track: build one small AI application using everything from this track. A document Q&A bot, a prompt template playground, or a simple classification API. Hands-on experience makes the Intermediate track concepts click much faster.
+</Callout>
+
+## Interview Practice
+
+1. What are the main layers of a production AI app?
+2. Where should prompt rendering, schema validation, and provider calls live?
+3. Why should AI failures be represented as product states?
+4. What logs are needed to debug a bad answer?
+5. How do rate limits and retries affect architecture?
+6. What should be handled in the backend instead of the frontend?

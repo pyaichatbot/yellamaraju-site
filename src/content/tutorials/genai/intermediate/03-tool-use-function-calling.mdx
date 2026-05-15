@@ -1,0 +1,318 @@
+---
+title: "Tool Use and Function Calling"
+description: "The function calling protocol lets LLMs request structured tool execution. Master the request/response cycle, parallel calls, and error handling patterns."
+level: intermediate
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 3
+totalModules: 8
+roles: ["dev"]
+tags: ["Function Calling", "Tool Use", "OpenAI Tools", "Parallel Calls"]
+date: 2026-05-14
+estimatedTime: "25 min"
+prerequisites: ["02-ai-agents-from-zero"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import CodePlayground from '../../../../components/CodePlayground.astro';
+
+## How Function Calling Works
+
+In a standard chat completion, the model outputs text. With function calling, the model can instead output a **structured tool call**  -  a JSON object specifying which function to run and with what arguments. Your code runs the function and sends the result back. The model then continues from there.
+
+This is not magic. The model has been trained to recognize when a task requires a tool and to output a specific JSON schema instead of prose. You define what tools are available. The model decides when and how to use them.
+
+<Mermaid
+  title="Function Calling Protocol"
+  chart={`
+sequenceDiagram
+    participant App as Your App
+    participant LLM as LLM (OpenAI)
+    participant Tool as Your Tool
+
+    App->>LLM: messages + tool definitions
+    LLM-->>App: tool_call {name, arguments}
+    App->>Tool: execute function(args)
+    Tool-->>App: result
+    App->>LLM: messages + tool_result
+    LLM-->>App: final text response
+
+    note over App,LLM: Round 1: model requests tool
+    note over App,LLM: Round 2: model uses result to answer
+`}
+/>
+
+The critical thing: **you run the function, not the model.** The model only outputs a structured request. This is intentional  -  it gives you full control over what tools can actually do, their side effects, and their failure modes.
+
+## Defining Tools as JSON Schema
+
+Every tool you give the model needs a JSON Schema definition. This is how the model knows:
+- What the function is called
+- What arguments it expects
+- What each argument means
+- Which arguments are required
+
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "get_weather",
+    "description": "Get the current weather for a city. Returns temperature in Celsius.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string",
+          "description": "The city name, e.g. 'London' or 'Tokyo'"
+        },
+        "units": {
+          "type": "string",
+          "enum": ["celsius", "fahrenheit"],
+          "description": "Temperature unit. Defaults to celsius."
+        }
+      },
+      "required": ["city"]
+    }
+  }
+}
+```
+
+The `description` fields matter enormously. The model uses them to decide when to call the function and how to form the arguments. Vague descriptions produce incorrect calls; precise descriptions produce correct ones.
+
+## Parallel vs. Sequential Tool Calls
+
+Modern models can issue **parallel tool calls** in a single response  -  multiple tool call objects returned at once. This is much faster than sequential calls when the tools are independent.
+
+<Mermaid
+  title="Parallel vs Sequential Tool Calls"
+  chart={`
+flowchart TD
+    subgraph seq["Sequential (slow)"]
+        S1[Call weather London] --> S2[Get result] --> S3[Call weather Tokyo] --> S4[Get result] --> S5[Answer]
+    end
+
+    subgraph par["Parallel (fast)"]
+        P1[Call weather London]
+        P2[Call weather Tokyo]
+        P1 --> P3[Get both results] --> P4[Answer]
+        P2 --> P3
+    end
+
+    style seq fill:#fef2f2,stroke:#ef4444
+    style par fill:#f0fdf4,stroke:#22c55e
+`}
+/>
+
+Sequential is fine when tool B depends on tool A's result. Parallel is correct when both tools can run independently. Most APIs return all parallel tool calls in one response object  -  you run them concurrently, collect results, and send all results back in one follow-up message.
+
+## Build It: Multi-Tool Agent with Weather and Calculator
+
+This example defines two tools as JSON schemas, handles the tool-calling loop, and demonstrates parallel call handling. The weather tool is mocked so no API key is needed for the tool execution.
+
+<CodePlayground
+  language="python"
+  title="Multi-Tool Agent: Weather + Calculator"
+  code={`import json
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+# --- TOOL DEFINITIONS ---
+
+TOOL_SCHEMAS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather for a city. Returns temperature in Celsius and conditions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "The city name, e.g. 'London'"
+                    }
+                },
+                "required": ["city"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculator",
+            "description": "Evaluate a math expression. Supports +, -, *, /, parentheses.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {
+                        "type": "string",
+                        "description": "The math expression to evaluate, e.g. '(15 + 20) / 2'"
+                    }
+                },
+                "required": ["expression"]
+            }
+        }
+    }
+]
+
+# --- TOOL IMPLEMENTATIONS ---
+
+def get_weather(city: str) -> dict:
+    """Mock weather data  -  replace with a real weather API."""
+    mock_data = {
+        "london": {"temp_c": 14, "conditions": "cloudy"},
+        "tokyo": {"temp_c": 22, "conditions": "sunny"},
+        "new york": {"temp_c": 18, "conditions": "partly cloudy"},
+    }
+    data = mock_data.get(city.lower(), {"temp_c": 20, "conditions": "unknown"})
+    return {"city": city, **data}
+
+def calculator(expression: str) -> dict:
+    allowed = set("0123456789+-*/()., ")
+    if not all(c in allowed for c in expression):
+        return {"error": "unsafe expression"}
+    try:
+        result = eval(expression, {"__builtins__": {}})
+        return {"expression": expression, "result": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+TOOLS = {"get_weather": get_weather, "calculator": calculator}
+
+# --- TOOL CALL EXECUTOR ---
+
+def execute_tool_call(tool_call) -> str:
+    name = tool_call.function.name
+    try:
+        args = json.loads(tool_call.function.arguments)
+    except json.JSONDecodeError:
+        return json.dumps({"error": "invalid arguments JSON"})
+
+    if name not in TOOLS:
+        return json.dumps({"error": f"unknown tool: {name}"})
+
+    result = TOOLS[name](**args)
+    return json.dumps(result)
+
+# --- AGENT LOOP ---
+
+def run_tool_agent(user_message: str, max_iterations: int = 10) -> str:
+    messages = [{"role": "user", "content": user_message}]
+    print(f"User: {user_message}\\n")
+
+    for i in range(max_iterations):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=TOOL_SCHEMAS,
+            tool_choice="auto",
+        )
+        msg = response.choices[0].message
+
+        # No tool calls  -  we have the final answer
+        if not msg.tool_calls:
+            print(f"Assistant: {msg.content}")
+            return msg.content
+
+        # Execute all tool calls (may be parallel)
+        print(f"[Tool calls requested: {len(msg.tool_calls)}]")
+        messages.append(msg)  # Add assistant message with tool_calls
+
+        for tc in msg.tool_calls:
+            result = execute_tool_call(tc)
+            print(f"  {tc.function.name}({tc.function.arguments}) → {result}")
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": result,
+            })
+
+    return "Max iterations reached."
+
+# Example: triggers parallel tool calls for two cities
+answer = run_tool_agent(
+    "What's the weather in London and Tokyo right now? "
+    "And what's the average of those two temperatures?"
+)
+`}
+/>
+
+Ask "What's the weather in London and Tokyo?" and the model issues both `get_weather` calls in parallel in a single response. It then calls `calculator` with the average expression before giving the final answer.
+
+## Handling Tool Errors Gracefully
+
+When a tool fails, don't let the agent silently produce wrong answers. Return structured error information so the model can adapt:
+
+```python
+def execute_tool_call_safe(tool_call) -> str:
+    try:
+        result = execute_tool_call(tool_call)
+        return result
+    except Exception as e:
+        # Return the error as a tool result  -  the model will handle it
+        return json.dumps({
+            "error": str(e),
+            "tool": tool_call.function.name,
+            "hint": "The tool failed. Inform the user or try a different approach."
+        })
+```
+
+A well-prompted model will acknowledge the failure rather than hallucinate a result when it receives an error object.
+
+## Forcing a Specific Tool
+
+Sometimes you want to guarantee the model uses a particular tool rather than letting it choose. Use `tool_choice` to force it:
+
+```python
+# Force the model to call get_weather
+tool_choice = {"type": "function", "function": {"name": "get_weather"}}
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+    tools=TOOL_SCHEMAS,
+    tool_choice=tool_choice,
+)
+```
+
+This is useful for structured extraction tasks where you always want a specific output format.
+
+<RoleCallout role="dev">
+**Validate tool call arguments before executing.** The model will occasionally produce arguments that don't match your schema  -  especially for optional parameters or enum values. Use Pydantic or simple assertion checks to validate arguments before running the function. A validation error returned as a tool result is safer than an exception crashing your agent loop.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+**Tool definitions consume tokens. 10 tools with verbose descriptions equals roughly 2,000 tokens gone before the user's message even starts.** Keep tool descriptions concise  -  one sentence for the function, one sentence per parameter. Only send the tools relevant to the current context rather than the full registry for every request. A task management agent doesn't need the database migration tool available during a casual lookup.
+</Callout>
+
+## What's Next
+
+Tool use is how agents act on the world. But how do you know if your agents are acting *correctly*? The next tutorial covers building an eval suite that actually catches problems  -  the foundation of every reliable AI application.
+
+## Interview Notes: Tool Runtime Controls
+
+Function calling is a protocol for structured tool requests, not permission to execute anything. Validate every argument, authorize every call, and attach idempotency keys to writes.
+
+```ts
+const toolPolicy = {
+  "crm.lookup": { risk: "read", approval: false },
+  "ticket.create": { risk: "write", approval: false, idempotent: true },
+  "refund.issue": { risk: "regulated", approval: true, idempotent: true }
+};
+```
+
+Also know parallel tool calls: they improve latency for independent reads, but side-effecting writes should usually be sequenced behind policy checks.
+
+## Interview Practice
+
+1. What is function calling in an LLM API?
+2. Why must tool arguments be validated even if the model produced them?
+3. When are parallel tool calls safe?
+4. How do idempotency keys protect write operations?
+5. What belongs in a tool description?
+6. How would you test a tool-calling workflow?

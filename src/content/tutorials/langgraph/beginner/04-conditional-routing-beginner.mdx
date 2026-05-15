@@ -1,0 +1,91 @@
+---
+title: "Conditional Routing: Beginner"
+description: "Dynamic decision-making"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 4
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Conditional Routing","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on Conditional Routing at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Conditional routing lets your graph take different paths based on current state. Instead of always going A to B, you can say: if the query needs a tool go to tools, otherwise go to END. The routing function is a pure Python function that reads state and returns a string - the next node name. It must never modify state; it is read-only.
+
+## Key Facts
+
+- Routing function: (state) -&gt; str returning the destination node name
+- Must list all possible destinations in add_conditional_edges()
+- tools_condition: prebuilt router for standard ReAct loops
+- Return END from a router to terminate the graph execution
+- Routers are pure read functions - they must NOT modify state
+
+## Reference Implementation
+
+```python
+from langgraph.graph import StateGraph, START, END
+from typing import TypedDict, Literal
+
+class State(TypedDict):
+    query: str
+    answer: str
+
+def classify(state: State) -> Literal["simple", "research", "tools"]:
+    q = state["query"].lower()
+    if "calculate" in q or "weather" in q:
+        return "tools"
+    elif len(q.split()) > 20:
+        return "research"
+    return "simple"
+
+def simple_answer(state: State):
+    return {"answer": f"Quick: {state['query']}"}
+
+def do_research(state: State):
+    return {"answer": f"Researched: {state['query']}"}
+
+def use_tools(state: State):
+    return {"answer": f"Tool result for: {state['query']}"}
+
+graph = StateGraph(State)
+graph.add_node("simple", simple_answer)
+graph.add_node("research", do_research)
+graph.add_node("tools", use_tools)
+graph.add_conditional_edges(START, classify, ["simple", "research", "tools"])
+graph.add_edge("simple", END)
+graph.add_edge("research", END)
+graph.add_edge("tools", END)
+```
+
+## Interview Q&A
+
+### Q1. How do you implement conditional routing in LangGraph?
+
+Use add_conditional_edges(source_node, routing_fn, [possible_destinations]). The routing function receives current state and returns a string matching one of the destination node names. The list of possible destinations is required for graph validation and visualization. Return END to terminate.
+
+### Q2. What is tools_condition and how does it work?
+
+tools_condition is a prebuilt routing function from langgraph.prebuilt. It inspects the last message in state['messages']: if it is an AIMessage with tool_calls, it returns 'tools'; otherwise it returns END. This is the standard router for ReAct agent loops.
+
+### Q3. Can a routing function modify state?
+
+No - routing functions must be pure: read state and return a destination string without side effects. If you need to compute something for routing, do that in a preceding node and store the result in state. The routing function then just reads that field and returns the appropriate destination string.
+
+### Q4. Why list possible destinations in add_conditional_edges?
+
+Listing destinations lets LangGraph validate routes and draw the graph correctly. For larger graphs, use path_map to make labels and node targets explicit.
+
+### Q5. What should a router do for unknown input?
+
+Route to a safe fallback such as clarification, human review, or END with an explanation. Do not let an unknown route string escape into production.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

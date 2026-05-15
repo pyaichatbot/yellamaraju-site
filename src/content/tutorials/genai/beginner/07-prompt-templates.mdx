@@ -1,0 +1,317 @@
+---
+title: "Prompt Templates and Dynamic Prompts"
+description: "Hard-coded prompts don't scale. Learn how to build reusable, testable prompt templates with variable substitution  -  from f-strings to LangChain PromptTemplate."
+level: beginner
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 7
+totalModules: 9
+roles: ["dev", "ba"]
+tags: ["Prompt Templates", "Dynamic Prompts", "LangChain", "Jinja2"]
+date: 2026-05-14
+estimatedTime: "15 min"
+prerequisites: ["04-writing-effective-prompts"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import CodePlayground from '../../../../components/CodePlayground.astro';
+
+## Why Hard-Coded Prompts Break at Scale
+
+Imagine you're building a customer support email drafting tool. Version 1 of your prompt looks like this:
+
+```python
+prompt = "Draft a support email for John Smith who is having trouble with their invoice."
+```
+
+This works exactly once  -  for John Smith, with his specific issue. The moment a second customer needs a support email, you have a problem.
+
+Hard-coded prompts fail in three specific ways:
+
+1. **Different users**  -  names, account details, histories all vary
+2. **Different contexts**  -  bug reports vs. billing questions vs. feature requests need different tones and content
+3. **Different datasets**  -  the document you're summarizing, the code you're reviewing, the review you're analyzing all change every call
+
+The solution is prompt templates: prompts with **placeholders** that get filled in with real data at runtime.
+
+## How Templates Work: The Core Idea
+
+A template separates what stays the same (your instructions, tone, format requirements) from what changes (the actual data).
+
+```
+What stays constant:    "You are a customer support specialist. Draft a professional 
+                         email response to the customer described below."
+
+What changes:           customer_name = "John Smith"
+                        issue = "cannot access invoice from March 2024"
+                        product = "BillingPro Enterprise"
+```
+
+The template combines them at runtime to produce a complete prompt.
+
+<Mermaid
+  title="Template → Rendered Prompt → API → Response"
+  chart={`
+flowchart LR
+    T["Prompt Template\n(static instructions)"] --> R[Rendered Prompt\nfull text]
+    V["Variables\n(dynamic data)"] --> R
+    R --> API[AI API Call]
+    API --> RESP[Response]
+    RESP --> OUT[Application Output]
+
+    style T fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style V fill:#fef3c7,stroke:#d97706,color:#b45309
+    style RESP fill:#dcfce7,stroke:#16a34a,color:#15803d
+`}
+/>
+
+## Approach 1: Python F-Strings (Simplest)
+
+For simple templates with a small number of variables, Python f-strings are the fastest approach:
+
+```python
+def build_support_email_prompt(customer_name: str, issue: str, product: str) -> str:
+    return f"""You are a customer support specialist for {product}.
+
+Draft a professional, empathetic email response to a customer named {customer_name}.
+
+Their issue: {issue}
+
+Requirements:
+- Keep the email under 200 words
+- Acknowledge the inconvenience
+- Provide 1-2 concrete next steps
+- End with a clear call to action
+- Tone: professional but warm
+
+Output only the email body, no subject line."""
+```
+
+F-strings are fine for simple cases. They become painful when your template gets long, when you need conditional sections, or when non-engineers need to edit them.
+
+## Approach 2: Jinja2 Templates (More Powerful)
+
+Jinja2 is a templating engine (originally built for HTML, excellent for prompts) that supports conditionals, loops, filters, and template inheritance:
+
+```python
+from jinja2 import Template
+
+template_str = """You are a {{ role }} for {{ company }}.
+
+Draft a {{ tone }} email to {{ customer_name }}.
+
+Issue: {{ issue_description }}
+
+{% if account_tier == "premium" %}
+This customer is on our Premium plan. Prioritize their request and offer a direct escalation path.
+{% elif account_tier == "enterprise" %}
+This customer is on our Enterprise plan. Assign to the enterprise support queue and mention their dedicated SLA.
+{% else %}
+This customer is on our Standard plan. Follow the standard support process.
+{% endif %}
+
+{% if previous_tickets %}
+Prior support history ({{ previous_tickets | length }} tickets):
+{% for ticket in previous_tickets %}
+- {{ ticket.date }}: {{ ticket.summary }}
+{% endfor %}
+{% endif %}
+
+Output only the email body."""
+
+template = Template(template_str)
+rendered = template.render(
+    role="senior customer support specialist",
+    company="Acme Corp",
+    tone="professional and empathetic",
+    customer_name="Sarah Johnson",
+    issue_description="Unable to export reports to PDF since the last product update",
+    account_tier="premium",
+    previous_tickets=[
+        {"date": "2024-02-10", "summary": "Login issue  -  resolved in 24hrs"},
+        {"date": "2024-03-22", "summary": "Billing discrepancy  -  resolved"}
+    ]
+)
+```
+
+The `{% if %}` blocks and `{% for %}` loops let you build prompts that adapt to the data  -  essential for production systems where different inputs legitimately need different instructions.
+
+## Approach 3: LangChain PromptTemplate (Production-Grade)
+
+LangChain's `PromptTemplate` adds validation (ensures all required variables are provided), easier composition with chains, and built-in support for chat message formats:
+
+```python
+from langchain_core.prompts import ChatPromptTemplate
+
+template = ChatPromptTemplate.from_messages([
+    ("system", """You are a customer support specialist for {product_name}.
+Your responses are {tone}, professional, and solution-focused."""),
+    ("user", """Draft a support email response for:
+
+Customer: {customer_name}
+Issue: {issue_description}
+Account tier: {account_tier}
+
+Keep the response under 200 words and end with a clear next step.""")
+])
+
+# Render the template with variables
+rendered_messages = template.format_messages(
+    product_name="DataSync Pro",
+    tone="warm and empathetic",
+    customer_name="Alex Rivera",
+    issue_description="Data sync failing for the last 48 hours",
+    account_tier="enterprise"
+)
+```
+
+LangChain templates also compose with models and parsers using the pipe syntax (`template | llm | parser`)  -  which is the subject of the next tutorial.
+
+<Callout type="tip" title="Which Approach Should You Use?">
+Use f-strings for quick scripts and prototypes. Use Jinja2 when your templates need conditionals or loops. Use LangChain PromptTemplate when you're building a pipeline that needs to chain prompt → model → parser, or when you want the validation and composition features.
+
+The right answer depends on your complexity level. Don't reach for LangChain for a single-call script.
+</Callout>
+
+## Complete Example: Customer Support Email Template
+
+<CodePlayground
+  language="python"
+  title="Customer Support Email Draft Template"
+  code={`import os
+from openai import OpenAI
+from jinja2 import Template
+
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+# The template  -  stores the "what stays the same" part
+SUPPORT_EMAIL_TEMPLATE = Template("""You are a customer support specialist for {{ product_name }}.
+
+Draft a professional, empathetic email response for the following customer.
+
+Customer name: {{ customer_name }}
+Issue description: {{ issue_description }}
+Account tier: {{ account_tier }}
+Days issue has been ongoing: {{ days_open }}
+
+{% if account_tier == "enterprise" %}
+This is an enterprise customer. Mention their dedicated support SLA (4-hour response guarantee) and offer a direct call with the technical team.
+{% elif account_tier == "premium" %}
+This is a premium customer. Express urgency and offer to escalate to a senior support engineer.
+{% else %}
+This is a standard customer. Follow the standard support process and provide the documentation link.
+{% endif %}
+
+Requirements:
+- Maximum 200 words
+- Acknowledge the inconvenience specifically
+- Provide exactly 2 concrete next steps numbered as 1. and 2.
+- End with your name "Sam" from Customer Success
+- Do not include a subject line
+
+Output only the email body.""")
+
+def draft_support_email(customer_name: str, issue_description: str,
+                        product_name: str, account_tier: str = "standard",
+                        days_open: int = 1) -> str:
+    """Draft a support email using the template and the AI model."""
+    
+    # Render the template with real data
+    rendered_prompt = SUPPORT_EMAIL_TEMPLATE.render(
+        customer_name=customer_name,
+        issue_description=issue_description,
+        product_name=product_name,
+        account_tier=account_tier,
+        days_open=days_open
+    )
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "user", "content": rendered_prompt}
+        ],
+        max_tokens=400,
+        temperature=0.6
+    )
+    
+    return response.choices[0].message.content
+
+# Example calls with different variables
+enterprise_email = draft_support_email(
+    customer_name="Sarah Chen",
+    issue_description="API rate limits are blocking our nightly data sync job",
+    product_name="DataSync Pro",
+    account_tier="enterprise",
+    days_open=2
+)
+
+standard_email = draft_support_email(
+    customer_name="Marcus Webb",
+    issue_description="Cannot reset password  -  reset link expires before I can use it",
+    product_name="DataSync Pro",
+    account_tier="standard",
+    days_open=1
+)
+
+print("=== Enterprise Customer Email ===")
+print(enterprise_email)
+print()
+print("=== Standard Customer Email ===")
+print(standard_email)
+`}
+/>
+
+## Managing Templates in Production
+
+As your application grows, you'll have many templates. Here's how to manage them:
+
+**Store templates as files, not strings.** Create a `prompts/` directory with `.jinja2` files. This way prompt changes don't require code changes  -  and your product team can propose edits via pull requests without touching Python.
+
+**Version your templates.** A template change can break your evaluation results. Use git to track every change with a clear commit message describing why you changed it.
+
+**Name your variables clearly.** `{{ customer_name }}` is better than `{{ name }}`. `{{ issue_description }}` is better than `{{ issue }}`. Future you (and your colleagues) will thank you.
+
+**Document your variables.** Add a comment block at the top of each template listing required and optional variables with their expected types.
+
+<RoleCallout role="dev">
+**What this means for your code:** Treat prompt files like source code  -  they belong in version control, they get code review, and changes to them can break tests. Store templates in a dedicated `prompts/` or `templates/` directory separate from your Python modules. Use environment-specific template loading if you want to A/B test prompt variants in staging vs. production without a code deploy.
+</RoleCallout>
+
+<RoleCallout role="ba">
+**What this means for requirements:** Templates let non-engineers customize AI behavior without writing code. When you're specifying an AI feature, document the variable slots explicitly: "The system needs a `customer_name`, `issue_type` (one of: billing/technical/account), and `account_tier` variable." This is your contribution to the template design  -  and it directly determines how well the AI adapts to different scenarios. The more precisely you define the variable space, the more reliably the template can handle it.
+</RoleCallout>
+
+## What's Next
+
+You now know how to build prompts that scale. The next tutorial shows you how to connect prompt templates, AI models, and output parsers into a single composable pipeline using LangChain's LCEL syntax.
+
+<Callout type="tip" title="The Golden Rule of Prompt Templates">
+Template the things that change; hardcode the things that define the AI's behavior. Customer names, document text, and issue descriptions are variables. The AI's role, tone guidelines, output format requirements, and behavioral constraints are constants. If you find yourself templating your format instructions, something has gone wrong in your design.
+</Callout>
+
+## Interview Notes: Prompt Versioning and Injection Risk
+
+Prompts are production artifacts. Version them like code:
+
+```yaml
+prompt_id: support_triage
+version: 2.4.0
+owner: support-platform
+model_family: general_chat
+change_note: "Adds billing escalation examples and stricter JSON output."
+eval_suite: support_triage_v7
+```
+
+Track prompt version, model version, schema version, and eval suite version in logs. Frameworks such as DSPy can optimize prompts against examples, but they do not remove the need for injection testing. Never concatenate untrusted document text into instructions; place it in a clearly labeled context block and enforce policy in code.
+
+## Interview Practice
+
+1. Why are prompt templates better than hard-coded prompt strings?
+2. What metadata should you track for prompt versioning?
+3. How do you test a prompt template change before release?
+4. What is DSPy useful for, and what does it not replace?
+5. How can template variable injection create security risk?
+6. Why should untrusted context be separated from instructions?

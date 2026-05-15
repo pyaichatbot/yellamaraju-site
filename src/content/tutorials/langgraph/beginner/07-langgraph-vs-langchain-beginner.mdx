@@ -1,0 +1,86 @@
+---
+title: "LangGraph vs LangChain: Beginner"
+description: "When to use graphs over chains"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 7
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","LangGraph vs LangChain","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on LangGraph vs LangChain at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+LangChain is a framework for building LLM applications - it provides chains (linear sequences of steps), integrations with 100+ LLM providers, and tools. LangGraph is built ON TOP of LangChain and adds the graph layer: cycles, persistent state, and multi-actor coordination. You can use LangGraph without any LangChain components, but they work best together in the same stack.
+
+## Key Facts
+
+- LangChain: linear pipelines, LCEL chains, 100+ model integrations
+- LangGraph: cyclic graphs, stateful agents, multi-actor coordination
+- Both from LangChain Inc. - designed to complement each other
+- LangGraph works standalone with direct OpenAI/Anthropic/Gemini SDK calls
+- LangSmith: observability platform working with both frameworks
+
+## Reference Implementation
+
+```python
+# LangChain: simple linear chain - ideal for RAG and stateless pipelines
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+
+chain = (
+    ChatPromptTemplate.from_template("Answer concisely: {question}")
+    | ChatOpenAI(model="gpt-4o")
+)
+result = chain.invoke({"question": "What is Python?"})
+
+# LangGraph: stateful agent with loops - ideal for complex multi-step tasks
+from langgraph.prebuilt import create_react_agent
+from langchain_core.tools import tool
+
+@tool
+def trend_search(query: str) -> str:
+    """Search a curated trend index."""
+    return f"Trend notes for {query}: agents, evals, retrieval, and deployment."
+
+agent = create_react_agent(
+    ChatOpenAI(model="gpt-4o"),
+    tools=[trend_search]
+)
+result = agent.invoke({
+    "messages": [("user", "Research 2025 AI trends and summarize")]
+})
+# Agent loops: search -> read -> search more -> synthesize -> done
+```
+
+## Interview Q&A
+
+### Q1. When should you use LangChain chains vs. LangGraph?
+
+Use LangChain chains for: simple RAG, single-step transformations, document processing pipelines, stateless operations. Use LangGraph for: multi-step agents using tools, workflows needing loops, long-running tasks needing checkpointing, systems requiring HITL, and multi-agent coordination. Rule of thumb: if you need a loop, use LangGraph.
+
+### Q2. Can you use LangGraph without LangChain?
+
+Yes. LangGraph is a standalone library. You can use the Anthropic SDK, OpenAI SDK, or any Python HTTP client directly inside your nodes. The only LangChain dependency in LangGraph is langchain-core for message types - and even those can be replaced with dicts if needed. LangGraph is model-agnostic by design.
+
+### Q3. What is LangSmith and how does it fit in?
+
+LangSmith is the observability and evaluation platform from LangChain Inc. It is framework-agnostic - works with LangChain chains, LangGraph agents, and even raw API calls. It provides execution traces, token-cost tracking, A/B prompt testing, and evaluation datasets. In Oct 2025, LangGraph Platform was rebranded as LangSmith Deployment.
+
+### Q4. Where does the Functional API fit in the comparison?
+
+The Functional API sits between LCEL chains and explicit StateGraph orchestration. It keeps ordinary Python function structure while adding LangGraph runtime features such as checkpointing, streaming, retries, and interrupts.
+
+### Q5. What is the simplest migration path from a chain to a graph?
+
+Wrap the existing chain in one node first, compile a graph around it, and add checkpointing. Then split the chain into multiple nodes only where routing, retries, human review, or observability would improve the system.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

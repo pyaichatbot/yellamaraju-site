@@ -1,0 +1,178 @@
+---
+title: "Understanding Large Language Models (LLMs)"
+description: "Tokens, context windows, temperature, and why hallucinations happen  -  the core mechanics every practitioner needs to know before building with AI."
+level: beginner
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 2
+totalModules: 9
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["LLM", "Tokens", "Context Window", "Temperature"]
+date: 2026-05-14
+estimatedTime: "18 min"
+prerequisites: ["01-what-is-genai"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## What Makes an LLM "Large"
+
+Imagine a person who has read every book, article, website, and forum post ever written  -  billions of pages of human knowledge. An LLM is like that person's statistical memory: it can't recall individual sentences, but it has absorbed the patterns, relationships, and knowledge from all that text.
+
+"Large" refers to the number of parameters  -  the learned numerical weights inside the model. GPT-4 has an estimated 1.8 trillion parameters. These parameters encode the statistical relationships between all the text it was trained on.
+
+The result: when you give it a partial sentence, it can predict what comes next with remarkable accuracy.
+
+## Tokens: The Atoms of LLM Communication
+
+LLMs don't read words. They read **tokens**  -  sub-word units that the model's vocabulary is built from.
+
+- One token ≈ ¾ of a word in English
+- "chatbot" = 1 token
+- "understanding" = 3 tokens: "under", "stand", "ing"  
+- "GPT-4" = 3 tokens: "G", "PT", "-4"
+- A typical sentence of 10 words ≈ 13-15 tokens
+
+Why this matters practically:
+- **You pay per token** (both input and output tokens)
+- **Context limits are in tokens**, not words  -  a 128K context window fits roughly 90,000 words
+- **Output tokens are 2-3× more expensive** than input tokens at most providers
+
+<Mermaid
+  title="Text to Tokens and Back"
+  chart={`
+flowchart LR
+    T["Hello, how are you?"] --> TK[Tokenizer]
+    TK --> ID["[9906, 11, 1268, 527, 499, 30]"]
+    ID --> LLM[LLM Model]
+    LLM --> OT["[40, 2846, 1630, 0]"]
+    OT --> O["I'm fine!"]
+    style LLM fill:#f3e8ff,stroke:#7c3aed,color:#7c3aed
+    style TK fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+`}
+/>
+
+<Callout type="info" title="Tokenization varies by language">
+English tokenizes efficiently. Code, JSON, and non-Latin scripts tokenize less efficiently  -  they use more tokens per character. A Python function that looks like 50 words might cost 120+ tokens.
+</Callout>
+
+## Context Window: The Model's Working Memory
+
+Think of a doctor who can only read the last 50 pages of a patient's notes. No matter how long the patient history is, only those 50 pages inform the diagnosis.
+
+The **context window** is the model's total working memory for a single conversation  -  everything the model can "see" at once.
+
+Context window = system prompt + conversation history + your message + retrieved documents + the response
+
+<Mermaid
+  title="What Fills a Context Window"
+  chart={`
+flowchart LR
+    subgraph CW ["Context Window (128K tokens)"]
+        SP["System Prompt\n~500 tokens"]
+        CH["Chat History\n~10K tokens"]
+        UM["Your Message\n~200 tokens"]
+        DOC["Documents / RAG\n~50K tokens"]
+        RES["Response Budget\n~2K tokens"]
+    end
+`}
+/>
+
+Common context window sizes (2024/2025):
+- GPT-4o: 128K tokens (~90K words)
+- Claude 3.5 Sonnet: 200K tokens (~140K words)
+- Gemini 1.5 Pro: 1M tokens (~700K words)
+
+**What happens when you exceed it:** The model silently ignores older content. Your system prompt, early conversation turns, or the beginning of long documents may get cut without warning.
+
+## Temperature: The Creativity Dial
+
+Temperature controls how the model selects the next token. At temperature 0, it always picks the most statistically likely token. At temperature 1, it samples more randomly from the probability distribution.
+
+| Temperature | Behavior | Best For |
+|-------------|----------|----------|
+| 0.0 | Fully deterministic | Factual extraction, structured data, unit tests |
+| 0.1-0.3 | Mostly deterministic | Code generation, summarization, classification |
+| 0.5-0.7 | Balanced | Conversational AI, analysis |
+| 0.8-1.0 | Creative, varied | Copywriting, brainstorming, creative writing |
+
+<Callout type="tip" title="Temperature 0 ≠ perfect accuracy">
+Temperature 0 makes the model consistent and reproducible  -  it will give you the same wrong answer every time if the underlying prediction is wrong. Determinism is not the same as correctness.
+</Callout>
+
+## Why Hallucinations Are Inevitable
+
+Here's the uncomfortable truth: LLMs are optimized to produce plausible-sounding text, not accurate text.
+
+When you ask "What is the capital of France?" the model outputs "Paris" not because it looked it up, but because "Paris" is the statistically most likely completion of that prompt based on training data. It happens to be correct.
+
+When you ask about a niche topic the model has little training data for, it applies the same mechanism  -  and confidently produces plausible-sounding nonsense.
+
+This is not a bug that will be fixed in the next model version. It's an architectural property of next-token prediction. Your system design must account for it.
+
+<Callout type="warning" title="The Golden Rule">
+Never trust a single LLM response for anything that matters. Verify with evals, retrieval (RAG), structured validation, or human review. Build hallucination handling into your architecture, not as an afterthought.
+</Callout>
+
+## Model Families Compared
+
+| Model | Context Window | Strengths | Best For |
+|-------|---------------|-----------|----------|
+| GPT-4o (OpenAI) | 128K | Strong reasoning, vision, speed | General purpose, multimodal |
+| Claude 3.5 Sonnet (Anthropic) | 200K | Long documents, instruction following | Document analysis, long context |
+| Gemini 1.5 Pro (Google) | 1M | Massive context, multimodal | Very long documents, video |
+
+Pricing varies significantly  -  always check current provider pricing before committing to a model for a production use case.
+
+<RoleCallout role="dev">
+Token counting matters in production. Use tiktoken (OpenAI) or provider SDKs to estimate costs before deployment. Budget your context deliberately: system prompt + RAG chunks + conversation + response headroom. A common mistake is not accounting for the response token budget and hitting context limits mid-conversation.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Temperature 0 is your best friend for regression testing. Reproducible outputs mean testable outputs. For tests where you need variation coverage (testing that the model handles edge cases), bump to 0.3-0.5 and run multiple samples. Never test AI at high temperature for regression  -  you'll get flaky tests.
+</RoleCallout>
+
+<RoleCallout role="ba">
+Context window size is a key constraint for document-heavy use cases. If your requirement involves processing long contracts, meeting transcripts, or customer histories  -  the context window determines how much the AI can "see" at once. If the document exceeds the window, you'll need chunking strategies (covered in the Intermediate track). Include context window requirements in your AI feature specs.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Model selection is a cost/capability trade-off decision with budget implications. GPT-4o costs roughly 3× more per token than GPT-3.5 Turbo. Build cost modeling into your AI feature estimates from day one. A feature that processes 10,000 user requests per day at $0.01 per request = $3,000/month just in model costs  -  before engineering, hosting, or ops.
+</RoleCallout>
+
+## What's Next
+
+In Tutorial 3, you'll make your first real API call to an AI model  -  seeing these mechanics in action with actual code.
+
+<Callout type="tip" title="The most important takeaway">
+An LLM is a next-token predictor. Everything else  -  RAG, agents, evals, cost optimization  -  is engineering scaffolding built on top of that single truth. Keep this mental model and the rest of the series will click.
+</Callout>
+
+## Interview Notes: Transformer Fundamentals
+
+Modern LLMs are transformer models. A transformer turns tokens into vectors, mixes information with attention, and predicts the next token from the resulting representation.
+
+| Concept | Practical meaning |
+|---|---|
+| Self-attention | Each token can weight other tokens in the context when building its representation. |
+| Multi-head attention | Several attention patterns run in parallel, so one head may track syntax while another tracks references. |
+| Encoder | Reads an input and builds representations; common in classification and embedding models. |
+| Decoder-only | Predicts the next token autoregressively; common in chat and completion models. |
+| Encoder-decoder | Encodes input, then decodes output; common in translation and sequence-to-sequence tasks. |
+| KV cache | Stores prior attention keys/values during generation so each new token is faster. |
+| RoPE / ALiBi | Positional techniques that help models reason about token order and longer context. |
+
+Decoder-only models dominate chat because generation is naturally next-token prediction. Encoder models are still important for embeddings, retrieval, reranking, and classifiers.
+
+## Interview Practice
+
+1. What is a token, and why does tokenization matter for cost and context limits?
+2. Explain self-attention at a practical level.
+3. Compare encoder, decoder-only, and encoder-decoder architectures.
+4. What are KV caches used for during generation?
+5. How do temperature, top_p, and deterministic settings affect reliability?
+6. Why are hallucinations an architectural risk rather than only a provider bug?
+7. What are RoPE and ALiBi trying to solve?

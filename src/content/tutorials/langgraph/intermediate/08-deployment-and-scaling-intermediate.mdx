@@ -1,0 +1,91 @@
+---
+title: "Deployment & Scaling: Intermediate"
+description: "Local graph to production API"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 8
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Deployment & Scaling","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on Deployment & Scaling at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Production deployment challenges: async execution for long-running tasks to avoid HTTP timeouts, bursty traffic via Redis task queues, cold start prevention via prewarming, and multi-tenant isolation via namespaced thread_ids. For self-hosted, architect with Postgres for state, Redis for task queue, and Kubernetes HPA scaling on queue depth not CPU - agent workloads are IO-bound.
+
+## Key Facts
+
+- Async execution: POST to start, poll for result - avoids HTTP timeout
+- Server API: assistants configure graphs, threads hold state, runs execute work
+- Functional API workflows deploy the same way when exported from langgraph.json
+- Webhooks: LangGraph Server POSTs result to your URL on completion
+- Multi-tenant: namespace thread_ids as tenant_id:session_id
+- HPA: scale on Redis queue depth not CPU - agents are IO-bound
+- AsyncPostgresSaver: required for async graph compilation in production
+
+## Reference Implementation
+
+```python
+# Kubernetes HPA - scale on queue depth, not CPU
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# spec:
+#   minReplicas: 2
+#   maxReplicas: 20
+#   metrics:
+#   - type: External
+#     external:
+#       metric:
+#         name: redis_queue_length
+#       target:
+#         type: AverageValue
+#         averageValue: "10"
+
+# Async production agent with Postgres persistence
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+async def run_production():
+    DB = "postgresql://user:pass@host:5432/db"
+    async with AsyncPostgresSaver.from_conn_string(DB) as cp:
+        await cp.setup()  # creates required tables
+        app = graph.compile(checkpointer=cp)
+        config = {"configurable": {"thread_id": "prod-001"}}
+        result = await app.ainvoke(
+            {"messages": [("user", "Start task")]}, config
+        )
+        return result
+```
+
+## Interview Q&A
+
+### Q1. How do you handle long-running LangGraph agents without HTTP timeout errors?
+
+Use async run pattern: POST /runs to start the agent and get back a run_id, return 202 Accepted immediately, client polls GET /runs/&#123;run_id&#125;/status or subscribes to SSE for updates, on completion retrieve result from GET /runs/&#123;run_id&#125;/output. LangGraph Server handles this natively. For DIY, use Celery or RQ for background execution.
+
+In current LangGraph Server shapes, runs are usually scoped to a thread: create or reuse a thread, then POST a run to that thread or use the streaming run endpoint. Treat exact URLs as version-sensitive and prefer the official SDK in application code.
+
+### Q2. How would you architect LangGraph for 10,000 concurrent sessions?
+
+Horizontal scaling: multiple worker pods consuming from a Redis task queue. Postgres with PgBouncer connection pooling for checkpoint storage. Kubernetes HPA scaling on queue depth not CPU - agent workloads are IO-bound. Separate API gateway (stateless, many pods) from workers (stateful, fewer pods). Postgres read replicas for state history queries.
+
+### Q3. What is the langgraph.json config file?
+
+langgraph.json tells LangSmith Deployment where to find your graph objects in code (module:variable_name), what environment variables to load, and which Python dependencies to install. On deploy, LangSmith builds a Docker image from your GitHub repo, runs LangGraph Server with your graphs registered, and provisions Postgres and Redis automatically.
+
+### Q4. How do Functional API workflows fit deployment?
+
+Export the @entrypoint workflow object from a Python module and reference it in langgraph.json just like a compiled graph. Deployment still gives you threads, runs, streaming, persistence, and Studio debugging.
+
+### Q5. Why should REST resume endpoints have authorization?
+
+Anyone who can resume a thread can inject state or approve actions. Your API must verify tenant, user, role, thread ownership, and pending interrupt type before calling Command(resume=...) or update_state on behalf of a human reviewer.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

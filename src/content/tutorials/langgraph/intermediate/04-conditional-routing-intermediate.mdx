@@ -1,0 +1,90 @@
+---
+title: "Conditional Routing: Intermediate"
+description: "Dynamic decision-making"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 4
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Conditional Routing","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on Conditional Routing at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Advanced routing uses LLM-driven decisions via structured outputs. The routing function calls a model with model.with_structured_output(RouteSchema) to classify the query and return the destination. Parallel routing (returning a list of node names) dispatches to multiple nodes simultaneously, enabling concurrent execution paths that merge back via reducers.
+
+## Key Facts
+
+- LLM routing: model.with_structured_output(RouteSchema).invoke(state)
+- Return a list of node names from router for parallel fan-out execution
+- Literal types on routing schema enforce valid node names at the type level
+- Recursion limit default 25 - plan accordingly for multi-hop agents
+- Log routing decisions in state for LangSmith trace analysis
+
+## Reference Implementation
+
+```python
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel
+from typing import Literal
+from langgraph.types import RetryPolicy
+
+class RouteDecision(BaseModel):
+    destination: Literal["research", "code", "math", "done"]
+    reasoning: str
+
+class RouterState(BaseModel):
+    messages: list
+    route_attempts: int = 0
+
+model = ChatOpenAI(model="gpt-4o")
+router_model = model.with_structured_output(RouteDecision)
+
+def llm_router(state) -> str:
+    last_msg = state["messages"][-1].content
+    decision = router_model.invoke([
+        ("system", """Route to the right specialist:
+        - research: factual questions, web search needed
+        - code: coding, debugging, implementation
+        - math: calculations, statistics, formulas
+        - done: question fully answered"""),
+        ("user", last_msg)
+    ])
+    print(f"Routing to: {decision.destination} | {decision.reasoning}")
+    return decision.destination
+
+# When adding a flaky external router as a node:
+# graph.add_node("router", llm_router, retry_policy=RetryPolicy(max_attempts=3))
+```
+
+## Interview Q&A
+
+### Q1. How do you prevent infinite loops in conditional routing?
+
+Three layers: set recursion_limit in the invocation config as a hard cap, add a step_count to state with an integer reducer and route to END when exceeded, and verify your conditional edge always has a path to END. Use graph.get_graph().draw_mermaid() to visually spot missing exit paths before deploying.
+
+### Q2. When should routing logic be in Python vs. an LLM?
+
+Use Python for: deterministic rules (error flag means go to fallback), state flags (approved means publish), token/length thresholds, format checks. Use LLM routing for: natural language intent classification or genuinely ambiguous queries. LLM routing adds 100-500ms latency and cost - never use it where a dict lookup suffices.
+
+### Q3. How do you implement parallel routing where multiple agents run simultaneously?
+
+Return a list of node names from the routing function. LangGraph schedules all of them for the same super-step and runs them concurrently. Their outputs merge via reducers. Ensure all parallel nodes write to different state keys or use list-appending reducers. Fan-out followed by a fan-in aggregate node is the classic pattern.
+
+### Q4. When should you use RetryPolicy?
+
+Attach RetryPolicy to nodes that fail for transient reasons, such as rate limits, flaky APIs, or temporary model errors. Do not retry deterministic validation failures; route those to a repair or fallback node.
+
+### Q5. When is Pydantic state useful?
+
+Use Pydantic state when you want runtime validation, defaults, and typed nested objects at graph boundaries. TypedDict is lighter for hot paths; Pydantic is safer for public APIs and complex state migrations.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

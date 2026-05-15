@@ -1,0 +1,95 @@
+---
+title: "Database Internals and Storage Tiers"
+description: "Reason about indexes, isolation, Redis, Bloom filters, and hot/cold data."
+level: intermediate
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 3
+totalModules: 4
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "35 min"
+prerequisites: []
+---
+Database internals matter in interviews because they explain why one design handles reads, writes, and failure better than another. You do not need to implement a database, but you should understand the trade-offs behind indexes, isolation, memory, and disk.
+
+## B+ Trees And LSM Trees
+
+B+ trees keep sorted keys in balanced pages. They are excellent for point lookups, range scans, and transactional databases. PostgreSQL and MySQL use B-tree-like indexes heavily. Writes update pages in place, so random writes and page splits can become expensive.
+
+LSM trees write new data sequentially to an in-memory table and append-only log, then flush sorted files to disk and compact them later. They are excellent for high write throughput and common in systems such as RocksDB, Cassandra, and many key-value stores. Reads may check multiple files, so Bloom filters and compaction strategy matter.
+
+| Structure | Strength | Cost |
+| --- | --- | --- |
+| B+ tree | Range queries, stable reads, OLTP indexes | Random write amplification |
+| LSM tree | High write throughput, sequential disk writes | Read amplification, compaction work |
+
+## Isolation Levels
+
+Isolation controls concurrency anomalies:
+
+- Read committed: no dirty reads, but repeated reads can change.
+- Repeatable read: rows you read stay stable in the transaction.
+- Serializable: behaves as if transactions ran one at a time.
+
+Use stronger isolation for money movement, inventory reservations, and permission changes. Use lower isolation for analytics, browsing, and dashboards where speed matters more.
+
+## OLTP, OLAP, Row, And Columnar Storage
+
+OLTP systems serve user transactions: create order, update profile, fetch conversation. They usually store rows together because requests need complete records.
+
+OLAP systems serve analytics: revenue by day, usage by tenant, latency by model. They often use columnar storage because scans read a few columns across many rows.
+
+A common architecture writes events to Kafka, stores operational state in PostgreSQL or DynamoDB, then loads analytical data into BigQuery, Snowflake, ClickHouse, or a lakehouse.
+
+## Bloom Filters
+
+A Bloom filter is a probabilistic set. It can say "definitely not present" or "maybe present." Databases use Bloom filters to avoid disk reads for keys that do not exist. False positives are possible; false negatives are not, assuming the filter is built correctly.
+
+## Redis: Cache, Coordination, And Topologies
+
+Redis is an in-memory data structure server. It supports strings, hashes, sets, sorted sets, streams, counters, TTLs, and atomic Lua scripts.
+
+Use Redis for hot cache entries, rate limiter counters, sessions, leaderboards, queues with modest durability needs, and distributed coordination with caution.
+
+Redis Sentinel provides high availability for a primary-replica setup by monitoring and promoting a replica after failure. Redis Cluster shards data across multiple primaries and supports horizontal scale. Sentinel helps failover; Cluster helps capacity and scale.
+
+Avoid using Redis as the only source of truth unless persistence, memory sizing, backup, and recovery are explicitly designed.
+
+## Hot And Cold Storage
+
+Hot data needs low latency and sits in memory, NVMe, or optimized databases. Warm data may live in normal database storage. Cold data lives in object storage or archives and is fetched asynchronously.
+
+Good systems tier data by access pattern, not by age alone. A two-year-old enterprise contract may be hot during renewal week.
+
+## Walkthrough: Storage For URL Shortener Analytics
+
+Redirect path: code lookup must be fast. Store `code -> long_url` in Redis using cache-aside, backed by a durable database. Cache only public redirect metadata and use TTLs so deletes and expirations converge.
+
+Analytics path: each redirect emits a compact event to Kafka or a queue. Consumers aggregate counts by code, hour, country, and referrer into an OLAP store. The product dashboard reads pre-aggregated data instead of scanning raw events.
+
+Indexes: `links(code)` is unique. `links(owner_id, created_at)` supports dashboards. Analytics tables are partitioned by date and clustered by code.
+
+Failure behavior: if Redis misses, read from the database. If analytics ingestion lags, redirects continue and the stats page shows delayed data.
+
+## Design Checklist
+
+- Pick B+ tree indexes for transactional lookups and range queries.
+- Pick LSM-backed stores for high write volume key-value workloads.
+- State isolation requirements for critical writes.
+- Separate OLTP serving paths from OLAP analytics paths.
+- Use Bloom filters to avoid wasted disk reads in storage engines.
+- Distinguish Redis Sentinel from Redis Cluster.
+
+## Interview Practice
+
+1. Why are B+ trees good for range scans?
+2. Why are LSM trees good for write-heavy workloads?
+3. What read anomaly can happen under read committed?
+4. When would serializable isolation be worth the cost?
+5. Why should OLTP and OLAP workloads usually be separated?
+6. What does a Bloom filter guarantee?
+7. Compare Redis Sentinel and Redis Cluster.
+8. Design hot, warm, and cold storage for product analytics.

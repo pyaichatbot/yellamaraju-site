@@ -1,0 +1,317 @@
+---
+title: "Building AI Agents: From Zero to First Autonomous Task"
+description: "Agents use tools, make decisions, and loop until they solve a problem. Build a tool-using agent from scratch and understand the ReAct pattern that makes it work."
+level: intermediate
+path: genai
+pathTitle: "GenAI Foundations"
+pathOrder: 1
+module: 2
+totalModules: 8
+roles: ["dev"]
+tags: ["AI Agents", "ReAct", "Tool Use", "Autonomous AI"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: ["01-build-first-rag"]
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+import CodePlayground from '../../../../components/CodePlayground.astro';
+
+## What Is an AI Agent?
+
+A standard LLM call is a one-shot transaction: you send a prompt, you get a response, done. An **agent** is different. An agent:
+
+1. Receives a goal ("find the total of these three invoices and email a summary")
+2. Decides what tool to call to make progress
+3. Calls the tool and observes the result
+4. Decides whether the goal is complete  -  or what to do next
+5. Loops until the goal is met (or it gives up)
+
+The key difference: **an agent loops**. It can call multiple tools in sequence, revise its approach based on results, and handle multi-step tasks that no single LLM call can solve.
+
+## The ReAct Pattern
+
+The dominant pattern for agent reasoning is **ReAct** (Reasoning + Acting). The model produces a structured internal monologue: it reasons about its current state, decides on an action, and then processes the observation from that action.
+
+<Mermaid
+  title="The ReAct Loop"
+  chart={`
+flowchart TD
+    G([Goal / Task]) --> T1[Thought\nReason about current state]
+    T1 --> A1[Action\nCall a tool]
+    A1 --> O1[Observation\nTool result returned]
+    O1 --> CHECK{Goal\nmet?}
+    CHECK -- No --> T2[Thought\nReason about new state]
+    T2 --> A2[Action\nCall next tool]
+    A2 --> O2[Observation]
+    O2 --> CHECK
+    CHECK -- Yes --> ANS([Final Answer])
+
+    style G fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style ANS fill:#dcfce7,stroke:#16a34a,color:#15803d
+    style CHECK fill:#fef3c7,stroke:#d97706,color:#b45309
+`}
+/>
+
+Each iteration produces a **Thought** (the model's reasoning, not visible to the user) and an **Action** (the structured tool call). The tool runs and returns an **Observation**. The model adds this observation to its context and reasons again.
+
+This continues until the model decides it has enough information to produce the final answer  -  or until a safety limit stops it.
+
+## Agent Harness Architecture
+
+The agent loop runs inside a **harness**  -  your code that manages the conversation, routes tool calls to the right functions, and enforces safety limits.
+
+<Mermaid
+  title="Agent Harness Architecture"
+  chart={`
+flowchart LR
+    subgraph harness["Agent Harness (your code)"]
+        LOOP[Loop Controller\nmax_iterations guard]
+        ROUTER[Tool Router\nname → function]
+        HIST[Message History\nfull conversation]
+    end
+
+    USER([User Goal]) --> HIST
+    HIST --> LLM[LLM\nReason + decide]
+    LLM -- tool_call --> ROUTER
+    ROUTER -- result --> HIST
+    LLM -- final_answer --> OUT([Output])
+    LOOP -- stop if exceeded --> OUT
+
+    style LLM fill:#f3e8ff,stroke:#7c3aed,color:#7c3aed
+    style USER fill:#dbeafe,stroke:#2563eb,color:#1d4ed8
+    style OUT fill:#dcfce7,stroke:#16a34a,color:#15803d
+    style harness fill:#fafafa,stroke:#94a3b8
+`}
+/>
+
+The harness has three responsibilities:
+- **Loop controller**  -  stop after N iterations no matter what
+- **Tool router**  -  map the model's tool call name to the actual Python function
+- **Message history**  -  accumulate the full conversation so the model has context for each decision
+
+## Build It: Tool-Using Agent from Scratch
+
+This example implements a minimal agent harness with two tools: a calculator and a string reversal function. The LLM decision is mocked so you can run this without API keys and see the loop mechanics clearly.
+
+<CodePlayground
+  language="python"
+  title="Tool-Using Agent with ReAct Loop"
+  code={`import json
+from typing import Any
+
+# --- TOOL DEFINITIONS ---
+
+def calculator(expression: str) -> str:
+    """Safely evaluate a math expression."""
+    try:
+        # Restrict to safe operations only
+        allowed = set("0123456789+-*/()., ")
+        if not all(c in allowed for c in expression):
+            return "Error: unsafe expression"
+        result = eval(expression, {"__builtins__": {}})
+        return str(result)
+    except Exception as e:
+        return f"Error: {e}"
+
+def reverse_string(text: str) -> str:
+    """Reverse a string."""
+    return text[::-1]
+
+# Tool registry: name → function
+TOOLS = {
+    "calculator": calculator,
+    "reverse_string": reverse_string,
+}
+
+# Tool schemas (what we'd send to a real LLM)
+TOOL_SCHEMAS = [
+    {
+        "name": "calculator",
+        "description": "Evaluate a math expression. Input: arithmetic expression as string.",
+        "parameters": {"expression": "string"},
+    },
+    {
+        "name": "reverse_string",
+        "description": "Reverse the characters in a string.",
+        "parameters": {"text": "string"},
+    },
+]
+
+# --- MOCK LLM (replace with real OpenAI call in production) ---
+
+def mock_llm_step(history: list[dict]) -> dict:
+    """
+    Simulates an LLM deciding what to do next.
+    A real implementation calls OpenAI with tool_choice="auto".
+    Returns either {"action": "tool_call", "tool": name, "args": {...}}
+    or {"action": "final_answer", "content": "..."}
+    """
+    step_count = sum(1 for m in history if m["role"] == "tool")
+
+    if step_count == 0:
+        # First step: calculate
+        return {
+            "action": "tool_call",
+            "tool": "calculator",
+            "args": {"expression": "123 * 456"},
+            "thought": "I need to multiply 123 by 456 first.",
+        }
+    elif step_count == 1:
+        # Second step: reverse
+        return {
+            "action": "tool_call",
+            "tool": "reverse_string",
+            "args": {"text": "56088"},
+            "thought": "Now I'll reverse the result to fulfill the second part of the task.",
+        }
+    else:
+        # Done
+        calc_result = next(
+            m["content"] for m in history if m["role"] == "tool" and "56088" in str(m)
+        )
+        return {
+            "action": "final_answer",
+            "content": "123 × 456 = 56,088. Reversed: '88065'.",
+        }
+
+# --- AGENT HARNESS ---
+
+def run_agent(goal: str, max_iterations: int = 10) -> str:
+    history = [{"role": "user", "content": goal}]
+    print(f"Goal: {goal}\\n{'='*50}")
+
+    for iteration in range(max_iterations):
+        print(f"\\n[Iteration {iteration + 1}]")
+
+        decision = mock_llm_step(history)
+
+        if decision["action"] == "final_answer":
+            print(f"Thought: Task complete.")
+            print(f"Final Answer: {decision['content']}")
+            return decision["content"]
+
+        # Execute the tool call
+        tool_name = decision["tool"]
+        tool_args = decision["args"]
+        thought = decision.get("thought", "")
+
+        print(f"Thought: {thought}")
+        print(f"Action: {tool_name}({json.dumps(tool_args)})")
+
+        if tool_name not in TOOLS:
+            observation = f"Error: unknown tool '{tool_name}'"
+        else:
+            observation = TOOLS[tool_name](**tool_args)
+
+        print(f"Observation: {observation}")
+
+        # Add to history so the next LLM call has context
+        history.append({
+            "role": "assistant",
+            "content": f"Action: {tool_name}({tool_args})"
+        })
+        history.append({
+            "role": "tool",
+            "content": observation
+        })
+
+    return "Max iterations reached without completing the task."
+
+# Run the agent
+result = run_agent(
+    goal="Calculate 123 * 456, then reverse the digits of the result.",
+    max_iterations=10,
+)
+`}
+/>
+
+Run this and you'll see the full ReAct loop: Thought → Action → Observation × 2 iterations, then a Final Answer. The `max_iterations=10` guard ensures the loop always terminates.
+
+## Replacing the Mock with a Real LLM
+
+To use a real OpenAI model, replace `mock_llm_step` with an actual API call that uses the `tools` parameter:
+
+```python
+from openai import OpenAI
+
+client = OpenAI()
+
+def real_llm_step(history: list[dict]) -> dict:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=history,
+        tools=[{
+            "type": "function",
+            "function": schema
+        } for schema in TOOL_SCHEMAS],
+        tool_choice="auto",
+    )
+    msg = response.choices[0].message
+
+    if msg.tool_calls:
+        tc = msg.tool_calls[0]
+        return {
+            "action": "tool_call",
+            "tool": tc.function.name,
+            "args": json.loads(tc.function.arguments),
+        }
+    return {"action": "final_answer", "content": msg.content}
+```
+
+The harness loop stays identical  -  you're just swapping out the decision-making function.
+
+## When Agents Go Wrong
+
+Agents fail in two common ways:
+
+**Infinite loops**  -  The model keeps calling tools without converging on an answer. This is why `max_iterations` is non-negotiable.
+
+**Tool call hallucination**  -  The model invents tool names or argument schemas that don't exist. Always validate tool names against your registry before executing.
+
+```python
+if tool_name not in TOOLS:
+    observation = f"Error: tool '{tool_name}' does not exist. Available: {list(TOOLS.keys())}"
+    # Feed this back to the LLM  -  it will usually self-correct
+```
+
+<RoleCallout role="dev">
+**Start with two tools, not twenty.** Every tool you add increases the probability that the model will misuse one. Build with the minimum tool set that solves your problem. Add tools incrementally only when you have evidence that the agent is failing because a tool is missing  -  not preemptively. Agents with 3 well-designed tools outperform agents with 15 mediocre ones.
+</RoleCallout>
+
+<Callout type="warning" title="Production Gotcha">
+**Agents can loop forever. Always set a `max_iterations` limit (10-20).** Without it, a confused agent will exhaust your token budget and your patience. A well-designed agent should rarely need more than 5-7 iterations for most tasks. If your agent consistently hits the iteration limit, the problem is your tool design or your system prompt  -  not the limit itself.
+</Callout>
+
+## What's Next
+
+You've built a tool-using agent. In the next tutorial you'll go deeper on the **function calling protocol** itself  -  how to define tools as JSON schemas, handle parallel tool calls, and build robust error recovery into the tool execution loop.
+
+## Interview Notes: ReAct, Limits, and Injection
+
+The ReAct loop alternates between reasoning, acting, and observing. Production agents need loop limits, tool allowlists, and instruction hierarchy so malicious tool output cannot become new developer instructions.
+
+```py
+MAX_STEPS = 8
+
+for step in range(MAX_STEPS):
+    decision = model.plan(task=task, observations=observations)
+    if decision.kind == "final":
+        return decision.answer
+    if decision.tool not in allowed_tools:
+        raise ValueError("tool_not_allowed")
+    observations.append(run_tool(decision.tool, decision.args))
+
+raise TimeoutError("agent_step_limit_exceeded")
+```
+
+## Interview Practice
+
+1. What makes an agent different from a single model call?
+2. Explain the ReAct loop.
+3. Why do agents need step limits and tool allowlists?
+4. How should an agent handle tool errors?
+5. What is excessive agency?
+6. When should a human approval gate interrupt an agent loop?

@@ -1,0 +1,88 @@
+---
+title: "Global Distributed Systems for AI Infrastructure"
+description: "Handle multi-region design, consensus, failure modes, advanced caching, and streaming data."
+level: advanced
+path: system-design
+pathTitle: "System Design for AI/FDE"
+pathOrder: 4
+module: 5
+totalModules: 5
+roles: ["dev","pm","ba"]
+tags: ["System Design","AI Infrastructure","FDE"]
+date: 2026-05-14
+estimatedTime: "45 min"
+prerequisites: []
+---
+Global systems force trade-offs that single-region designs can avoid. Latency, sovereignty, disaster recovery, consensus, streaming, and data freshness all become product decisions.
+
+## Consistency: CAP And PACELC
+
+CAP says that during a network partition, a distributed system chooses consistency or availability. CP systems reject or delay some operations to preserve correctness. AP systems keep accepting operations and reconcile later.
+
+PACELC adds the normal-case trade-off: if there is a partition, choose availability or consistency; else, choose latency or consistency. Even without an outage, globally consistent writes cost cross-region coordination.
+
+Use strong consistency for account balances, permissions, and uniqueness constraints. Use eventual consistency for feeds, likes, analytics, recommendations, and search indexes.
+
+## Raft In Plain Language
+
+Raft is a consensus protocol used by systems such as etcd and CockroachDB. A cluster elects a leader. Clients send writes to the leader. The leader appends log entries and replicates them to followers. Once a majority acknowledges an entry, it is committed.
+
+Raft gives understandable leader election and replicated logs, but it requires quorum. If a majority is unavailable, the system cannot commit new writes.
+
+## Kafka, Ordering, And Exactly-Once
+
+Kafka stores records in partitioned logs. Ordering is guaranteed within a partition, not across the entire topic. Consumer groups split partitions across workers for parallelism.
+
+Kafka exactly-once semantics reduce duplicates in Kafka-to-Kafka workflows when producers, transactions, and consumers are configured correctly. They do not magically make external side effects exactly once. If a consumer sends email, charges a card, or writes to a non-transactional API, you still need idempotency.
+
+Use Kafka when replay, retention, stream processing, and high throughput matter. Use SQS when managed queue simplicity is enough.
+
+## Advanced Caching
+
+Global caching includes CDN edge caches, regional caches, application caches, and database caches. Choose invalidation from the product risk:
+
+- TTL for content that can be briefly stale.
+- Write-through for data that must be fresh in cache after writes.
+- Event-based invalidation for profile, permission, or inventory changes.
+- Stale-while-revalidate for fast reads with background refresh.
+
+Cache hot keys carefully. A single viral object can overload one shard unless you replicate it, split it, or serve it from edge caches.
+
+## Walkthrough: Twitter/X Feed
+
+Requirements: users post short messages, follow others, view a home timeline, receive near-real-time updates, and search public posts. Assume 500 million users, 100 million daily active users, 6,000 posts per second at peak, and far more reads than writes.
+
+Data model: users, follows, posts, media metadata, timelines, likes, and search documents.
+
+Architecture: post creation writes to the posts store and emits `post_created` to Kafka. A fanout service pushes the post ID into follower home timelines for normal accounts. Celebrity accounts use fanout-on-read or hybrid fanout to avoid writing to millions of timelines. Timeline reads fetch post IDs from a fast store, hydrate post/user data, and cache the result.
+
+Real-time updates: WebSocket or SSE connections subscribe to update channels. The system sends lightweight "new posts available" events rather than pushing huge timelines.
+
+Search: public posts are consumed from Kafka, normalized, and indexed into a search system. The search engine uses inverted indexes, BM25-style scoring, freshness boosts, and ranking features. Search is eventually consistent; posting should not wait for search indexing.
+
+Reliability: if fanout lags, users still see older timelines and can refresh later. If search indexing fails, posting continues. If Redis timeline cache is down, fall back to timeline storage with higher latency.
+
+## Global AI Infrastructure Pattern
+
+For AI APIs, route users to the nearest compliant region. Keep tenant data, embeddings, logs, and backups inside required jurisdictions. Use active-active stateless gateways, regional inference pools, regional queues, and globally replicated control-plane metadata where safe. Avoid cross-region synchronous calls on the hot path unless consistency requires them.
+
+## Design Checklist
+
+- Use CAP and PACELC to explain behavior during and outside partitions.
+- Know when Raft quorum prevents writes.
+- Choose Kafka for replayable streams, not every queue.
+- Do not claim exactly-once for external side effects without idempotency.
+- Design cache invalidation from product correctness requirements.
+- Use hybrid fanout for feed systems with celebrity accounts.
+- Keep global hot paths regional when latency matters.
+
+## Interview Practice
+
+1. Explain PACELC with a multi-region user profile service.
+2. What happens to a Raft cluster when it loses quorum?
+3. What ordering does Kafka guarantee?
+4. Why does Kafka exactly-once not guarantee exactly-once emails?
+5. Design cache invalidation for user permissions.
+6. How would you handle celebrity accounts in a Twitter-style feed?
+7. Why should search indexing be asynchronous from posting?
+8. How do data residency requirements change global AI infrastructure?

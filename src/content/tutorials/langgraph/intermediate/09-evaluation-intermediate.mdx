@@ -1,0 +1,83 @@
+---
+title: "Evaluation: Intermediate"
+description: "Trace analysis & metrics"
+level: intermediate
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 9
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Evaluation","Agents"]
+date: 2026-05-14
+estimatedTime: "28 min"
+prerequisites: []
+---
+This lesson focuses on Evaluation at the intermediate level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Production eval framework has three levels: offline evals (pre-deploy CI gate), online evals (post-deploy sampling), and A/B experiments (live traffic comparison). Trajectory evaluation checks whether the agent visited correct nodes in the correct order. LangSmith automation rules sample 10-20% of production traces and auto-evaluate asynchronously with no user impact.
+
+## Key Facts
+
+- Offline eval: run before deploy, block on regression - the CI/CD quality gate
+- Online eval: sample 10-20% of production traces, evaluate asynchronously
+- A/B experiment: route percentage of live traffic to new prompt/model, compare metrics
+- Trajectory accuracy: percent of runs matching expected node visit sequence
+- Custom metrics: domain-specific KPIs like compliance_score or confidence_level
+
+## Reference Implementation
+
+```python
+from langsmith.evaluation import evaluate, LangChainStringEvaluator
+
+def trajectory_evaluator(run, example):
+    actual = [s.name for s in (run.child_runs or []) if s.run_type == "chain"]
+    expected = example.outputs.get("expected_trajectory", [])
+    if not expected:
+        return {"key": "trajectory", "score": 1.0}
+    matches = sum(1 for a, e in zip(actual, expected) if a == e)
+    return {"key": "trajectory_accuracy", "score": matches / max(len(expected), 1)}
+
+def cost_evaluator(run, example):
+    tokens = run.total_tokens or 0
+    budget = example.outputs.get("max_tokens", 2000)
+    return {"key": "cost_efficiency", "score": min(1.0, budget / max(tokens, 1))}
+
+results = evaluate(
+    lambda x: app.invoke(x),
+    data="agent-prod-dataset",
+    evaluators=[trajectory_evaluator, cost_evaluator,
+                LangChainStringEvaluator("correctness")],
+    max_concurrency=5
+)
+df = results.to_pandas()
+print(df[["feedback.trajectory_accuracy","feedback.cost_efficiency"]].describe())
+```
+
+## Interview Q&A
+
+### Q1. How do you implement trajectory evaluation for a multi-step agent?
+
+Trajectory evaluation checks whether the agent visited expected nodes in the expected order. In LangSmith, each node execution is a child run in the trace. Your evaluator extracts child run names from run.child_runs, compares against expected_trajectory from your dataset, and computes a match score. Use sequence similarity for partial credit rather than exact match.
+
+### Q2. What metrics should you track for a production LangGraph agent?
+
+Four categories: Quality - correctness via LLM judge, task completion rate, user satisfaction. Efficiency - steps per task, tokens per task, latency, time-to-first-token. Safety - error rate, hallucination rate, refusal rate. Cost - tokens per run by model tier, cost per session, cost per successful completion. Track all four and alert on regressions.
+
+### Q3. How do you run online evals in production without disrupting users?
+
+Use LangSmith automation rules: sample 10-20% of production traces, auto-apply an LLM judge evaluator, and write results back as feedback asynchronously. No user impact - evaluation runs against completed traces. Set alerts: if online eval correctness drops below threshold, trigger a PagerDuty notification.
+
+### Q4. What is a trajectory evaluator?
+
+A trajectory evaluator checks the path the agent took: route decisions, tool names, tool inputs, loop count, interrupts, and final answer. It catches agents that get the right answer through unsafe or expensive behavior.
+
+### Q5. How do you keep evaluator cost under control?
+
+Sample traces, cache judge results, use cheaper judge models where calibrated, and run full regression suites only on releases. Track evaluator spend separately from production agent spend.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.

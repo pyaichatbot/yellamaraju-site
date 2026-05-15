@@ -1,0 +1,95 @@
+---
+title: "Human-in-the-Loop: Beginner"
+description: "Interrupt, approve, edit"
+level: beginner
+path: langgraph
+pathTitle: "LangGraph"
+pathOrder: 3
+module: 6
+totalModules: 10
+roles: ["dev"]
+tags: ["LangGraph","Human-in-the-Loop","Agents"]
+date: 2026-05-14
+estimatedTime: "20 min"
+prerequisites: []
+---
+This lesson focuses on Human-in-the-Loop at the beginner level. Use it to move from definition to implementation-ready explanation.
+
+## Concept
+
+Human-in-the-loop (HITL) means your agent pauses mid-execution and waits for a human to review, approve, or edit before continuing. LangGraph implements this via checkpointing: when the graph hits an interrupt point, it saves state and suspends. A human reviews, provides feedback, and the graph resumes from exactly where it stopped with zero state loss.
+
+## Key Facts
+
+- interrupt_before=['node']: pause before this node every time it is reached
+- interrupt_after=['node']: pause after this node completes its work
+- interrupt() function: pause dynamically from inside a node based on state
+- graph.update_state(config, updates): inject human feedback before resuming
+- graph.invoke(Command(resume=value), config): resume a dynamic interrupt
+- graph.invoke(None, config): resume after compile-time interrupt_before/after
+
+## Reference Implementation
+
+```python
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import Command
+
+def draft_email(state: MessagesState):
+    return {"messages": [("assistant", "Dear John, about tomorrow's meeting...")]}
+
+def send_email(state: MessagesState):
+    print("EMAIL SENT")
+    return {"messages": [("system", "Email sent!")]}
+
+graph = StateGraph(MessagesState)
+graph.add_node("draft_email", draft_email)
+graph.add_node("send_email", send_email)
+graph.add_edge(START, "draft_email")
+graph.add_edge("draft_email", "send_email")
+graph.add_edge("send_email", END)
+
+checkpointer = MemorySaver()
+# Pause before send_email for human approval
+app = graph.compile(checkpointer=checkpointer, interrupt_before=["send_email"])
+config = {"configurable": {"thread_id": "email-001"}}
+
+# Step 1: Draft (pauses before send_email)
+app.invoke({"messages": [("user", "Email John about tomorrow")]}, config)
+
+# Step 2: Human reviews
+state = app.get_state(config)
+print("Draft:", state.values["messages"])
+
+# Step 3: Resume - send_email now runs
+app.invoke(None, config)
+
+# Dynamic interrupt() nodes resume with Command(resume=...)
+# app.invoke(Command(resume={"approved": True}), config)
+```
+
+## Interview Q&A
+
+### Q1. How does LangGraph implement HITL without losing agent state?
+
+Via checkpointing: when the graph reaches an interrupt point, it saves full state to the checkpointer and suspends. A human retrieves state via get_state(), reviews it, optionally edits via update_state(), then resumes. For compile-time interrupt_before/after use invoke(None, config). For dynamic interrupt(), use invoke(Command(resume=value), config) so the value becomes the return value of interrupt().
+
+### Q2. What is the difference between interrupt_before and interrupt_after?
+
+interrupt_before='node' pauses before the node runs - the human sees state going INTO the node and can edit or cancel. interrupt_after='node' pauses after the node completes - the human sees the node's output and can approve, reject, or edit before the next node runs. Use interrupt_before to review inputs, interrupt_after to review outputs.
+
+### Q3. How do you handle a human rejecting the agent's draft?
+
+After calling update_state() with rejection feedback, resume the paused run. Update a routing field in state before resuming - the conditional edge after the interrupt point routes to a revision node instead of proceeding. The key is to update state with feedback BEFORE resuming so the next node sees the rejection.
+
+### Q4. Why do dynamic interrupts resume with Command(resume=...)?
+
+The resume payload becomes the return value of interrupt() inside the paused node. That lets a node pause, receive structured human input, and continue with that value without a separate state lookup.
+
+### Q5. What must an approval endpoint verify before resuming?
+
+Verify the authenticated user, tenant, role, thread ownership, pending interrupt type, and allowed action. A resume endpoint is a write path into agent state, so it needs the same authorization rigor as any production approval API.
+
+## Practice Task
+
+Explain when this LangGraph pattern is safer than a linear chain, then name one production failure it prevents.
