@@ -1,6 +1,6 @@
 ---
 interface Props {
-  role: 'dev' | 'qa' | 'ba' | 'pm';
+  role: 'dev' | 'qa' | 'ba' | 'pm' | 'exec';
   title?: string;
 }
 
@@ -11,6 +11,7 @@ const roleConfig = {
   qa: { label: 'For QA Engineers', icon: '🧪', color: '#16a34a' },
   ba: { label: 'For Business Analysts', icon: '📊', color: '#d97706' },
   pm: { label: 'For Product Managers', icon: '🎯', color: '#7c3aed' },
+  exec: { label: 'For Executives', icon: '🏛️', color: '#dc2626' },
 };
 
 const cfg = roleConfig[role];
@@ -39,6 +40,7 @@ const displayTitle = title || cfg.label;
   [data-role="qa"]  { color: #16a34a; background: color-mix(in srgb, #16a34a 6%, var(--color-background)); }
   [data-role="ba"]  { color: #d97706; background: color-mix(in srgb, #d97706 6%, var(--color-background)); }
   [data-role="pm"]  { color: #7c3aed; background: color-mix(in srgb, #7c3aed 6%, var(--color-background)); }
+  [data-role="exec"] { color: #dc2626; background: color-mix(in srgb, #dc2626 6%, var(--color-background)); }
 
   .role-callout-header {
     display: flex;

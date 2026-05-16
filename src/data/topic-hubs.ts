@@ -34,11 +34,13 @@ export const topicHubs: TopicHub[] = [
     posts: [
       'agent-harness-explained-missing-layer-ai-systems',
       'from-agent-harness-to-self-improving-ai-systems',
+      'goal-primitive-autonomous-agent-loops',
       'how-ralph-wiggum-became-biggest-name-in-ai',
       'openclaw-self-hosted-ai-assistant-security-guide',
       'decentralized-ai-compute-depin-networks',
     ],
     templates: [
+      'goal-mega-template',
       'ralph-task-definition-guide',
       'ralph-pre-launch-checklist',
       'ralph-prd',
@@ -91,8 +93,12 @@ export const topicHubs: TopicHub[] = [
     featuredPost: 'how-ralph-wiggum-became-biggest-name-in-ai',
     posts: [
       'how-ralph-wiggum-became-biggest-name-in-ai',
+      'goal-primitive-autonomous-agent-loops',
       'prompt-engineering-demos-vs-production',
       'supply-chain-attacks-vibe-coding-safer-dependency-habits',
+    ],
+    templates: [
+      'goal-mega-template',
     ],
     relatedTags: ['Claude', 'Development', 'Prompt Engineering', 'AI Agents'],
   },

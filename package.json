@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro check && astro build",
+    "generate:llms": "node scripts/generate-llms-text.js",
+    "build": "npm run generate:llms && astro check && astro build",
     "preview": "astro preview",
     "astro": "astro",
     "functions:serve": "netlify functions:serve",

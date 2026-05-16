@@ -1,0 +1,90 @@
+---
+title: "AI Literacy Expectations in 2026"
+description: "Understand what AI literacy means by role in 2026, including EU AI Act Article 4 expectations and practical evidence of training."
+level: beginner
+path: ai-literacy
+pathTitle: "AI Literacy for Real Decision Making"
+pathOrder: 5
+module: 6
+totalModules: 8
+roles: ["pm", "ba", "exec"]
+tags: ["AI Literacy", "EU AI Act", "Governance", "NIST AI RMF"]
+relatedBlogs: ["sloperators-why-ai-outputs-need-owners-not-better-models", "why-ai-architecture-became-unavoidable", "before-you-build-ai-use-case-evaluation"]
+date: 2026-05-16
+estimatedTime: "15 min"
+prerequisites: []
+---
+
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 30-Second Version
+
+AI literacy has moved from "nice to have" to professional baseline. In 2026, teams are expected to understand AI failure modes, data risk, oversight, and role-specific controls well enough to make defensible decisions.
+
+## What Changed
+
+```text
+2023: AI literacy = know what ChatGPT is
+2024: AI literacy = use AI tools productively
+2025: AI literacy = evaluate AI output critically
+2026: AI literacy = design safe workflows, spot failure modes,
+                    and document governance controls by role
+```
+
+## Regulatory Baseline
+
+EU AI Act Article 4 requires providers and deployers to take measures, to their best extent, to ensure sufficient AI literacy for staff and others operating or using AI systems on their behalf. The European Commission's AI literacy Q&A says Article 4 entered into application on **February 2, 2025**.
+
+That means the literacy obligation already applies in 2026. It is not a future concern.
+
+<Callout type="info" title="Useful Source">
+For the current official guidance, see the European Commission's AI literacy Q&A and Regulation (EU) 2024/1689 Article 4 text.
+</Callout>
+
+## What "Sufficient" Means in Practice
+
+The expectation depends on context:
+
+- The risk level of the AI system
+- The employee's technical knowledge and role
+- The people affected by the AI system
+- The organization's documented training and controls
+
+A developer building an AI workflow needs different literacy than an executive approving a vendor. A call-center employee using an AI assistant needs different literacy than a model-risk reviewer.
+
+## AI Literacy by Role
+
+**Developers** should know failure modes, RAG boundaries, eval harnesses, prompt injection defenses, logging, and safe tool execution.
+
+**QA engineers** should know probabilistic testing, bias testing, drift regression, adversarial prompt testing, and release gates.
+
+**Business analysts** should know how to write AI requirements with acceptance criteria for accuracy, fairness, privacy, auditability, and human review.
+
+**Product managers** should know how to maintain AI risk registers, define control requirements, and brief trade-offs without oversimplifying.
+
+**Executives** should know what evidence is required before approving AI deployment: risk classification, ownership, training, testing, monitoring, vendor posture, and incident response.
+
+## Evidence That Training Exists
+
+```text
+□ Training completion records
+□ Role-specific curriculum
+□ Scenario-based assessment
+□ AI acceptable-use policy
+□ Refresher cadence
+□ Evidence that workflows changed after training
+□ Incident and escalation path documentation
+```
+
+<RoleCallout role="ba">
+If requirements mention AI, include role literacy assumptions. Who will review output? Who knows the escalation path? Who can challenge the model?
+</RoleCallout>
+
+<RoleCallout role="pm">
+Track AI literacy as a release dependency for high-risk features. A workflow is not ready if the people operating it do not know its failure modes.
+</RoleCallout>
+
+<RoleCallout role="exec">
+Ask for evidence, not assurances. "The team completed role-specific training and passed scenario assessment" is stronger than "people know how to use AI."
+</RoleCallout>

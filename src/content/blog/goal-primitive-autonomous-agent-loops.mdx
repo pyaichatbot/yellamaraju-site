@@ -1,0 +1,286 @@
+---
+title: "Beyond Prompting: How `/goal` Changes Autonomous AI Coding Loops"
+description: "A practical framework for writing verifiable completion contracts for Codex, Claude Code, and long-running autonomous agent workflows."
+date: 2026-05-16
+tags: ["AI Agents", "Codex", "Claude Code", "Agentic Workflows", "Developer Productivity", "Prompt Engineering"]
+image: "/images/goal-primitive-autonomous-agent-loops-social.png"
+socialImage: "/images/goal-primitive-autonomous-agent-loops-social.png"
+socialImageWidth: 1200
+socialImageHeight: 630
+socialImageType: "image/png"
+series: "Agent Systems Engineering"
+seriesPart: 3
+pinned: true
+---
+
+import Callout from '../../components/Callout.astro';
+import Mermaid from '../../components/Mermaid.astro';
+
+For the first few years of LLM-assisted development, the working pattern was transactional.
+
+You wrote a prompt. The model answered. You inspected the answer. You gave a correction. The model tried again.
+
+That workflow is useful for explanations, snippets, and short edits. It breaks down when the work is genuinely operational: inspect a repository, understand a migration target, edit multiple files, run tests, fix failures, preserve unrelated changes, and keep going until the system reaches a known-good state.
+
+At that point, the human is no longer just asking for help. The human has become the control loop.
+
+The emerging answer in coding agents is the goal-conditioned loop. In Codex and Claude Code, the `/goal` command turns a normal instruction into a persistent completion condition. You give the agent one verifiable target, and the runtime keeps working across turns until that condition is satisfied, cleared, or blocked.[^codex-goal][^claude-goal]
+
+<Callout type="info" title="The Shift">
+The important change is not the slash command. The important change is the contract: define the target, define the proof, define the boundaries, then let the agent operate against that contract.
+</Callout>
+
+This post is a practical field guide for writing those contracts.
+
+It is not a Hermes tutorial. Hermes-style orchestration deserves its own full treatment because the problem expands from "one agent follows one goal" to "an orchestrator routes goals across workspaces, reviewers, queues, and external systems."
+
+---
+
+## From Prompt to Assignment
+
+A prompt asks for the next response.
+
+A goal assigns a state change.
+
+That distinction sounds small until you run a task that takes more than one turn. A regular prompt might say:
+
+```text
+Refactor the auth middleware to use the new token validator.
+```
+
+A goal-conditioned instruction says:
+
+```text
+/goal Migrate the auth middleware to the new token validator. Done when every legacy validator call is removed, auth tests pass, TypeScript compiles, and no files outside src/server/auth* or tests/auth* are modified.
+```
+
+The second instruction gives the agent a way to know whether it is finished. It also gives the surrounding runtime and the human reviewer something to audit.
+
+<Mermaid chart={`
+flowchart TD
+    A[Human defines verifiable goal] --> B[Agent plans next checkpoint]
+    B --> C[Modify scoped files]
+    C --> D[Run verification command]
+    D --> E{Goal condition met?}
+    E -- No --> F[Inspect failure and continue]
+    F --> B
+    E -- Yes --> G[Stop and report proof]
+    E -- Blocked --> H[Stop with blocker and state]
+`} />
+
+This is why vague goals fail. "Make the app better" has no stopping condition. "Improve checkout reliability until `npm test -- checkout` passes and the retry policy is documented in `docs/payments.md`" does.
+
+## What `/goal` Actually Adds
+
+Codex describes `/goal` as an experimental CLI feature for long-running work with a durable objective, enabled through `features.goals`. The current command surface supports setting a goal, viewing it, and controlling it with pause, resume, and clear operations.[^codex-slash]
+
+Claude Code documents `/goal` as a completion condition that keeps Claude working across turns. Its evaluator checks the condition after each turn using the conversation transcript, which means the agent must surface the evidence it wants judged: test output, build status, file counts, or a clear checkpoint summary.[^claude-goal]
+
+Those implementation details differ, but the engineering lesson is the same:
+
+1. The agent needs a measurable end state.
+2. The agent needs a verification method.
+3. The human needs a compact proof trail.
+4. The workspace needs boundaries so autonomy does not become drift.
+
+<Callout type="warning" title="Do Not Treat Goals as Magic">
+`/goal` does not remove the need for architecture, tests, or review. It makes weak task definitions fail faster and strong task definitions scale better.
+</Callout>
+
+## The Goal Contract
+
+A useful autonomous coding goal should read less like a motivational prompt and more like an engineering ticket that can be executed by a local worker.
+
+Use this structure as the baseline:
+
+```markdown
+/goal <one measurable outcome>
+
+CONTEXT:
+What repo, product, feature, stack, and current state is the agent operating inside?
+
+SCOPE:
+Which files, directories, services, or systems are in bounds?
+
+CONSTRAINTS:
+What must not change? What compatibility, security, dependency, or design boundaries are fixed?
+
+SUCCESS CRITERIA:
+What binary conditions must be true before the agent stops?
+
+VERIFY:
+Which commands, screenshots, URLs, logs, or artifacts prove the result?
+
+STOP RULES:
+When should the agent stop instead of guessing?
+
+FINAL REPORT:
+What should the agent summarize when it returns control?
+```
+
+That schema gives the agent a narrow corridor: enough room to solve the problem, but not enough room to reinterpret the mission.
+
+## A Good Goal Is Bigger Than a Prompt, Smaller Than a Backlog
+
+The easiest mistake is to overload the goal with unrelated work:
+
+```text
+/goal Fix auth, improve checkout, clean up CSS, add tests, update docs, and make the homepage nicer.
+```
+
+That is not a goal. That is a backlog with no ordering, no owner boundaries, and no completion proof.
+
+A better goal is scoped to one operational outcome:
+
+```text
+/goal Complete the token-validator migration for auth middleware.
+
+CONTEXT:
+- Repo: backend-service
+- Target files: src/server/auth.ts, src/server/auth.test.ts
+- Reference docs: docs/security/v2-tokens.md
+
+SUCCESS CRITERIA:
+1. Every call to legacyValidateToken is removed.
+2. Auth tests pass.
+3. TypeScript compiles.
+4. Session token response shape remains backward compatible.
+
+VERIFY:
+- rg "legacyValidateToken" src/server tests returns no active references.
+- npm run test -- src/server/auth.test.ts exits 0.
+- npx tsc --noEmit exits 0.
+
+STOP RULES:
+- Stop if docs/security/v2-tokens.md conflicts with the database session schema.
+- Stop before changing user profile lookup schemas.
+```
+
+The agent can now work without inventing the rules.
+
+## Codex Example: Long-Running Refactor
+
+Use Codex goals when the work has a clear local validation loop: builds, tests, migrations, lint, screenshots, or eval commands.
+
+```markdown
+/goal Migrate the billing webhook route to the new idempotent event ingestion path.
+
+CONTEXT:
+- Project: Core Billing Service
+- Stack: Node.js, TypeScript, Express, Redis, Prisma
+- Working directory: /workspace/backend-service
+- Existing route: src/routes/billing.ts
+- Target model: Prisma StripeEvent table
+
+SCOPE:
+- Allowed: src/routes/billing.ts, src/services/billing/**, src/routes/billing.test.ts, README.md
+- Not allowed: auth middleware, user schema, package manager lockfiles unless a dependency is already present
+
+SUCCESS CRITERIA:
+1. Stripe signatures are verified before parsing business logic.
+2. Event ids are checked through a Redis-backed idempotency layer.
+3. Successfully processed events are written to StripeEvent.
+4. Tests cover valid event, duplicate event, invalid signature, and Redis failure.
+5. TypeScript compile and targeted tests pass.
+
+VERIFY:
+- npm run test -- src/routes/billing.test.ts
+- npx tsc --noEmit
+- git status shows only scoped files.
+
+STOP RULES:
+- Stop if Stripe SDK is not installed and adding it would require dependency approval.
+- Stop if Prisma schema does not contain StripeEvent.
+
+FINAL REPORT:
+- Files changed
+- Verification commands and exit status
+- Any operational caveats
+```
+
+Notice the hard edges. The goal tells Codex what to read, what to touch, what to prove, and when to stop.
+
+## Claude Code Example: Completion Condition First
+
+Claude Code's documented `/goal` evaluator judges the stated condition against what appears in the conversation. That means your condition should be phrased around evidence the session can show.
+
+```markdown
+/goal The checkout retry migration is complete when Claude has shown that:
+1. Every retry helper import now comes from src/lib/retryPolicy.ts.
+2. No legacy retry helper references remain under src/checkout.
+3. pnpm test checkout exits 0.
+4. pnpm lint exits 0.
+5. The final summary lists changed files and confirms no payment schema files changed.
+
+Work only in src/checkout, src/lib/retryPolicy.ts, and checkout tests.
+Stop if the migration requires changing payment database schemas or external payment provider contracts.
+```
+
+This form is intentionally direct. It tells the evaluator what evidence to look for and tells the working agent what evidence to produce.
+
+## Failure Modes
+
+Goal-conditioned loops fail in predictable ways.
+
+**1. Vague done states**
+
+If the goal says "make it production ready," the agent has to invent the definition of production. Replace that with a checklist: tests pass, build passes, specific files changed, specific behavior demonstrated.
+
+**2. Missing stop rules**
+
+An autonomous agent without stop rules will often keep pushing through ambiguity. That is useful for syntax errors. It is dangerous for security, data models, billing logic, or product policy. Stop rules are how you preserve human judgment.
+
+**3. No scoped workspace**
+
+Long-running agent work should usually run in a branch, worktree, or isolated container. When multiple agents write into the same directory, you lose clean attribution and invite file-state collisions.
+
+**4. No proof trail**
+
+If the final answer says "it should work," the goal was underspecified. Require command output, screenshots, links, or exact artifact names.
+
+**5. Asking for multiple jobs**
+
+One goal should have one core mission. If you need implementation, review, documentation, and release notes, either sequence them as separate goals or use an orchestrator that can assign each goal to a separate worker.
+
+<Mermaid chart={`
+flowchart LR
+    A[Goal Contract] --> B[Builder Agent]
+    B --> C[Local Verification]
+    C --> D{Passes?}
+    D -- Yes --> E[Review / Merge Candidate]
+    D -- No --> F[Repair Loop]
+    F --> B
+    E --> G[Next Goal or Human Review]
+`} />
+
+## The `/goal` Mega-Template Sandbox
+
+Use the companion template as a starting contract whenever a coding agent needs to work beyond a single prompt:
+
+<Callout type="success" title="Download the Template">
+Use the <a href="/templates/production-ai-systems/goal-mega-template">Goal-Based Agent Work Template</a> when you want Codex, Claude Code, or another local coding agent to run a bounded multi-turn task with explicit success criteria, verification commands, stop rules, and final proof.
+</Callout>
+
+The template is intentionally strict:
+
+- It bans placeholders and partial stubs.
+- It requires the agent to plan before editing.
+- It asks for progress logging.
+- It requires verification before stopping.
+- It forces a final report with files changed, commands run, and known limitations.
+
+That strictness is the point. The more autonomous the worker becomes, the more precise the contract must be.
+
+## Where This Goes Next
+
+The single-session `/goal` pattern is the entry point. The next layer is orchestration: assigning goals across separate worktrees, routing implementation to one agent, review to another, and using an orchestrator to manage state across the whole pipeline.
+
+That is where Hermes-style workflows belong. They are not just "a better prompt." They are a coordination layer.
+
+For now, the practical move is simple: stop handing agents open-ended wishes. Hand them measurable contracts.
+
+---
+
+[^codex-goal]: OpenAI Codex docs, "Follow a goal": https://developers.openai.com/codex/use-cases/follow-goals
+[^codex-slash]: OpenAI Codex CLI slash commands, `/goal`: https://developers.openai.com/codex/cli/slash-commands#set-an-experimental-goal-with-goal
+[^claude-goal]: Anthropic Claude Code docs, "Keep Claude working toward a goal": https://code.claude.com/docs/en/goal

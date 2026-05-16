@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TutorialPathCard from '../../components/TutorialPathCard.astro';
 import TutorialCard from '../../components/TutorialCard.astro';
+import LlmsDownloadButton from '../../components/LlmsDownloadButton.astro';
 import { TUTORIAL_PATHS, TUTORIAL_LEVELS, tutorialHref } from '../../data/tutorial-paths';
 
 const allTutorials = await getCollection('tutorials', ({ data }) => !data.draft);
@@ -10,11 +11,12 @@ const sortedPaths = [...TUTORIAL_PATHS].sort((a, b) => a.order - b.order);
 
 const pathSummaries = sortedPaths.map((path) => {
   const tutorials = allTutorials.filter((t) => t.data.path === path.id);
-  const levels = TUTORIAL_LEVELS
+  const levels = path.id === 'ai-literacy' ? ['Single Track'] : TUTORIAL_LEVELS
     .filter((level) => tutorials.some((t) => t.data.level === level.key))
     .map((level) => level.label);
   const recommended = TUTORIAL_LEVELS.find((level) => level.key === path.recommendedLevel)?.label ?? 'Start here';
-  return { path, tutorials, levels, recommended };
+  const recommendedLabel = path.id === 'ai-literacy' ? 'Single Track' : `Start: ${recommended}`;
+  return { path, tutorials, levels, recommendedLabel };
 });
 
 const featuredTutorials = sortedPaths
@@ -24,7 +26,14 @@ const featuredTutorials = sortedPaths
   .filter(Boolean);
 ---
 
-<BaseLayout title="Tutorial Learning Paths" description="Choose a practical learning path for GenAI foundations, production LLM systems, LangGraph, or AI system design.">
+<BaseLayout
+  title="Tutorial Learning Paths"
+  description="Choose a practical learning path for GenAI foundations, production LLM systems, LangGraph, or AI system design."
+  socialImage="/images/tutorials-social.png"
+  socialImageWidth={1200}
+  socialImageHeight={630}
+  socialImageType="image/png"
+>
   <div class="tutorials-hub path-hub">
     <header class="hub-header path-hero">
       <p class="eyebrow">Tutorials</p>
@@ -32,6 +41,13 @@ const featuredTutorials = sortedPaths
       <p class="hub-subtitle">
         Start with the outcome, then pick the right difficulty. Each path is built for practical users: builders, testers, analysts, and product owners shipping AI systems.
       </p>
+      <div class="llms-download-row">
+        <LlmsDownloadButton
+          href="/tutorials-llms.txt"
+          filename="tutorials-llms.txt"
+          label="Download tutorials-llms.txt"
+        />
+      </div>
       <div class="recommended-order" aria-label="Recommended learning order">
         {sortedPaths.map((path, index) => (
           <>
@@ -46,11 +62,12 @@ const featuredTutorials = sortedPaths
         <button class="role-filter-btn" data-filter-role="qa" aria-pressed="false">QA</button>
         <button class="role-filter-btn" data-filter-role="ba" aria-pressed="false">BA</button>
         <button class="role-filter-btn" data-filter-role="pm" aria-pressed="false">PM</button>
+        <button class="role-filter-btn" data-filter-role="exec" aria-pressed="false">Exec</button>
       </div>
     </header>
 
     <section class="path-grid" aria-label="Tutorial learning paths">
-      {pathSummaries.map(({ path, tutorials, levels, recommended }) => (
+      {pathSummaries.map(({ path, tutorials, levels, recommendedLabel }) => (
         <TutorialPathCard
           title={path.title}
           description={path.description}
@@ -61,7 +78,7 @@ const featuredTutorials = sortedPaths
           moduleCount={tutorials.length}
           levels={levels}
           tags={path.tags}
-          recommendedLabel={`Start: ${recommended}`}
+          recommendedLabel={recommendedLabel}
         />
       ))}
     </section>
@@ -82,6 +99,7 @@ const featuredTutorials = sortedPaths
             roles={t.data.roles}
             estimatedTime={t.data.estimatedTime}
             href={tutorialHref(t)}
+            levelLabel={t.data.path === 'ai-literacy' ? 'Single Track' : undefined}
           />
         ))}
       </div>
@@ -123,6 +141,7 @@ const featuredTutorials = sortedPaths
   .eyebrow { margin: 0 0 var(--space-xs); color: var(--color-accent); font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
   .hub-header h1 { max-width: 780px; font-size: clamp(2.3rem, 7vw, 4.8rem); line-height: 0.96; margin-bottom: var(--space-md); letter-spacing: -0.055em; }
   .hub-subtitle { font-size: 1.08rem; color: var(--color-text-secondary); max-width: 720px; margin: 0 0 var(--space-md); line-height: 1.65; }
+  .llms-download-row { display: flex; align-items: center; margin: calc(var(--space-sm) * -0.25) 0 var(--space-sm); }
   .recommended-order { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; margin: var(--space-md) 0; font-family: var(--font-sans); }
   .recommended-order a { border: 1px solid color-mix(in srgb, var(--step-color) 32%, var(--color-border)); border-radius: 999px; color: var(--step-color); background: color-mix(in srgb, var(--step-color) 7%, var(--color-surface)); padding: 0.34rem 0.75rem; font-size: 0.84rem; font-weight: 700; text-decoration: none; }
   .recommended-order span { color: var(--color-text-tertiary); }

@@ -9,9 +9,10 @@ interface Props {
   estimatedTime: string;
   href: string;
   tags?: string[];
+  levelLabel?: string;
 }
 
-const { title, description, level, module, totalModules, roles, estimatedTime, href, tags = [] } = Astro.props;
+const { title, description, level, module, totalModules, roles, estimatedTime, href, tags = [], levelLabel } = Astro.props;
 
 const levelConfig = {
   beginner: { color: 'var(--tut-beginner)', label: 'Beginner' },
@@ -24,6 +25,7 @@ const roleConfig: Record<string, { label: string; short: string }> = {
   qa: { label: 'QA Engineer', short: 'QA' },
   ba: { label: 'Business Analyst', short: 'BA' },
   pm: { label: 'Product Manager', short: 'PM' },
+  exec: { label: 'Executive', short: 'Exec' },
 };
 
 const cfg = levelConfig[level];
@@ -33,7 +35,7 @@ const roleList = roles.join(',');
 <a href={href} class="tutorial-card" data-level={level} data-roles={roleList}>
   <div class="tutorial-card-header">
     <span class="tutorial-level-badge" style={`--badge-color: ${cfg.color}`}>
-      {cfg.label}
+      {levelLabel ?? cfg.label}
     </span>
     <span class="tutorial-module-label">{module} of {totalModules}</span>
   </div>
@@ -151,11 +153,13 @@ const roleList = roles.join(',');
   [data-role="qa"]   { background: #dcfce7; color: #15803d; }
   [data-role="ba"]   { background: #fef3c7; color: #b45309; }
   [data-role="pm"]   { background: #f3e8ff; color: #7c3aed; }
+  [data-role="exec"] { background: #fee2e2; color: #b91c1c; }
 
   [data-theme="dark"] [data-role="dev"]  { background: #1e3a5f; color: #93c5fd; }
   [data-theme="dark"] [data-role="qa"]   { background: #14532d; color: #86efac; }
   [data-theme="dark"] [data-role="ba"]   { background: #451a03; color: #fcd34d; }
   [data-theme="dark"] [data-role="pm"]   { background: #2e1065; color: #c4b5fd; }
+  [data-theme="dark"] [data-role="exec"] { background: #450a0a; color: #fca5a5; }
 
   .tutorial-time {
     font-size: 0.8rem;

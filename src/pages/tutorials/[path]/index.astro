@@ -30,9 +30,19 @@ const byLevel = Object.fromEntries(
 ) as Record<string, typeof allTutorials>;
 
 const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.length > 0);
+const isSingleTrack = pathInfo.id === 'ai-literacy';
+const displayLevel = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack ? 'Single Track' : level.label;
+const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack ? `Governance and risk track · ${byLevel[level.key].length} tutorials · ~3 hours total` : `${level.subtitle} · ${byLevel[level.key].length} tutorials · ${level.time}`;
 ---
 
-<BaseLayout title={`${pathInfo.title} Tutorials`} description={pathInfo.description}>
+<BaseLayout
+  title={`${pathInfo.title} Tutorials`}
+  description={pathInfo.description}
+  socialImage="/images/tutorials-social.png"
+  socialImageWidth={1200}
+  socialImageHeight={630}
+  socialImageType="image/png"
+>
   <div class="path-page" style={`--path-accent: ${pathInfo.accent}`}>
     <header class="path-header">
       <a href="/tutorials" class="back-link">← All Tutorial Paths</a>
@@ -45,7 +55,7 @@ const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.le
       </div>
       <nav class="level-tabs" aria-label={`${pathInfo.title} levels`}>
         {availableLevels.map((level) => (
-          <a href={`/tutorials/${pathInfo.id}/${level.key}`}>{level.label} <span>{byLevel[level.key].length}</span></a>
+          <a href={`/tutorials/${pathInfo.id}/${level.key}`}>{displayLevel(level)} <span>{byLevel[level.key].length}</span></a>
         ))}
       </nav>
       <div class="role-filters" aria-label="Filter tutorials by role">
@@ -54,6 +64,7 @@ const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.le
         <button class="role-filter-btn" data-filter-role="qa" aria-pressed="false">QA</button>
         <button class="role-filter-btn" data-filter-role="ba" aria-pressed="false">BA</button>
         <button class="role-filter-btn" data-filter-role="pm" aria-pressed="false">PM</button>
+        <button class="role-filter-btn" data-filter-role="exec" aria-pressed="false">Exec</button>
       </div>
     </header>
 
@@ -63,11 +74,11 @@ const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.le
           <div class="track-meta">
             <span class="track-level-dot" style={`background: ${level.color}`} />
             <div>
-              <h2 class="track-title">{level.label}</h2>
-              <p class="track-subtitle">{level.subtitle} · {byLevel[level.key].length} tutorials · {level.time}</p>
+              <h2 class="track-title">{displayLevel(level)}</h2>
+              <p class="track-subtitle">{displaySubtitle(level)}</p>
             </div>
           </div>
-          <a href={`/tutorials/${pathInfo.id}/${level.key}`} class="track-cta">View {level.label} →</a>
+          <a href={`/tutorials/${pathInfo.id}/${level.key}`} class="track-cta">View {displayLevel(level)} →</a>
         </div>
         <div class="track-grid">
           {byLevel[level.key].map((t) => (
@@ -80,6 +91,7 @@ const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.le
               roles={t.data.roles}
               estimatedTime={t.data.estimatedTime}
               href={tutorialHref(t)}
+              levelLabel={isSingleTrack ? 'Single Track' : undefined}
             />
           ))}
         </div>

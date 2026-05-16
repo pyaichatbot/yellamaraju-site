@@ -5,6 +5,7 @@ import TagBadge from '../../components/TagBadge.astro';
 import SearchInput from '../../components/SearchInput.astro';
 import NewsletterSignup from '../../components/NewsletterSignup.astro';
 import PageHero from '../../components/PageHero.astro';
+import LlmsDownloadButton from '../../components/LlmsDownloadButton.astro';
 import { getCollection } from 'astro:content';
 import { calculateReadingTime, sortPostsByDate, getUniqueTags, isPublicPostData } from '../../utils/helpers';
 
@@ -22,7 +23,15 @@ const allTags = getUniqueTags(allPosts);
       kicker="Field Guide"
       title="Production AI Systems Field Guide"
       description="Practical notes for building, evaluating, and operating AI systems beyond demos."
-    />
+    >
+      <div class="field-guide-download">
+        <LlmsDownloadButton
+          href="/field-guide-llms.txt"
+          filename="field-guide-llms.txt"
+          label="Download field-guide-llms.txt"
+        />
+      </div>
+    </PageHero>
     <div class="container">
       <div class="wide-wrapper">
         <NewsletterSignup
@@ -69,6 +78,29 @@ const allTags = getUniqueTags(allPosts);
 <style>
   .blog-page {
     padding-bottom: var(--space-xl);
+  }
+
+  .field-guide-download {
+    margin-top: var(--space-md);
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .field-guide-download :global(.llms-download-button) {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-color: rgba(216, 189, 122, 0.44);
+    color: #f8f2e6;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(10px);
+  }
+
+  .field-guide-download :global(.llms-download-button:hover) {
+    border-color: #d8bd7a;
+    color: #11100f;
+    background: #d8bd7a;
+    transform: translateY(-2px);
   }
 
   .wide-wrapper {

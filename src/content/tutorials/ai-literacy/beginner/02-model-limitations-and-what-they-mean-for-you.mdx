@@ -1,0 +1,90 @@
+---
+title: "Model Limitations and What They Mean for You"
+description: "Understand the fixed limitations of AI models so you can design around them instead of discovering them in production."
+level: beginner
+path: ai-literacy
+pathTitle: "AI Literacy for Real Decision Making"
+pathOrder: 5
+module: 2
+totalModules: 8
+roles: ["dev", "qa", "ba", "pm", "exec"]
+tags: ["AI Literacy", "LLM", "Model Limitations", "Risk"]
+relatedBlogs: ["context-window-vs-attention-window-llm-architecture", "what-happens-when-you-call-an-llm-api", "understanding-llm-benchmarks-complete-guide"]
+date: 2026-05-16
+estimatedTime: "15 min"
+prerequisites: []
+---
+
+import Callout from '../../../../components/Callout.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 30-Second Version
+
+Every model has limits that are not fixed by prompting harder. If you know those limits up front, you can add retrieval, validation, tools, memory, human review, or deterministic software where the model is weak.
+
+## Limitation 1: Knowledge Cutoff
+
+A model only knows what was available during training, plus whatever context your application gives it. It does not automatically know yesterday's regulation change, market event, product release, or internal policy update.
+
+**What it means:** do not use a base model as the source of truth for current facts. Retrieve current documents and pass them into the model, then cite the source.
+
+## Limitation 2: Context Window
+
+The model can only attend to a limited amount of input at one time. Anything outside that window is invisible, and very large contexts can still degrade answer quality.
+
+**What it means:** large-document systems need chunking, retrieval, ranking, summarization, and evals. Dumping every file into the prompt is not an architecture.
+
+## Limitation 3: No Default Memory
+
+By default, an LLM starts each session fresh. Persistent memory must be stored by your application and retrieved intentionally.
+
+```text
+Week 1: Here is our data classification policy.
+Week 2: Based on our data classification policy...
+Result: the model has no idea unless your app retrieves that policy again.
+```
+
+**What it means:** memory is an application design problem. Treat company knowledge, user preferences, and project history as data products with permissions and lifecycle rules.
+
+## Limitation 4: Stochastic Output
+
+The same prompt can produce different valid answers. Temperature, sampling, model version, and prompt context all affect output.
+
+**What it means:** do not test AI systems with one example. Run repeated samples and measure the distribution of acceptable, borderline, and failed outputs.
+
+## Limitation 5: Confident Uncertainty
+
+Models often sound equally confident when they know, infer, or guess.
+
+```text
+Prompt pattern:
+If you are uncertain about any claim, mark it as "uncertain" and explain
+what source would be needed to verify it. Do not hide uncertainty.
+```
+
+**What it means:** uncertainty has to be designed into the workflow. For high-stakes use, pair model output with human verification or source checks.
+
+## Limitation 6: No Action Without Tools
+
+A base LLM transforms text. It cannot query your database, browse the web, send an email, create a ticket, or update a record unless your application gives it tools.
+
+**What it means:** action-capable AI is always at least three parts: model, tool layer, and execution policy. The model proposes or selects actions; the system controls what is allowed.
+
+## Honest Capability Map
+
+| AI models are useful for | AI models are not reliable for without controls |
+| --- | --- |
+| Summarizing large text | Current facts |
+| Drafting from templates | Legal or regulatory precision |
+| Classifying into known categories | Arithmetic without a calculator |
+| Explaining complex topics | Remembering prior sessions |
+| Extracting structured data | Knowing when they are wrong |
+| Generating options | Consistent formats without constraints |
+
+<Callout type="tip" title="The Practical Rule">
+Use AI for language, pattern recognition, and first-pass reasoning. Use deterministic systems for facts, math, permissions, state changes, and audit records.
+</Callout>
+
+<RoleCallout role="exec">
+The right leadership question is not "Which model are we using?" It is "Which controls compensate for the model's known limits in this use case?"
+</RoleCallout>

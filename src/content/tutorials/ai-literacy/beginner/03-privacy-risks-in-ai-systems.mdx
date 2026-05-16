@@ -1,0 +1,112 @@
+---
+title: "Privacy Risks in AI Systems"
+description: "Map the privacy risks created by AI systems: prompt logging, data residency, memorization, output leakage, and erasure obligations."
+level: beginner
+path: ai-literacy
+pathTitle: "AI Literacy for Real Decision Making"
+pathOrder: 5
+module: 3
+totalModules: 8
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["AI Literacy", "Privacy", "GDPR", "Risk"]
+relatedBlogs: ["openclaw-self-hosted-ai-assistant-security-guide", "ai-data-quality-when-training-data-becomes-time-bomb-part-2", "supply-chain-attacks-vibe-coding-safer-dependency-habits"]
+date: 2026-05-16
+estimatedTime: "20 min"
+prerequisites: []
+---
+
+import Callout from '../../../../components/Callout.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 30-Second Version
+
+AI changes data flow. Prompts, retrieved context, tool outputs, logs, fine-tuning datasets, and model responses can all contain sensitive data. Privacy risk is not only "will the model leak data?" It is also "where did the data go, who processed it, and can we delete it later?"
+
+## Risk 1: Training Data Memorization
+
+Models can memorize fragments of training data. If you fine-tune on records containing personal data, credentials, or confidential information, some of that information may become extractable.
+
+**Control:** de-identify training data. Do not fine-tune on personal data unless legal, privacy, and model-risk owners have explicitly approved the basis and retention model.
+
+## Risk 2: Prompt Logging
+
+Prompts often include more than a user message.
+
+```text
+Sent to provider:
+- system prompt
+- user message
+- retrieved policy documents
+- database query outputs
+- tool results
+```
+
+**Control:** confirm provider data-use terms, training opt-out posture, DPA coverage, retention settings, and log access. Treat prompts as regulated records when they contain regulated data.
+
+## Risk 3: Data Residency
+
+If personal data crosses regions, you may trigger data-transfer obligations. For EU personal data, this can become a GDPR transfer issue.
+
+**Control:** choose regional deployments where required, anonymize before sending to third-party APIs, or use an approved private deployment for sensitive workloads.
+
+## Risk 4: Output Leakage
+
+The model can include sensitive context in an answer to the wrong user, especially in multi-turn chats, summarization, or tool-enabled workflows.
+
+```text
+Context: confidential record for Alice
+User: summarize what you know
+Bad output: Alice has a credit limit of EUR 50,000...
+```
+
+**Control:** enforce authorization before retrieval, minimize context, and scan outputs for PII or restricted data before display.
+
+## Risk 5: Right to Erasure
+
+GDPR Article 17 gives people deletion rights in many circumstances. If personal data is baked into fine-tuned model weights, deletion is much harder than deleting a database row.
+
+**Control:** avoid training on personal data when the deletion lifecycle cannot be honored. Prefer retrieval from deletable stores over fine-tuning for private records.
+
+## AI Privacy Data Flow
+
+<Mermaid
+  title="Where Sensitive Data Can Move"
+  chart={`
+flowchart LR
+    U[User input] --> A[Application]
+    D[(Internal data)] --> R[Retrieval layer]
+    R --> P[Prompt]
+    A --> P
+    P --> M[AI provider or model runtime]
+    M --> L[(Logs and traces)]
+    M --> O[Output]
+    O --> S[Output scanner]
+    S --> UI[User interface]
+`}/>
+
+## Pre-Deployment Privacy Checklist
+
+```text
+□ Does any prompt or retrieved context contain personal data?
+□ Is the provider covered by an approved DPA?
+□ Does the provider train on customer prompts or outputs?
+□ Is data processed in the required region?
+□ Are prompts, outputs, and traces retained? For how long?
+□ Is authorization enforced before retrieval?
+□ Is output scanned before display?
+□ If fine-tuned, was training data de-identified?
+□ Is the privacy notice updated for AI processing?
+```
+
+<Callout type="warning" title="Retrieval Is Not Automatically Safer">
+RAG can reduce hallucination, but it can also leak documents if retrieval permissions are weak. Privacy controls belong before retrieval, inside retrieval, and after generation.
+</Callout>
+
+<RoleCallout role="dev">
+Build least-privilege retrieval. The model should only receive records the current user and task are authorized to access.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Test privacy failures directly: cross-user retrieval, sensitive output leakage, log retention, prompt replay, and PII scanner bypasses.
+</RoleCallout>

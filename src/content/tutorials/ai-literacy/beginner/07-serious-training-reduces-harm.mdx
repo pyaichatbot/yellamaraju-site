@@ -1,0 +1,119 @@
+---
+title: "Serious Training Reduces Harm"
+description: "Design an AI literacy program that changes behavior: role-specific content, scenario assessment, incident learning, and measurable outcomes."
+level: beginner
+path: ai-literacy
+pathTitle: "AI Literacy for Real Decision Making"
+pathOrder: 5
+module: 7
+totalModules: 8
+roles: ["pm", "exec"]
+tags: ["AI Literacy", "Training", "Governance", "Risk"]
+relatedBlogs: ["sloperators-why-ai-outputs-need-owners-not-better-models", "red-teaming-ai-systems-practitioners-guide", "why-ai-systems-quietly-degrade"]
+date: 2026-05-16
+estimatedTime: "20 min"
+prerequisites: []
+---
+
+import Callout from '../../../../components/Callout.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 30-Second Version
+
+Serious AI training reduces harm when it changes decisions, habits, and escalation behavior. Completion certificates matter, but they are not enough. The useful question is: did people behave differently when AI output was wrong, risky, or uncertain?
+
+## Why Shallow Training Fails
+
+Most weak AI training is generic, short, recall-based, and quickly outdated. People can define hallucination on a quiz, then still forward an unverified AI-generated compliance summary to a client.
+
+The gap is not vocabulary. It is judgment under work pressure.
+
+## What Serious Training Includes
+
+### 1. Role-Specific Content
+
+A compliance reviewer, developer, QA engineer, analyst, PM, and executive do not need the same curriculum.
+
+```text
+Compliance reviewer:
+- high-risk use case classification
+- vendor evidence review
+- audit documentation
+- escalation and customer remediation
+
+Developer:
+- retrieval boundaries
+- evals
+- prompt injection defense
+- logging and tool permissions
+```
+
+### 2. Scenario-Based Assessment
+
+Bad question:
+
+```text
+What is an AI hallucination?
+```
+
+Better question:
+
+```text
+An AI-generated compliance summary cites a legal section that does not exist.
+What do you do, who do you notify, and can the document be sent?
+```
+
+### 3. Incident-Based Learning
+
+Use anonymized internal failures where possible. Real examples from your own organization change behavior faster than abstract examples.
+
+### 4. Quarterly Refresh
+
+AI tools, model capabilities, vendor terms, and regulation change quickly. Annual-only training is too slow for active AI teams.
+
+### 5. Behavioral Metrics
+
+Measure what you want people to do.
+
+```text
+Metric: high-stakes AI outputs reviewed before external delivery
+Target: 100%
+Current: 72%
+Action: workflow gate, not just more slides
+```
+
+## Organizational AI Literacy Stack
+
+<Mermaid
+  title="AI Literacy Program Levels"
+  chart={`
+flowchart TB
+    L4[Level 4: AI Champions]
+    L3[Level 3: Role-specific practitioners]
+    L2[Level 2: AI-aware users]
+    L1[Level 1: Safety baseline]
+
+    L1 --> L2 --> L3 --> L4
+`}/>
+
+## Rollout Plan
+
+| Timeframe | Work |
+| --- | --- |
+| 0-30 days | Inventory AI tools, classify risk, assign baseline training |
+| 30-90 days | Deploy role-specific modules, identify AI champions, create incident log |
+| 90-180 days | Audit top AI deployments, formalize acceptable-use policy, start refresh cycle |
+| Ongoing | Quarterly risk review, annual assessment, behavioral metric tracking |
+
+<Callout type="tip" title="Training Alone Is Not a Control">
+If a behavior is mandatory, put it into the workflow. Training explains why. Systems make the behavior reliable.
+</Callout>
+
+<RoleCallout role="pm">
+Own the adoption mechanics: who must complete which module, what release gates depend on it, and which metrics prove behavior changed.
+</RoleCallout>
+
+<RoleCallout role="exec">
+Fund training like risk infrastructure. The program should create evidence: completion, assessment, incident response, and measurable workflow controls.
+</RoleCallout>

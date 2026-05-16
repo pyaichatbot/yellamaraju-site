@@ -1,4 +1,4 @@
-export type TutorialPathId = 'genai' | 'llm-systems' | 'langgraph' | 'system-design';
+export type TutorialPathId = 'genai' | 'llm-systems' | 'langgraph' | 'system-design' | 'ai-literacy';
 export type TutorialLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export const TUTORIAL_LEVELS: Array<{
@@ -72,6 +72,18 @@ export const TUTORIAL_PATHS: Array<{
     order: 4,
     recommendedLevel: 'beginner',
     tags: ['Architecture', 'Interview Prep', 'FDE'],
+  },
+  {
+    id: 'ai-literacy',
+    title: 'AI Literacy for Real Decision Making',
+    shortTitle: 'AI Literacy',
+    description: 'How AI fails, what models cannot do, privacy risks, bias testing, prompt injection, and defensible deployment decisions.',
+    audience: 'DEV, QA, BA, PM, and Exec audiences who work alongside AI systems.',
+    outcome: 'Spot AI failure modes before they become incidents and make AI deployment decisions that hold up under scrutiny.',
+    accent: 'var(--tut-literacy)',
+    order: 5,
+    recommendedLevel: 'beginner',
+    tags: ['Governance', 'Risk', 'Safety', 'Decision Making'],
   },
 ];
 

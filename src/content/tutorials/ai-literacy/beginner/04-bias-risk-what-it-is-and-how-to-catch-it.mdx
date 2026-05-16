@@ -1,0 +1,100 @@
+---
+title: "Bias Risk: What It Is and How to Catch It"
+description: "Understand AI bias as a measurable system behavior, then learn counterfactual testing, disaggregated evaluation, and response protocols."
+level: beginner
+path: ai-literacy
+pathTitle: "AI Literacy for Real Decision Making"
+pathOrder: 5
+module: 4
+totalModules: 8
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["AI Literacy", "Bias", "Fairness", "Financial Services"]
+relatedBlogs: ["ai-data-quality-when-training-data-becomes-time-bomb-part-1", "ai-data-quality-when-training-data-becomes-time-bomb-part-2", "before-you-build-ai-use-case-evaluation"]
+date: 2026-05-16
+estimatedTime: "20 min"
+prerequisites: []
+---
+
+import Callout from '../../../../components/Callout.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 30-Second Version
+
+AI bias is not a vague opinion. It is measurable: the system produces systematically different outcomes for different groups under equivalent conditions. If your organization deploys the system, your organization owns the risk.
+
+## Where Bias Enters
+
+**Training data bias:** historical data reflects historical decisions, including unfair decisions.
+
+**Representation bias:** some populations are underrepresented, so the model performs worse for them.
+
+**Measurement bias:** the target label is flawed. For example, "creditworthy" may reflect past access to credit as much as actual repayment ability.
+
+**Feedback-loop bias:** AI-assisted decisions become future data, amplifying the original pattern.
+
+## Method 1: Counterfactual Pairs
+
+Create equivalent cases that differ only in a sensitive or proxy attribute.
+
+```python
+case_a = "Evaluate this loan application: same income, same debt, name: James Smith"
+case_b = "Evaluate this loan application: same income, same debt, name: Lakisha Washington"
+
+# Run many paired cases.
+# Compare approval rate, recommended amount, reasons, and confidence.
+```
+
+If outcomes differ materially for equivalent inputs, you have a bias signal.
+
+## Method 2: Performance Disaggregation
+
+Aggregate accuracy hides group-level failures.
+
+```text
+Overall accuracy: 87%
+Group A accuracy: 92%
+Group B accuracy: 71%
+Group C accuracy: 88%
+```
+
+The 87% headline is not enough. The 71% group result is the deployment risk.
+
+## Method 3: Benchmark and Domain Audits
+
+Use benchmark datasets where they fit, but do not stop there. Financial services, hiring, healthcare, insurance, and fraud systems need domain-specific test sets and legal review.
+
+## Financial Services Exposure
+
+AI touching credit, fraud, eligibility, pricing, or customer treatment can create legal and model-risk obligations. In the US, ECOA and fair-lending expectations matter. In the EU, many credit-scoring and creditworthiness systems are treated as high-risk under the AI Act.
+
+<Callout type="warning" title="Bias Testing Is Not Optional for High-Impact Decisions">
+Functional tests tell you whether the feature works. Bias tests tell you whether the feature works fairly enough to deploy.
+</Callout>
+
+## Bias Response Protocol
+
+<Mermaid
+  title="Bias Response Protocol"
+  chart={`
+flowchart TD
+    A[Bias signal detected] --> B[Block or pause deployment]
+    B --> C[Document test case and metric]
+    C --> D[Diagnose source]
+    D --> E[Mitigate]
+    E --> F[Retest full suite]
+    F --> G[Monitor in production]
+
+    D --> T[Training data]
+    D --> L[Label or metric]
+    D --> P[Prompt or policy]
+    D --> H[Human workflow]
+`}/>
+
+<RoleCallout role="ba">
+Add fairness acceptance criteria to requirements. Example: equivalent applications must not produce approval-rate differences beyond an agreed threshold without documented justification.
+</RoleCallout>
+
+<RoleCallout role="pm">
+A feature that passes functional QA but fails bias testing is not ready. Put fairness checks into the release definition of done.
+</RoleCallout>

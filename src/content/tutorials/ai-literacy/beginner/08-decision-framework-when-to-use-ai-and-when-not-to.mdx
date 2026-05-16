@@ -1,0 +1,124 @@
+---
+title: "Decision Framework: When to Use AI and When Not To"
+description: "Use a practical decision matrix and five-question checklist to decide when AI is appropriate, conditional, experimental, or too risky."
+level: beginner
+path: ai-literacy
+pathTitle: "AI Literacy for Real Decision Making"
+pathOrder: 5
+module: 8
+totalModules: 8
+roles: ["dev", "qa", "ba", "pm", "exec"]
+tags: ["AI Literacy", "Decision Making", "Governance", "Risk"]
+relatedBlogs: ["before-you-build-ai-use-case-evaluation", "why-ai-architecture-became-unavoidable", "sloperators-why-ai-outputs-need-owners-not-better-models"]
+date: 2026-05-16
+estimatedTime: "20 min"
+prerequisites: []
+---
+
+import Callout from '../../../../components/Callout.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 30-Second Version
+
+The most valuable AI literacy skill is knowing when AI is appropriate and when it is not. A good recommendation is conditional: it names the use case, risks, controls, and evidence required before deployment.
+
+## The AI Decision Matrix
+
+<Mermaid
+  title="AI Use Case Decision Matrix"
+  chart={`
+flowchart TD
+    A[Classify the use case] --> B{High stakes?}
+    B -- No --> C{Standardized task?}
+    B -- Yes --> D{Standardized task?}
+    C -- Yes --> E[Use freely with normal review]
+    C -- No --> F[Experimental pilot only]
+    D -- Yes --> G[Design carefully with HITL, audit, bias tests]
+    D -- No --> H[Avoid or research carefully]
+`}/>
+
+**High stakes + high standardization:** design carefully. Examples: fraud flags, credit decision inputs, regulated customer treatment. Require human-in-the-loop, audit logs, bias testing, and explainability.
+
+**Low stakes + high standardization:** use freely with normal review. Examples: meeting summaries, internal drafts, ticket classification.
+
+**High stakes + low standardization:** avoid or research carefully. Examples: novel legal interpretation, rare medical diagnosis, one-off employment decisions.
+
+**Low stakes + low standardization:** experimental. Examples: brainstorming, early research, ideation.
+
+## Five Questions Before Deployment
+
+### 1. Reversibility
+
+If the AI output is wrong, can we fix it without lasting harm?
+
+### 2. Auditability
+
+Can we explain what happened later: input, model, version, retrieved context, decision, reviewer, and action?
+
+### 3. Failure Cost
+
+How often will the system fail, and what is the cost of one failure?
+
+### 4. Regulatory Exposure
+
+Does this use case touch credit, employment, healthcare, insurance, biometrics, children, regulated advice, or other high-risk domains?
+
+### 5. Data Risk
+
+What data is sent to the model, where is it processed, who can see it, and what happens if it leaks?
+
+## Quick Reference
+
+| Use case | Risk | Required controls |
+| --- | --- | --- |
+| Drafting internal documents | Low | Standard review |
+| Internal document summarization | Low | Spot checks |
+| Customer-facing chatbot | Medium | Output scanning, escalation, monitoring |
+| Fraud detection flag | High | Human review, audit log, bias testing |
+| Credit decision input | High | Compliance review, bias testing, human final decision |
+| HR screening | High | Bias testing, human review, legal review |
+| Regulatory interpretation | High | Expert verification |
+| Security-critical code generation | High | Security review and tests |
+
+## The AI-Literate Recommendation Format
+
+```text
+We can use AI for this use case if:
+1. A human reviews high-impact outputs before action is taken.
+2. We log model version, inputs, retrieved context, and reviewer action.
+3. We test for bias and prompt injection before launch.
+4. We monitor drift and failure rate after launch.
+5. We document regulatory obligations and owners.
+
+Without those controls, I would not recommend deployment.
+```
+
+<Callout type="info" title="The Goal Is Not Saying Yes or No Faster">
+The goal is making a decision that survives scrutiny from engineering, legal, risk, customers, and leadership.
+</Callout>
+
+<RoleCallout role="ba">
+Turn the five questions into requirements. Each "yes, if" condition should become an acceptance criterion or release dependency.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Use the matrix during intake. It prevents low-risk ideas from getting buried and high-risk ideas from sneaking through as normal features.
+</RoleCallout>
+
+<RoleCallout role="exec">
+Ask for conditional recommendations. "Yes, with these controls" and "no, because the failure is irreversible" are both AI-literate answers.
+</RoleCallout>
+
+## Path Summary
+
+```text
+01 How AI Fails      -> know the six failure modes and fixes
+02 Model Limits      -> design around constraints
+03 Privacy Risks     -> know what data moves where
+04 Bias Risk         -> test fairness before deployment
+05 Prompt Injection  -> defend the AI attack surface
+06 2026 Expectations -> know literacy expectations by role
+07 Serious Training  -> build a program that changes behavior
+08 Decision Framework-> decide when AI belongs
+```

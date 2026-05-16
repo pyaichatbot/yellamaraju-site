@@ -12,6 +12,7 @@
 ## Content and Metadata
 - Blog content is sourced from the `blog` collection; use `post.body` for full-content metrics.
 - Canonical site URL should align with `astro.config.mjs`.
+- After changing content under `src/content/tutorials` or `src/content/blog`, run `npm run generate:llms` or `npm run build` so `public/tutorials-llms.txt` and `public/field-guide-llms.txt` stay current.
 
 ## Testing
 - No automated tests are defined; validate changes by running the Astro dev server if needed.

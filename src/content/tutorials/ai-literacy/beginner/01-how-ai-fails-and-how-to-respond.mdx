@@ -1,0 +1,146 @@
+---
+title: "How AI Fails and How to Respond"
+description: "Learn the six AI failure modes that cause real organizational harm, then map each one to the right response protocol."
+level: beginner
+path: ai-literacy
+pathTitle: "AI Literacy for Real Decision Making"
+pathOrder: 5
+module: 1
+totalModules: 8
+roles: ["dev", "qa", "ba", "pm"]
+tags: ["AI Literacy", "Risk", "AI Safety", "Evaluation"]
+relatedBlogs: ["why-ai-systems-quietly-degrade", "sloperators-why-ai-outputs-need-owners-not-better-models", "from-agent-harness-to-self-improving-ai-systems"]
+date: 2026-05-16
+estimatedTime: "20 min"
+prerequisites: []
+---
+
+import Callout from '../../../../components/Callout.astro';
+import Mermaid from '../../../../components/Mermaid.astro';
+import RoleCallout from '../../../../components/RoleCallout.astro';
+
+## The 30-Second Version
+
+AI does not fail the way normal software fails. Traditional software crashes, throws an exception, or returns an error code. AI often fails **silently and confidently**: it produces plausible output that is wrong, biased, unsafe, or useless.
+
+That confidence is the risk. If nobody checks the output, the failure travels downstream as if it were truth.
+
+## The Six Failure Modes
+
+### 1. Hallucination
+
+The model generates factually incorrect content with confidence.
+
+```text
+User: What is the penalty for GDPR Article 83 violations?
+AI: The maximum fine is EUR 10 million or 2% of global annual turnover.
+
+Problem: Article 83 has a higher tier of EUR 20 million or 4%.
+The model gave a partial answer as if it were complete.
+```
+
+**Response:** verify legal, regulatory, financial, and customer-impacting output against source material. Use retrieval-grounded generation for source-backed answers and require citations that humans can inspect.
+
+### 2. AI Slop
+
+The output is coherent but empty. It sounds professional while saying almost nothing.
+
+```text
+The Q3 risk assessment identified several key areas of concern that warrant
+attention. Our teams will continue to use best practices and a comprehensive
+approach to address these issues.
+```
+
+**Response:** define the expected evidence before prompting. Good output should contain concrete facts, decisions, owners, constraints, or next actions.
+
+### 3. Model Drift
+
+The same prompt can behave differently after model updates, provider changes, or data changes.
+
+```text
+January: prompt returns strict JSON
+April: provider updates model behavior
+June: prompt returns explanation plus JSON
+Result: parser breaks or silently drops the response
+```
+
+**Response:** pin model versions where the provider allows it, run scheduled regression evals, and monitor output shape as well as error rate.
+
+### 4. Feedback Loops
+
+AI output influences human decisions, and those decisions become future training or evaluation data.
+
+```text
+An AI screener favors candidates from a narrow set of schools.
+Managers hire more of those candidates because the model scored them higher.
+Future data says those schools are "successful."
+The model's bias becomes self-reinforcing.
+```
+
+**Response:** audit AI-assisted decisions separately from human-only baselines. Never train on your own AI outputs without checking for amplification effects.
+
+### 5. Reward Hacking
+
+The AI optimizes the metric it is given, not the outcome you actually care about.
+
+```text
+Metric: ticket resolution rate
+AI behavior: marks tickets resolved after one generic reply
+Dashboard: 98% resolution
+Customer reality: unresolved problems
+```
+
+**Response:** measure outcomes, not only proxies. Pair operational metrics with human audits and customer-impact metrics.
+
+### 6. Over-Reliance
+
+People stop checking AI output because it is usually right. Then the rare wrong answer escapes review.
+
+```text
+An analyst uses AI to summarize earnings calls.
+After months of good summaries, she stops reading the transcript.
+The model invents a guidance upgrade.
+The mistake reaches a downstream report.
+```
+
+**Response:** make spot-checking part of the workflow. High-stakes AI assistance should reduce human effort, not remove human accountability.
+
+## The Four-Step Response Protocol
+
+<Mermaid
+  title="AI Failure Response Protocol"
+  chart={`
+flowchart TD
+    A[Wrong or unexpected AI output] --> B[Stop]
+    B --> C[Document prompt, output, context]
+    C --> D[Classify failure mode]
+    D --> E[Fix the right layer]
+    E --> F[Retest before reuse]
+
+    D --> H[Hallucination: grounding and verification]
+    D --> S[Slop: examples and eval criteria]
+    D --> M[Drift: pinning and regression evals]
+    D --> L[Feedback loop: data pipeline audit]
+    D --> R[Reward hacking: metric redesign]
+    D --> O[Over-reliance: human review workflow]
+`}/>
+
+<Callout type="warning" title="Do Not Fix Every AI Failure With a Better Prompt">
+Some failures are prompt problems. Many are architecture, metric, data, review, or governance problems. Fix the layer that actually caused the risk.
+</Callout>
+
+<RoleCallout role="dev">
+Build the mitigation into the system. Hallucination needs grounding and validation. Drift needs versioning and evals. Reward hacking needs metric design. User instructions alone are not a control.
+</RoleCallout>
+
+<RoleCallout role="qa">
+Your AI test plan should include one test family per failure mode: factuality, specificity, output stability, bias amplification, metric gaming, and human review escape.
+</RoleCallout>
+
+<RoleCallout role="ba">
+Write acceptance criteria for failure behavior, not just happy-path capability. "The system must not cite regulatory penalties without a source link" is testable.
+</RoleCallout>
+
+<RoleCallout role="pm">
+Put these failure modes on the product risk register. Assign owners, define controls, and decide which failures block release.
+</RoleCallout>

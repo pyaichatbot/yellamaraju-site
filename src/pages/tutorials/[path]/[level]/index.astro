@@ -37,18 +37,28 @@ if (!pathInfo || !levelInfo) return Astro.redirect('/tutorials', 302);
 
 const tutorials = (await getCollection('tutorials', ({ data }) => !data.draft && data.path === pathParam && data.level === levelParam))
   .sort((a, b) => a.data.module - b.data.module);
+const isSingleTrack = pathInfo.id === 'ai-literacy';
+const levelLabel = isSingleTrack ? 'Single Track' : levelInfo.label;
+const levelSubtitle = isSingleTrack ? `${tutorials.length} tutorials · ~3 hours total` : `${levelInfo.subtitle} · ${tutorials.length} tutorials · ${levelInfo.time}`;
 ---
 
-<BaseLayout title={`${pathInfo.title}: ${levelInfo.label}`} description={`${levelInfo.label} tutorials for ${pathInfo.title}.`}>
+<BaseLayout
+  title={`${pathInfo.title}: ${levelLabel}`}
+  description={`${levelLabel} tutorials for ${pathInfo.title}.`}
+  socialImage="/images/tutorials-social.png"
+  socialImageWidth={1200}
+  socialImageHeight={630}
+  socialImageType="image/png"
+>
   <div class="level-page" style={`--track-color: ${levelInfo.color}; --path-accent: ${pathInfo.accent}`}>
     <header class="level-header">
       <a href={`/tutorials/${pathInfo.id}`} class="back-link">← {pathInfo.title}</a>
       <div class="level-badge" style={`background: color-mix(in srgb, ${levelInfo.color} 12%, transparent); color: ${levelInfo.color}; border: 1px solid color-mix(in srgb, ${levelInfo.color} 30%, transparent)`}>
-        {levelInfo.label}
+        {levelLabel}
       </div>
       <p class="path-kicker">{pathInfo.title}</p>
-      <h1>{levelInfo.label} Track</h1>
-      <p class="level-subtitle">{levelInfo.subtitle} · {tutorials.length} tutorials · {levelInfo.time}</p>
+      <h1>{levelLabel}</h1>
+      <p class="level-subtitle">{levelSubtitle}</p>
       <p class="level-description">{pathInfo.outcome}</p>
       <div class="role-filters" aria-label="Filter tutorials by role">
         <button class="role-filter-btn active" data-filter-role="all" aria-pressed="true">All Roles</button>
@@ -56,6 +66,7 @@ const tutorials = (await getCollection('tutorials', ({ data }) => !data.draft &&
         <button class="role-filter-btn" data-filter-role="qa" aria-pressed="false">QA</button>
         <button class="role-filter-btn" data-filter-role="ba" aria-pressed="false">BA</button>
         <button class="role-filter-btn" data-filter-role="pm" aria-pressed="false">PM</button>
+        <button class="role-filter-btn" data-filter-role="exec" aria-pressed="false">Exec</button>
       </div>
     </header>
 
@@ -70,6 +81,7 @@ const tutorials = (await getCollection('tutorials', ({ data }) => !data.draft &&
           roles={t.data.roles}
           estimatedTime={t.data.estimatedTime}
           href={tutorialHref(t)}
+          levelLabel={isSingleTrack ? 'Single Track' : undefined}
         />
       ))}
     </div>

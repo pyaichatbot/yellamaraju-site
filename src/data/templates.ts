@@ -132,6 +132,15 @@ export const templates: Template[] = [
     featured: true,
   },
   {
+    slug: 'goal-mega-template',
+    title: 'Goal-Based Agent Work Template',
+    description: 'A reusable /goal contract for long-running AI coding sessions with context, constraints, success criteria, verification commands, stop rules, and final delivery proof.',
+    category: 'production-ai-systems',
+    relatedBlogPost: 'goal-primitive-autonomous-agent-loops',
+    tags: ['agents', 'codex', 'claude-code', 'workflow'],
+    featured: true,
+  },
+  {
     slug: 'eu-ai-act-assessment-notebook',
     title: 'EU AI Act Assessment Notebook',
     description: 'Enterprise-ready worksheet for classifying AI systems, mapping EU AI Act obligations, and tracking risk, data governance, oversight, and monitoring evidence.',

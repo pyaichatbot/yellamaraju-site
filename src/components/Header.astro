@@ -483,9 +483,14 @@ const navDescriptions: Record<string, string> = {
     gap: 0.15rem;
     z-index: 200;
     opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
     transform: translate(-50%, 8px) scale(0.98);
     transform-origin: top center;
-    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    transition:
+      opacity var(--transition-fast),
+      transform var(--transition-fast),
+      visibility var(--transition-fast);
     -webkit-backdrop-filter: blur(18px);
     backdrop-filter: blur(18px);
     text-align: left;
@@ -578,6 +583,8 @@ const navDescriptions: Record<string, string> = {
   .nav-item.open .nav-submenu {
     display: flex;
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
     transform: translate(-50%, 0) scale(1);
   }
 
@@ -974,6 +981,9 @@ const navDescriptions: Record<string, string> = {
       }
       closeDesktopMenus();
     });
+
+    window.addEventListener('scroll', closeDesktopMenus, { passive: true });
+    window.addEventListener('resize', closeDesktopMenus);
     
     // Close menu when clicking on overlay background
     overlay?.addEventListener('click', (e) => {

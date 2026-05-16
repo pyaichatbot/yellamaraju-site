@@ -16,6 +16,7 @@
   --tut-beginner: #16a34a;
   --tut-intermediate: #d97706;
   --tut-advanced: #dc2626;
+  --tut-literacy: #0f766e;
 }
 
 /* Dark mode color palette */
@@ -29,6 +30,7 @@
   --color-accent-hover: #60a5fa;
   --color-border: #2a2a2a;
   --color-code-bg: #262626;
+  --tut-literacy: #2dd4bf;
 }
 
 /* Auto theme - respects system preference */
@@ -43,6 +45,7 @@
     --color-accent-hover: #60a5fa;
     --color-border: #2a2a2a;
     --color-code-bg: #262626;
+    --tut-literacy: #2dd4bf;
   }
 }
 
