@@ -34,7 +34,12 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const store = getStore({ name: `enrollments-${pathId}`, consistency: 'strong' });
+    const store = getStore({
+      name: `enrollments-${pathId}`,
+      consistency: 'strong',
+      siteID: process.env.NETLIFY_SITE_ID,
+      token: process.env.NETLIFY_BLOBS_TOKEN,
+    });
     const { blobs } = await store.list();
 
     const enrollments = await Promise.all(

@@ -48,7 +48,12 @@ export const handler: Handler = async (event) => {
 
     // Persist to Netlify Blobs — key = normalized email, value = enrollment record
     try {
-      const store = getStore({ name: `enrollments-${pathId}`, consistency: 'strong' });
+      const store = getStore({
+        name: `enrollments-${pathId}`,
+        consistency: 'strong',
+        siteID: process.env.NETLIFY_SITE_ID,
+        token: process.env.NETLIFY_BLOBS_TOKEN,
+      });
       const record: EnrollmentRecord = { email: normalized, enrolledAt, pathId };
       await store.setJSON(normalized, record);
     } catch (blobErr) {
