@@ -34,11 +34,22 @@ export const handler: Handler = async (event) => {
   }
 
   try {
+    const siteID = process.env.NETLIFY_SITE_ID;
+    const token = process.env.NETLIFY_BLOBS_TOKEN;
+
+    if (!siteID || !token) {
+      return json(500, {
+        success: false,
+        error: 'Missing blob credentials',
+        debug: { siteIDSet: !!siteID, tokenSet: !!token },
+      });
+    }
+
     const store = getStore({
       name: `enrollments-${pathId}`,
       consistency: 'strong',
-      siteID: process.env.NETLIFY_SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN,
+      siteID,
+      token,
     });
     const { blobs } = await store.list();
 
