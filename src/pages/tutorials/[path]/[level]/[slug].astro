@@ -27,8 +27,29 @@ const { module: mod, totalModules, title, description, estimatedTime, roles, pre
 const pathInfo = getTutorialPath(pathId);
 const levelInfo = getTutorialLevel(level);
 const isSingleTrack = pathId === 'ai-literacy';
-const isLlmMastery = pathId === 'llm-mastery';
+const isGated = pathId === 'llm-mastery' || pathId === 'system-design';
 const isOptInTracked = pathId === 'langgraph' || pathId === 'llm-systems';
+
+const GATE_CONFIGS: Record<string, { title: string; subtitle: string; pillars: { heading: string; body: string }[] }> = {
+  'llm-mastery': {
+    title: 'LLM Mastery for Enterprise AI Engineering',
+    subtitle: 'Free subscriber access. Enter your email to unlock all 18 modules, track your progress, and export your enterprise AI readiness packet.',
+    pillars: [
+      { heading: 'Foundation to Advanced', body: '— tokens and transformers to deployment readiness and enterprise governance.' },
+      { heading: '12 enterprise deliverables', body: '— data cards, eval reports, deployment reviews, governance packets.' },
+      { heading: 'Browser-local progress', body: '— your completion data stays private, no account needed.' },
+    ],
+  },
+  'system-design': {
+    title: 'System Design for AI & FDE',
+    subtitle: 'Free subscriber access. Unlock all 13 modules covering system design interview skills for AI/ML and Field Delivery Engineering roles.',
+    pillars: [
+      { heading: 'Foundations to distributed systems', body: '— storage, APIs, reliability, and global AI infrastructure.' },
+      { heading: 'Interview-ready walkthroughs', body: '— LLM serving, RAG, multi-agent, safety, and compliance scenarios.' },
+      { heading: 'Browser-local progress', body: '— track completion privately, no account needed.' },
+    ],
+  },
+};
 const levelLabel = isSingleTrack ? 'Single Track' : (levelInfo?.label ?? level);
 const trackTitle = isSingleTrack ? 'Single Track' : (levelInfo ? `${levelInfo.label} Track` : `${level} Track`);
 const pathTitle = pathInfo?.title ?? tutorial.data.pathTitle ?? pathId;
@@ -201,8 +222,13 @@ const relatedBlogs = [...explicitRelatedBlogs, ...tagRelatedBlogs].slice(0, 3);
       trackHref={`/tutorials/${pathId}/${level}`}
     />
 
-    {isLlmMastery ? (
-      <LlmMasteryGate>
+    {isGated ? (
+      <LlmMasteryGate
+        pathId={pathId}
+        title={GATE_CONFIGS[pathId]!.title}
+        subtitle={GATE_CONFIGS[pathId]!.subtitle}
+        pillars={GATE_CONFIGS[pathId]!.pillars}
+      >
         <div class="tutorial-content prose post-content">
           <Content />
         </div>
@@ -220,7 +246,7 @@ const relatedBlogs = [...explicitRelatedBlogs, ...tagRelatedBlogs].slice(0, 3);
       trackHref={`/tutorials/${pathId}/${level}`}
     />
 
-    {(isLlmMastery || isOptInTracked) && (
+    {(isGated || isOptInTracked) && (
       <TutorialCompleteButton
         pathId={pathId}
         moduleSlug={moduleSlug}

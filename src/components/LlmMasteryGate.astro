@@ -1,49 +1,48 @@
 ---
-// Renders gate wall if not enrolled. Renders slot if enrolled.
-// Enrollment check and form submission are entirely client-side.
+// Subscriber gate for gated tutorial paths.
+// Checks localStorage for enrollment token; shows form if not enrolled.
+interface Pillar {
+  heading: string;
+  body: string;
+}
+
+interface Props {
+  pathId: string;
+  title: string;
+  subtitle: string;
+  pillars: Pillar[];
+}
+
+const { pathId, title, subtitle, pillars } = Astro.props;
+const gateId = `gate-root-${pathId}`;
+const wallId = `gate-wall-${pathId}`;
+const contentId = `gate-content-${pathId}`;
 ---
 
-<div id="llm-mastery-gate-root">
-  <!-- Gate wall — shown until enrollment confirmed -->
-  <div id="llm-mastery-gate" class="gate-wall">
+<div id={gateId} data-path-id={pathId}>
+  <div id={wallId} class="gate-wall">
     <div class="gate-inner">
       <div class="gate-badge">Free · Subscriber Access</div>
-      <h2 class="gate-title">LLM Mastery for Enterprise AI Engineering</h2>
-      <p class="gate-subtitle">
-        18 modules. 12 enterprise deliverables. 5 role tracks. One packet to take
-        any AI use case from concept to governed production.
-      </p>
+      <h2 class="gate-title">{title}</h2>
+      <p class="gate-subtitle">{subtitle}</p>
 
       <ul class="gate-pillars">
-        <li>
-          <span class="pillar-icon" aria-hidden="true">⬡</span>
-          <span>
-            <strong>Full curriculum, no paywall</strong>
-            Foundations through enterprise governance — free to every subscriber.
-          </span>
-        </li>
-        <li>
-          <span class="pillar-icon" aria-hidden="true">⬡</span>
-          <span>
-            <strong>Progress tracked in your browser</strong>
-            Completion state stays local — no account, no server, no cookies.
-          </span>
-        </li>
-        <li>
-          <span class="pillar-icon" aria-hidden="true">⬡</span>
-          <span>
-            <strong>Built for real teams</strong>
-            Role tracks for DEV · QA · BA · PM · Exec with enterprise artifacts
-            you can submit to security, legal, and risk reviewers.
-          </span>
-        </li>
+        {pillars.map((p) => (
+          <li>
+            <span class="pillar-icon" aria-hidden="true">⬡</span>
+            <span>
+              <strong>{p.heading}</strong>
+              {p.body}
+            </span>
+          </li>
+        ))}
       </ul>
 
-      <form id="gate-form" class="gate-form" novalidate>
-        <label class="gate-label" for="gate-email">Enter your email to unlock</label>
+      <form class="gate-form" data-gate-form novalidate>
+        <label class="gate-label" for={`gate-email-${pathId}`}>Enter your email to unlock</label>
         <div class="gate-input-row">
           <input
-            id="gate-email"
+            id={`gate-email-${pathId}`}
             type="email"
             class="gate-input"
             placeholder="you@company.com"
@@ -51,92 +50,87 @@
             required
             aria-required="true"
           />
-          <button type="submit" class="gate-submit" id="gate-submit-btn">
+          <button type="submit" class="gate-submit" data-gate-submit>
             <span class="btn-label">Unlock Course</span>
             <span class="btn-loading" hidden>Enrolling…</span>
           </button>
         </div>
-        <p class="gate-error" id="gate-error" role="alert" hidden></p>
+        <p class="gate-error" data-gate-error role="alert" hidden></p>
         <p class="gate-privacy">No spam. Unsubscribe anytime. <a href="/privacy">Privacy policy</a>.</p>
       </form>
     </div>
   </div>
 
-  <!-- Content slot — hidden until enrolled -->
-  <div id="llm-mastery-content" hidden>
+  <div id={contentId} hidden>
     <slot />
   </div>
 </div>
 
 <script>
-  import { isEnrolled, enroll } from '../utils/tutorial-tracker';
+  import { isTracking, startTracking } from '../utils/tutorial-tracker';
 
-  function showContent() {
-    const gate = document.getElementById('llm-mastery-gate');
-    const content = document.getElementById('llm-mastery-content');
-    if (gate) gate.hidden = true;
-    if (content) content.hidden = false;
-  }
+  function initGate(root: HTMLElement) {
+    const pathId = root.dataset.pathId;
+    if (!pathId) return;
 
-  function showGate() {
-    const gate = document.getElementById('llm-mastery-gate');
-    const content = document.getElementById('llm-mastery-content');
-    if (gate) gate.hidden = false;
-    if (content) content.hidden = true;
-  }
+    const wall = root.querySelector('.gate-wall') as HTMLElement | null;
+    const content = root.querySelector('[id^="gate-content-"]') as HTMLElement | null;
+    const form = root.querySelector('[data-gate-form]') as HTMLFormElement | null;
+    const submitBtn = root.querySelector('[data-gate-submit]') as HTMLButtonElement | null;
+    const errorEl = root.querySelector('[data-gate-error]') as HTMLElement | null;
 
-  async function handleSubmit(e: Event) {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const emailInput = document.getElementById('gate-email') as HTMLInputElement;
-    const submitBtn = document.getElementById('gate-submit-btn') as HTMLButtonElement;
-    const errorEl = document.getElementById('gate-error') as HTMLElement;
-    const btnLabel = submitBtn.querySelector('.btn-label') as HTMLElement;
-    const btnLoading = submitBtn.querySelector('.btn-loading') as HTMLElement;
+    function showContent() {
+      if (wall) wall.hidden = true;
+      if (content) content.hidden = false;
+    }
 
-    const email = emailInput.value.trim();
-    if (!email || !email.includes('@')) {
-      errorEl.textContent = 'Please enter a valid email address.';
-      errorEl.hidden = false;
-      emailInput.focus();
+    if (isTracking(pathId)) {
+      showContent();
       return;
     }
 
-    errorEl.hidden = true;
-    submitBtn.disabled = true;
-    btnLabel.hidden = true;
-    btnLoading.hidden = false;
+    if (wall) wall.hidden = false;
+    if (content) content.hidden = true;
 
-    try {
-      const res = await fetch('/api/enroll', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailInput = root.querySelector('.gate-input') as HTMLInputElement;
+      const btnLabel = submitBtn?.querySelector('.btn-label') as HTMLElement;
+      const btnLoading = submitBtn?.querySelector('.btn-loading') as HTMLElement;
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Server error (${res.status})`);
+      const email = emailInput?.value.trim() ?? '';
+      if (!email || !email.includes('@')) {
+        if (errorEl) { errorEl.textContent = 'Please enter a valid email address.'; errorEl.hidden = false; }
+        emailInput?.focus();
+        return;
       }
 
-      // Enroll locally regardless of server response
-      enroll(email);
+      if (errorEl) errorEl.hidden = true;
+      if (submitBtn) submitBtn.disabled = true;
+      if (btnLabel) btnLabel.hidden = true;
+      if (btnLoading) btnLoading.hidden = false;
+
+      try {
+        const res = await fetch('/api/enroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, pathId }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Server error (${res.status})`);
+        }
+      } catch {
+        // Enroll locally on any network error — never block the user
+      }
+
+      startTracking(pathId, email);
       showContent();
-    } catch (err) {
-      // On any fetch error, still enroll locally so users aren't blocked
-      enroll(email);
-      showContent();
-    }
+    });
   }
 
   function init() {
-    if (isEnrolled()) {
-      showContent();
-      return;
-    }
-    showGate();
-    const form = document.getElementById('gate-form');
-    if (form) form.addEventListener('submit', handleSubmit);
+    document.querySelectorAll<HTMLElement>('[id^="gate-root-"]').forEach(initGate);
   }
 
   if (document.readyState === 'loading') {
@@ -147,9 +141,7 @@
 </script>
 
 <style>
-  #llm-mastery-gate-root {
-    width: 100%;
-  }
+  [id^="gate-root-"] { width: 100%; }
 
   .gate-wall {
     margin: var(--space-lg) 0;
@@ -229,32 +221,11 @@
     border-radius: 10px;
   }
 
-  .pillar-icon {
-    color: #60a5fa;
-    font-size: 1rem;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
+  .pillar-icon { color: #60a5fa; font-size: 1rem; flex-shrink: 0; margin-top: 2px; }
+  .gate-pillars strong { display: block; color: #f1f5f9; font-size: 0.88rem; margin-bottom: 0.2rem; }
+  .gate-pillars li > span > :not(strong) { color: rgba(248, 250, 252, 0.55); font-size: 0.84rem; line-height: 1.5; }
 
-  .gate-pillars strong {
-    display: block;
-    color: #f1f5f9;
-    font-size: 0.88rem;
-    margin-bottom: 0.2rem;
-  }
-
-  .gate-pillars span > span {
-    color: rgba(248, 250, 252, 0.55);
-    font-size: 0.84rem;
-    line-height: 1.5;
-  }
-
-  .gate-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: center;
-  }
+  .gate-form { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
 
   .gate-label {
     color: rgba(248, 250, 252, 0.7);
@@ -263,13 +234,7 @@
     font-weight: 600;
   }
 
-  .gate-input-row {
-    display: flex;
-    gap: 0.5rem;
-    width: 100%;
-    max-width: 480px;
-    flex-wrap: wrap;
-  }
+  .gate-input-row { display: flex; gap: 0.5rem; width: 100%; max-width: 480px; flex-wrap: wrap; }
 
   .gate-input {
     flex: 1 1 220px;
@@ -305,20 +270,9 @@
   .gate-submit:hover { background: #1d4ed8; transform: translateY(-1px); }
   .gate-submit:disabled { opacity: 0.6; pointer-events: none; }
 
-  .gate-error {
-    color: #f87171;
-    font-size: 0.85rem;
-    margin: 0;
-    font-family: var(--font-sans);
-  }
+  .gate-error { color: #f87171; font-size: 0.85rem; margin: 0; font-family: var(--font-sans); }
 
-  .gate-privacy {
-    color: rgba(248, 250, 252, 0.3);
-    font-size: 0.78rem;
-    margin: 0;
-    font-family: var(--font-sans);
-  }
-
+  .gate-privacy { color: rgba(248, 250, 252, 0.3); font-size: 0.78rem; margin: 0; font-family: var(--font-sans); }
   .gate-privacy a { color: rgba(96, 165, 250, 0.7); text-decoration: none; }
   .gate-privacy a:hover { color: #60a5fa; }
 

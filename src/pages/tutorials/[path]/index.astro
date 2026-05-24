@@ -34,8 +34,21 @@ const byLevel = Object.fromEntries(
 
 const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.length > 0);
 const isSingleTrack = pathInfo.id === 'ai-literacy';
-const isLlmMastery = pathInfo.id === 'llm-mastery';
+const isGated = pathInfo.id === 'llm-mastery' || pathInfo.id === 'system-design';
 const isOptInTracked = pathInfo.id === 'langgraph' || pathInfo.id === 'llm-systems';
+
+const GATED_CONFIGS: Record<string, { firstModuleHref: string; llmsHref?: string; deliverablesCopy: string }> = {
+  'llm-mastery': {
+    firstModuleHref: '/tutorials/llm-mastery/beginner/00-course-overview',
+    llmsHref: '/llm-mastery-llms.txt',
+    deliverablesCopy: '12 enterprise deliverables — data cards, eval reports, deployment readiness reviews, governance packets built for security, legal, and risk stakeholders.',
+  },
+  'system-design': {
+    firstModuleHref: '/tutorials/system-design/beginner/01-system-design-foundations-for-ai-builders',
+    deliverablesCopy: 'Real interview scenarios for AI/ML and FDE roles — LLM inference, RAG, multi-agent systems, safety, compliance, and global distributed infrastructure.',
+  },
+};
+const gatedConfig = GATED_CONFIGS[pathInfo.id];
 const displayLevel = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack ? 'Single Track' : level.label;
 const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack ? `Governance and risk track · ${byLevel[level.key].length} tutorials · ~3 hours total` : `${level.subtitle} · ${byLevel[level.key].length} tutorials · ${level.time}`;
 ---
@@ -58,24 +71,26 @@ const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack
         <div><strong>Best for</strong><span>{pathInfo.audience}</span></div>
         <div><strong>Outcome</strong><span>{pathInfo.outcome}</span></div>
       </div>
-      {isLlmMastery && (
-        <section class="course-positioning" aria-label="LLM Mastery course positioning">
+      {isGated && gatedConfig && (
+        <section class="course-positioning" aria-label={`${pathInfo.title} course positioning`}>
           <div>
             <strong>Free · Subscriber access</strong>
-            <span>Subscribe once to unlock all 18 modules, track completion, and export your enterprise readiness packet. Progress is stored privately in your browser — no account needed.</span>
+            <span>Subscribe once to unlock all {getPathModules(pathInfo.id).length} modules, track completion, and export your progress. Stored privately in your browser — no account needed.</span>
           </div>
           <div>
-            <strong>12 enterprise deliverables</strong>
-            <span>Every module produces a real artifact: data cards, eval reports, deployment readiness reviews, governance packets — built for security, legal, and risk stakeholders.</span>
+            <strong>{pathInfo.id === 'llm-mastery' ? '12 enterprise deliverables' : 'Interview-ready scenarios'}</strong>
+            <span>{gatedConfig.deliverablesCopy}</span>
           </div>
           <div class="course-cta-group">
-            <a href="/tutorials/llm-mastery/beginner/00-course-overview" class="course-cta-primary">Start the Course →</a>
-            <a href="/tutorials/llm-mastery/progress" class="course-cta-secondary">My Progress</a>
-            <LlmsDownloadButton
-              href="/llm-mastery-llms.txt"
-              filename="llm-mastery-llms.txt"
-              label="Download llm-mastery-llms.txt"
-            />
+            <a href={gatedConfig.firstModuleHref} class="course-cta-primary">Start the Course →</a>
+            <a href={`/tutorials/${pathInfo.id}/progress`} class="course-cta-secondary">My Progress</a>
+            {gatedConfig.llmsHref && (
+              <LlmsDownloadButton
+                href={gatedConfig.llmsHref}
+                filename="llm-mastery-llms.txt"
+                label="Download llm-mastery-llms.txt"
+              />
+            )}
           </div>
         </section>
       )}
