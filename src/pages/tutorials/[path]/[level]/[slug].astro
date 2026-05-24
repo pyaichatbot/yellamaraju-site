@@ -3,6 +3,8 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import TutorialProgress from '../../../../components/TutorialProgress.astro';
 import TutorialNav from '../../../../components/TutorialNav.astro';
+import LlmMasteryGate from '../../../../components/LlmMasteryGate.astro';
+import TutorialCompleteButton from '../../../../components/TutorialCompleteButton.astro';
 import { getTutorialLevel, getTutorialPath, splitTutorialSlug, tutorialHref } from '../../../../data/tutorial-paths';
 
 export async function getStaticPaths() {
@@ -25,9 +27,12 @@ const { module: mod, totalModules, title, description, estimatedTime, roles, pre
 const pathInfo = getTutorialPath(pathId);
 const levelInfo = getTutorialLevel(level);
 const isSingleTrack = pathId === 'ai-literacy';
+const isLlmMastery = pathId === 'llm-mastery';
+const isOptInTracked = pathId === 'langgraph' || pathId === 'llm-systems';
 const levelLabel = isSingleTrack ? 'Single Track' : (levelInfo?.label ?? level);
 const trackTitle = isSingleTrack ? 'Single Track' : (levelInfo ? `${levelInfo.label} Track` : `${level} Track`);
 const pathTitle = pathInfo?.title ?? tutorial.data.pathTitle ?? pathId;
+const moduleSlug = `${level}/${slug}`;
 const playgroundBase = 'https://pyaichatbot.github.io/ai-learning-playground/';
 function playgroundHref(route: string) {
   return `${playgroundBase}?route=${encodeURIComponent(route)}`;
@@ -140,7 +145,7 @@ const relatedBlogs = [...explicitRelatedBlogs, ...tagRelatedBlogs].slice(0, 3);
   socialImageType="image/png"
 >
   <article class="tutorial-article">
-    <TutorialProgress module={mod} totalModules={totalModules} level={level} trackTitle={trackTitle} pathTitle={pathTitle} pathHref={`/tutorials/${pathId}`} />
+    <TutorialProgress module={mod} totalModules={totalModules} level={level} trackTitle={trackTitle} pathTitle={pathTitle} pathHref={`/tutorials/${pathId}`} moduleSlug={moduleSlug} pathId={pathId} />
 
     <header class="tutorial-header">
       <div class="tutorial-header-meta">
@@ -196,9 +201,17 @@ const relatedBlogs = [...explicitRelatedBlogs, ...tagRelatedBlogs].slice(0, 3);
       trackHref={`/tutorials/${pathId}/${level}`}
     />
 
-    <div class="tutorial-content prose post-content">
-      <Content />
-    </div>
+    {isLlmMastery ? (
+      <LlmMasteryGate>
+        <div class="tutorial-content prose post-content">
+          <Content />
+        </div>
+      </LlmMasteryGate>
+    ) : (
+      <div class="tutorial-content prose post-content">
+        <Content />
+      </div>
+    )}
 
     <TutorialNav
       prev={prevTutorial ? { title: prevTutorial.data.title, href: tutorialHref(prevTutorial), module: prevTutorial.data.module } : undefined}
@@ -206,6 +219,16 @@ const relatedBlogs = [...explicitRelatedBlogs, ...tagRelatedBlogs].slice(0, 3);
       trackTitle={trackTitle}
       trackHref={`/tutorials/${pathId}/${level}`}
     />
+
+    {(isLlmMastery || isOptInTracked) && (
+      <TutorialCompleteButton
+        pathId={pathId}
+        moduleSlug={moduleSlug}
+        nextHref={nextTutorial ? tutorialHref(nextTutorial) : undefined}
+        nextTitle={nextTutorial?.data.title}
+        level={level}
+      />
+    )}
   </article>
 </BaseLayout>
 

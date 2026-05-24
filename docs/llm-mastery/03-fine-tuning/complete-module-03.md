@@ -1,0 +1,860 @@
+# Module 03 — Fine-Tuning
+
+> *The real engineering: making a model yours.*
+> LoRA, QLoRA, DPO, RLHF, Quantization, Checkpoints, Adapters, GGUF.
+
+---
+
+# 01 — LoRA: Low-Rank Adaptation
+
+## The Problem LoRA Solves
+
+Full fine-tuning means updating ALL parameters of a model.
+
+For LLaMA 3 8B:
+- 8 billion parameters
+- Each stored as fp16 (2 bytes)
+- Plus gradients (same size)
+- Plus optimizer states (2x parameters for Adam)
+- = ~80+ GB VRAM just to fine-tune
+
+That's 10x A100 80GB GPUs. For a single engineer, prohibitive.
+
+**LoRA says:** You don't need to update all 8 billion parameters. You can get 90%+ of the benefit by updating a tiny fraction of them.
+
+---
+
+## How LoRA Works
+
+Here's the key insight:
+
+When we fine-tune a model, the **change** to the weight matrices is actually low-rank. This means the change can be approximated by two small matrices.
+
+**The math (don't panic):**
+
+Original weight matrix W: (4096 × 4096) = 16 million numbers
+
+Instead of updating W directly, LoRA trains two small matrices:
+- A: (4096 × 8)  = 32,768 numbers
+- B: (8 × 4096) = 32,768 numbers
+
+Then the effective update is: W_new = W + B × A
+
+The rank (r=8 here) is a hyperparameter. Common values: 4, 8, 16, 32, 64.
+
+```
+Original: Update 16,000,000 parameters
+LoRA r=8: Update 65,536 parameters
+Reduction: ~244x fewer parameters to train!
+```
+
+---
+
+## LoRA in Practice
+
+```python
+from peft import LoraConfig, get_peft_model
+from transformers import AutoModelForCausalLM
+
+# Load the base model
+model = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Meta-Llama-3-8B",
+    torch_dtype=torch.float16,
+    device_map="auto"
+)
+
+# Configure LoRA
+lora_config = LoraConfig(
+    r=16,                    # Rank — higher = more capacity but more params
+    lora_alpha=32,           # Scaling factor (usually 2x rank)
+    target_modules=[         # Which layers to apply LoRA to
+        "q_proj",            # Query projection in attention
+        "k_proj",            # Key projection
+        "v_proj",            # Value projection
+        "o_proj",            # Output projection
+        "gate_proj",         # Feed-forward layers
+        "up_proj",
+        "down_proj",
+    ],
+    lora_dropout=0.05,       # Dropout for regularization
+    bias="none",             # Don't train biases
+    task_type="CAUSAL_LM"    # Task type
+)
+
+# Apply LoRA to the model
+model = get_peft_model(model, lora_config)
+
+# See how many parameters we're actually training
+model.print_trainable_parameters()
+# Output: trainable params: 83,886,080 || all params: 8,030,261,248 || trainable%: 1.04%
+
+# Only 1% of parameters! That's the power of LoRA
+```
+
+---
+
+## Choosing LoRA Rank (r)
+
+| Rank | Use Case |
+|------|----------|
+| r=4 | Simple style/format changes |
+| r=8 | Moderate task adaptation |
+| r=16 | Complex task fine-tuning |
+| r=32 | Major behavioral changes |
+| r=64 | Near full fine-tuning territory |
+
+Higher rank = more parameters = more capacity = slower training = more memory
+
+Start with r=16, adjust based on results.
+
+---
+
+## Target Modules: Where to Apply LoRA
+
+Not all layers benefit equally:
+
+```python
+# Common configurations:
+
+# Attention-only (conservative, fast)
+target_modules = ["q_proj", "v_proj"]
+
+# Attention + output (common default)
+target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
+
+# All linear layers (maximum coverage)
+target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", 
+                  "gate_proj", "up_proj", "down_proj"]
+
+# Including embeddings (for multilingual/new vocabulary)
+target_modules = ["embed_tokens", "q_proj", "k_proj", "v_proj", 
+                  "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"]
+```
+
+For most fine-tuning tasks: target all attention + feed-forward projections.
+
+---
+
+## LoRA Merging
+
+After training, you can merge the LoRA adapters back into the base model:
+
+```python
+from peft import PeftModel
+
+# Load base model
+base_model = AutoModelForCausalLM.from_pretrained("meta-llama/Meta-Llama-3-8B")
+
+# Load LoRA adapter
+model = PeftModel.from_pretrained(base_model, "path/to/lora/adapter")
+
+# Merge adapters into base model
+merged_model = model.merge_and_unload()
+
+# Save merged model (now it's a standalone model without needing the adapter separately)
+merged_model.save_pretrained("./merged-model")
+```
+
+Benefits of merging:
+- Single file to deploy
+- No overhead at inference time
+- Can quantize the merged model
+
+---
+
+# 02 — QLoRA: Quantized LoRA
+
+## Making LoRA Even More Accessible
+
+LoRA reduced training parameters by 100x. QLoRA reduces memory requirements by another 4-8x by also quantizing the base model.
+
+**QLoRA = Quantize the base model to 4-bit + Apply LoRA adapters in 16-bit**
+
+```
+Full fine-tuning 70B:  ~1,400 GB VRAM (impossible on anything reasonable)
+LoRA on 70B in fp16:   ~160 GB VRAM (need 2× A100 80GB minimum)
+QLoRA on 70B in 4-bit: ~48 GB VRAM (1× A100 80GB!)
+```
+
+---
+
+## How QLoRA Works
+
+1. **Quantize the base model to 4-bit** (using NF4 quantization)
+   - Model weights stored as 4-bit integers instead of 16-bit floats
+   - 4x memory reduction
+   
+2. **Apply LoRA adapters in bfloat16**
+   - The small LoRA adapter matrices remain in full precision
+   - Gradients flow through both
+
+3. **Double quantization**
+   - Also quantize the quantization constants
+   - Extra ~0.5-1 GB savings
+
+4. **Paged optimizers**
+   - Optimizer states use CPU RAM when GPU is full
+   - Prevents OOM crashes
+
+---
+
+## QLoRA in Practice (Using Unsloth — recommended)
+
+```python
+# Unsloth makes QLoRA dramatically easier and 2-5x faster
+# pip install unsloth
+
+from unsloth import FastLanguageModel
+import torch
+
+# Load model in 4-bit automatically
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="meta-llama/Meta-Llama-3-8B-Instruct",
+    max_seq_length=2048,
+    dtype=None,      # Auto-detect best dtype
+    load_in_4bit=True,  # QLoRA: load base in 4-bit
+)
+
+# Add LoRA adapters
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                    "gate_proj", "up_proj", "down_proj"],
+    lora_alpha=16,
+    lora_dropout=0,
+    bias="none",
+    use_gradient_checkpointing="unsloth",  # Reduces memory further
+    random_state=42,
+)
+
+# Memory: ~8-10 GB for 8B model on consumer GPU!
+```
+
+---
+
+## Hardware Requirements with QLoRA
+
+| Model | Without QLoRA | With QLoRA | Consumer Hardware |
+|-------|--------------|-----------|------------------|
+| 7-8B | ~14 GB | ~4-5 GB | RTX 3060 12GB ✓ |
+| 13B | ~26 GB | ~8 GB | RTX 3090 24GB ✓ |
+| 34B | ~68 GB | ~20 GB | RTX 4090 24GB (barely) |
+| 70B | ~140 GB | ~40 GB | 2× RTX 4090 |
+
+QLoRA democratized LLM fine-tuning. You can fine-tune a state-of-the-art 7B model on a gaming GPU.
+
+---
+
+# 03 — DPO: Direct Preference Optimization
+
+## The Problem with RLHF
+
+Traditional RLHF (coming next) requires training a separate **reward model** and using complex RL algorithms. This is:
+- Complicated to implement
+- Unstable (RL training can diverge)
+- Slow and memory-intensive
+
+**DPO** (2023) achieved the same goal with a simpler approach: skip the reward model entirely.
+
+---
+
+## How DPO Works
+
+DPO directly trains the model to:
+- Increase the probability of "chosen" responses
+- Decrease the probability of "rejected" responses
+
+```python
+from trl import DPOTrainer, DPOConfig
+
+# Your preference dataset
+# {"prompt": "...", "chosen": "...", "rejected": "..."}
+
+dpo_config = DPOConfig(
+    beta=0.1,        # Controls deviation from reference model
+                     # Higher = stay closer to base model behavior
+    output_dir="./dpo-output",
+    per_device_train_batch_size=2,
+    num_train_epochs=3,
+    learning_rate=5e-5,
+)
+
+trainer = DPOTrainer(
+    model=model,           # The model to train
+    ref_model=ref_model,   # Reference model (frozen copy of base)
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    args=dpo_config,
+)
+
+trainer.train()
+```
+
+---
+
+## The Beta Parameter
+
+Beta (β) controls how much the model can deviate from the original (reference) model.
+
+```
+β = 0.01: Very free to change, might drift far from original capabilities
+β = 0.1:  Balanced (common default)
+β = 0.5:  Conservative, stays close to base model
+β = 1.0:  Very conservative
+```
+
+Low beta → stronger preference optimization, but might "forget" original capabilities.
+
+---
+
+## DPO vs SFT: Use Both
+
+Typical pipeline:
+```
+1. SFT on chosen responses → teaches the model WHAT good responses look like
+2. DPO on preference pairs → teaches it WHY one response is BETTER than another
+```
+
+DPO without SFT can be unstable. SFT without DPO lacks quality differentiation.
+
+---
+
+## DPO Variants
+
+| Method | When to Use |
+|--------|-------------|
+| DPO | Standard preference optimization |
+| IPO | When DPO overfits to preference data |
+| KTO | When you only have good/bad labels, not pairs |
+| ORPO | Combined SFT + DPO in one pass (efficient) |
+| SimPO | Simplified, no reference model needed |
+
+For most projects, start with ORPO (combined SFT+DPO) — it's simpler and competitive.
+
+---
+
+# 04 — RLHF: Reinforcement Learning from Human Feedback
+
+## The Original Alignment Technique
+
+RLHF is how ChatGPT was trained to be helpful and harmless. It's more complex than DPO but remains important for understanding the field.
+
+---
+
+## RLHF in Three Stages
+
+### Stage 1: SFT (Supervised Fine-Tuning)
+Train the model on instruction-response pairs.
+Same as what we covered in Module 02.
+
+### Stage 2: Reward Model Training
+Train a separate model to score responses:
+
+```
+Prompt: "Explain quantum computing"
+Response A: [clear, accurate explanation] → Reward: 8.5
+Response B: [confusing, slightly wrong]   → Reward: 4.2
+Response C: [excellent, with examples]   → Reward: 9.1
+```
+
+The reward model learns human preferences from pairwise comparisons:
+```json
+{"prompt": "...", "chosen": "response A", "rejected": "response B"}
+```
+
+### Stage 3: RL Training (PPO)
+Use the reward model to improve the policy (language model):
+
+```
+1. Generate a response from the SFT model
+2. Score it with the reward model
+3. Use PPO (Proximal Policy Optimization) to adjust the model
+   toward responses the reward model would score higher
+4. Also penalize diverging too far from the SFT model (KL penalty)
+5. Repeat millions of times
+```
+
+---
+
+## Why RLHF is Powerful
+
+RLHF can teach things that are hard to express in supervised examples:
+- "Don't be sycophantic (don't just agree to please)"
+- "Be helpful but honest"
+- "Prefer concise answers unless depth is needed"
+
+These nuanced preferences emerge from the reward model's learning.
+
+---
+
+## Why DPO Often Beats RLHF in Practice
+
+| Factor | RLHF | DPO |
+|--------|------|-----|
+| Complexity | Very high | Moderate |
+| Stability | Can diverge | Generally stable |
+| Memory | Need reward model + policy | Just policy |
+| Speed | Slow | 2-3x faster |
+| Results | Excellent | Competitive |
+
+For most practitioners: **start with DPO**. RLHF for large-scale production systems.
+
+---
+
+# 05 — Quantization
+
+## What is Quantization?
+
+Quantization = storing model parameters in lower precision (fewer bits per number).
+
+**Analogy:** If weights are like measurements, quantization is like rounding from 4 decimal places to 1 decimal place.
+
+```
+Full precision: 0.23847183 (32 bits)
+Half precision: 0.2385     (16 bits)
+8-bit integer:  24         (8 bits, scaled)
+4-bit integer:  6          (4 bits, scaled further)
+```
+
+Information is lost, but often surprisingly little.
+
+---
+
+## Precision Types Compared
+
+| Format | Bits | Range | Memory for 7B | Quality |
+|--------|------|-------|--------------|---------|
+| fp32 | 32 | ±3.4×10^38 | ~28 GB | Baseline |
+| bf16 | 16 | ±3.4×10^38 | ~14 GB | ≈fp32 |
+| fp16 | 16 | ±65,504 | ~14 GB | ≈fp32 |
+| int8 | 8 | -128 to 127 | ~7 GB | ~99% of fp16 |
+| int4 | 4 | -8 to 7 | ~3.5 GB | ~95-98% of fp16 |
+| int2 | 2 | -2 to 1 | ~1.75 GB | ~80-90% of fp16 |
+
+For most use cases, **Q4 or Q5** quantization is the sweet spot: 4-5x smaller, minimal quality loss.
+
+---
+
+## Types of Quantization
+
+### Post-Training Quantization (PTQ) — Most Common
+After training, convert the weights to lower precision.
+No additional training needed.
+
+```python
+# Using bitsandbytes for 4-bit quantization
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+
+quantization_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_use_double_quant=True,   # QLoRA's double quant
+    bnb_4bit_quant_type="nf4",        # NormalFloat4 (best for weights)
+)
+
+model = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Meta-Llama-3-8B",
+    quantization_config=quantization_config,
+    device_map="auto"
+)
+```
+
+### Quantization-Aware Training (QAT)
+Train the model with quantization in mind. Better quality, more expensive.
+
+### GGUF Quantization (for llama.cpp / Ollama)
+Specific quantization format for CPU/consumer hardware inference. Covered in section 08.
+
+---
+
+## Common Quantization Levels in GGUF
+
+When you download models from Hugging Face for Ollama:
+
+| Level | Quality | Size (7B model) |
+|-------|---------|----------------|
+| Q2_K | Poor | ~2.8 GB |
+| Q3_K_M | Low-Medium | ~3.6 GB |
+| Q4_K_M | Good | ~4.5 GB |
+| Q5_K_M | Very Good | ~5.7 GB |
+| Q6_K | Excellent | ~6.7 GB |
+| Q8_0 | Near-perfect | ~9.0 GB |
+| F16 | Perfect | ~14 GB |
+
+**Recommendation:** Q4_K_M for low memory, Q5_K_M or Q6_K if you have room.
+
+---
+
+# 06 — Model Checkpoints
+
+## What is a Checkpoint?
+
+During training, the model is saved periodically. Each saved version is called a **checkpoint**.
+
+Why checkpoints matter:
+1. **Recovery**: If training crashes, resume from last checkpoint
+2. **Selection**: Training might peak at epoch 2, not epoch 5. Pick the best checkpoint.
+3. **Comparison**: Compare different checkpoints to find optimal training length
+4. **Sharing**: Save a checkpoint to share or deploy
+
+---
+
+## Checkpoint Strategy
+
+```python
+from transformers import TrainingArguments
+
+training_args = TrainingArguments(
+    output_dir="./checkpoints",
+    
+    # Save every N steps
+    save_steps=200,
+    
+    # Keep only the last N checkpoints (saves disk space)
+    save_total_limit=3,
+    
+    # Save the best model based on eval loss
+    load_best_model_at_end=True,
+    metric_for_best_model="eval_loss",
+    greater_is_better=False,
+    
+    # Evaluate every N steps
+    eval_steps=200,
+    evaluation_strategy="steps",
+)
+```
+
+---
+
+## What's Inside a Checkpoint?
+
+```
+checkpoint-1000/
+├── config.json              # Model architecture
+├── tokenizer.json           # Tokenizer
+├── tokenizer_config.json    
+├── adapter_model.safetensors  # LoRA adapter weights (if using LoRA)
+├── adapter_config.json      # LoRA configuration
+├── optimizer.pt             # Optimizer state (for resuming training)
+├── scheduler.pt             # Learning rate scheduler state
+└── trainer_state.json       # Training metrics and state
+```
+
+SafeTensors format (.safetensors) is preferred over .pt or .bin — it's faster to load and more secure.
+
+---
+
+## Resuming from Checkpoint
+
+```python
+trainer = SFTTrainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+)
+
+# Resume from specific checkpoint
+trainer.train(resume_from_checkpoint="./checkpoints/checkpoint-1000")
+```
+
+---
+
+# 07 — Adapter Tuning
+
+## The Adapter Ecosystem
+
+"Adapters" is the general term for modular fine-tuning techniques. LoRA is the most popular, but there are others:
+
+### Prefix Tuning
+Add learnable "prefix tokens" to the input. The model learns to condition on these.
+
+```python
+from peft import PrefixTuningConfig
+
+config = PrefixTuningConfig(
+    task_type="CAUSAL_LM",
+    num_virtual_tokens=20,  # 20 learned prefix tokens
+)
+```
+
+### Prompt Tuning
+Even simpler: only learn the embeddings of a few tokens prepended to every input.
+Very parameter-efficient, but typically lower quality than LoRA.
+
+### IA3 (Infused Adapter by Inhibiting and Amplifying Inner Activations)
+Multiply (not add) small learned vectors into attention and feed-forward layers.
+Even fewer parameters than LoRA, but less powerful.
+
+### Adapter Layers (Classic)
+Add small bottleneck networks between transformer layers.
+Less popular now that LoRA exists.
+
+---
+
+## Adapter Comparison
+
+| Method | Params | Quality | Memory | Speed |
+|--------|--------|---------|--------|-------|
+| Full fine-tune | 100% | ★★★★★ | Very High | Slow |
+| LoRA | ~1% | ★★★★ | Low | Fast |
+| QLoRA | ~1% | ★★★★ | Very Low | Fast |
+| IA3 | ~0.01% | ★★★ | Lowest | Fastest |
+| Prefix Tuning | ~0.1% | ★★★ | Low | Fast |
+| Prompt Tuning | ~0.001% | ★★ | Minimal | Fastest |
+
+**For most practitioners:** LoRA/QLoRA is the right choice. Start there.
+
+---
+
+## Mixing Multiple Adapters
+
+You can load and switch adapters dynamically:
+
+```python
+from peft import PeftModel
+
+# Load base model
+base_model = AutoModelForCausalLM.from_pretrained("llama-3-8b")
+
+# Load multiple LoRA adapters
+model = PeftModel.from_pretrained(base_model, "lora-customer-service", adapter_name="customer")
+model.load_adapter("lora-compliance", adapter_name="compliance")
+model.load_adapter("lora-coding", adapter_name="coding")
+
+# Switch between tasks
+model.set_adapter("customer")    # Now behaves like customer service model
+response1 = model.generate(...)
+
+model.set_adapter("compliance")  # Now behaves like compliance model
+response2 = model.generate(...)
+```
+
+This is powerful for multi-task systems without needing multiple full models.
+
+---
+
+# 08 — GGUF Models
+
+## What is GGUF?
+
+GGUF (GPT-Generated Unified Format) is a file format for storing quantized models optimized for CPU inference with **llama.cpp**.
+
+It replaced the older GGML format in 2023.
+
+When you download a model from Ollama or run it locally on your Mac, you're likely using GGUF.
+
+---
+
+## Why GGUF Matters
+
+1. **CPU inference**: GGUF models can run on CPU (slowly) — no GPU needed
+2. **Apple Silicon**: Excellent support for Mac M1/M2/M3 via Metal GPU
+3. **Quantized**: Already quantized to various levels (Q4, Q5, Q8...)
+4. **Single file**: Everything in one .gguf file — easy to download and use
+5. **Ollama/LM Studio**: These tools use GGUF under the hood
+
+---
+
+## Converting to GGUF
+
+After fine-tuning, you might want to convert your model to GGUF for local inference:
+
+```bash
+# Install llama.cpp
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+make
+
+# Convert HuggingFace model to GGUF
+python convert_hf_to_gguf.py \
+    /path/to/your/merged-model \
+    --outfile my-model.gguf \
+    --outtype f16
+
+# Quantize the GGUF to Q4_K_M
+./llama-quantize my-model.gguf my-model-Q4_K_M.gguf Q4_K_M
+```
+
+---
+
+## Loading GGUF Models
+
+```python
+# Using llama-cpp-python
+# pip install llama-cpp-python
+
+from llama_cpp import Llama
+
+llm = Llama(
+    model_path="./my-model-Q4_K_M.gguf",
+    n_ctx=4096,         # Context window
+    n_gpu_layers=-1,    # Use all GPU layers (if GPU available)
+    n_threads=8,        # CPU threads
+)
+
+response = llm.create_chat_completion(
+    messages=[
+        {"role": "user", "content": "What is compliance automation?"}
+    ],
+    max_tokens=512,
+    temperature=0.7
+)
+
+print(response['choices'][0]['message']['content'])
+```
+
+---
+
+## 📝 Module 03 Summary
+
+| Concept | Key Takeaway |
+|---------|-------------|
+| LoRA | Train only ~1% of parameters using low-rank matrices. Same result, 100x cheaper. |
+| QLoRA | Quantize base model + LoRA adapters. Fine-tune 8B on a gaming GPU. |
+| DPO | Simpler RLHF alternative. Trains on chosen/rejected pairs directly. |
+| RLHF | Original alignment technique. Powerful, complex, requires reward model. |
+| Quantization | Reduce precision (32→4 bit) for 4-8x size reduction with ~2-5% quality loss. |
+| Checkpoints | Save training state periodically. Pick the best one. |
+| Adapters | Modular fine-tuning approach. LoRA is the dominant technique. |
+| GGUF | Quantized model format for local CPU/GPU inference. Used by Ollama. |
+
+---
+
+## 🧠 Mental Model
+
+```
+Base Model (massive, general knowledge)
+    ↓ [4-bit quantization = load onto consumer GPU]
+Quantized Base Model (same knowledge, smaller)
+    ↓ [LoRA = train tiny adapter matrices]
+Fine-tuned Adapter (specialized for your task)
+    ↓ [merge or keep separate]
+Deployable Model
+    ↓ [convert to GGUF for local use]
+Local Model (runs on your laptop)
+```
+
+---
+
+## ❌ Beginner Mistakes
+
+1. **Full fine-tuning on consumer hardware** — Use QLoRA. Always.
+2. **Setting rank too high** — Start with r=16. Go higher only if quality is lacking.
+3. **Training too many epochs** — 1-3 epochs is usually optimal for SFT
+4. **Skipping validation** — Watch your eval loss, not just train loss
+5. **Wrong target modules** — Check the model architecture, not all modules are named the same
+6. **Forgetting to merge before GGUF conversion** — The base model + adapter must be merged first
+
+---
+
+## 🏋️ Module Exercise
+
+**Fine-tune a small model with QLoRA (on Google Colab — free GPU):**
+
+### Enterprise Lab Evidence
+
+Submit these artifacts with the lab:
+
+- environment validation: GPU type, CUDA/Colab runtime, package versions
+- data card for the training and test examples
+- base-model baseline answers before fine-tuning
+- training log with loss curve or step output
+- tuned-model eval results on a locked test set
+- failure analysis with at least 3 regressions or weak answers
+- rollback note explaining how to return to the base model or previous adapter
+
+Pass/fail gate:
+
+| Requirement | Pass standard |
+|-------------|---------------|
+| Environment | Runtime can load model, train, and generate without manual hidden steps |
+| Baseline | Base model output is captured before training |
+| Evaluation | Tuned model is compared against baseline on held-out examples |
+| Regression check | General capability and refusal behavior are spot-checked |
+| Reproducibility | Dataset version, model version, hyperparameters, and seed are recorded |
+
+```python
+# Full working example in Google Colab (T4 GPU, free tier)
+# Runtime: ~30 minutes for 1 epoch on a tiny dataset
+
+# Step 1: Install
+!pip install unsloth trl datasets -q
+
+# Step 2: Load model with QLoRA
+from unsloth import FastLanguageModel
+import torch
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    "unsloth/llama-3-8b-Instruct-bnb-4bit",  # Pre-quantized
+    max_seq_length=1024,
+    load_in_4bit=True,
+)
+
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=8,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    lora_alpha=16,
+    lora_dropout=0,
+    bias="none",
+    use_gradient_checkpointing="unsloth",
+)
+
+# Step 3: Prepare dataset (tiny example)
+from datasets import Dataset
+
+raw_data = [
+    {"instruction": "What is GDPR?", 
+     "output": "GDPR (General Data Protection Regulation) is an EU law that governs how organizations collect, store, and process personal data of EU citizens."},
+    {"instruction": "What is PSD2?",
+     "output": "PSD2 (Payment Services Directive 2) is an EU regulation requiring banks to open their APIs to third-party payment providers and implement Strong Customer Authentication."},
+    # Add 50+ more examples for real training
+]
+
+def format_example(example):
+    return {"text": f"""<|im_start|>user
+{example['instruction']}<|im_end|>
+<|im_start|>assistant
+{example['output']}<|im_end|>"""}
+
+dataset = Dataset.from_list(raw_data).map(format_example)
+
+# Step 4: Train
+from trl import SFTTrainer
+from transformers import TrainingArguments
+
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    dataset_text_field="text",
+    max_seq_length=1024,
+    args=TrainingArguments(
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=4,
+        num_train_epochs=3,
+        learning_rate=2e-4,
+        fp16=True,
+        output_dir="./compliance-lora",
+        logging_steps=10,
+    )
+)
+
+trainer.train()
+
+# Step 5: Test
+from unsloth.chat_templates import get_chat_template
+FastLanguageModel.for_inference(model)
+
+messages = [{"role": "user", "content": "What is GDPR?"}]
+inputs = tokenizer.apply_chat_template(messages, return_tensors="pt").to("cuda")
+outputs = model.generate(inputs, max_new_tokens=200)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+**Goal:** Get this running. Even with 5 examples, you'll see the model respond in a different style. Add more examples and see quality improve.
+
+---
+
+*Move to [Module 04 — Inference & Optimization](../04-inference-optimization/complete-module-04.md)*

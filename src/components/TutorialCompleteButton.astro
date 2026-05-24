@@ -1,0 +1,174 @@
+---
+interface Props {
+  pathId: string;
+  moduleSlug: string;
+  nextHref?: string;
+  nextTitle?: string;
+  level?: 'beginner' | 'intermediate' | 'advanced';
+}
+const { pathId, moduleSlug, nextHref, nextTitle, level = 'beginner' } = Astro.props;
+---
+
+<div class="complete-btn-wrapper" data-path-id={pathId} data-module-slug={moduleSlug}>
+  <button class="complete-btn" id="complete-btn" aria-label="Mark this module as complete">
+    <span class="complete-btn-icon" aria-hidden="true">○</span>
+    <span class="complete-btn-label">Mark Complete</span>
+  </button>
+  <div class="complete-state" id="complete-state" hidden>
+    <span class="complete-check" aria-hidden="true">✓</span>
+    <span class="complete-text">Module complete</span>
+    {nextHref && nextTitle && (
+      <a href={nextHref} class="complete-next">Next: {nextTitle} →</a>
+    )}
+  </div>
+</div>
+
+<script>
+  import { isModuleComplete, markComplete, isTracking } from '../utils/tutorial-tracker';
+
+  function init() {
+    const wrapper = document.querySelector('.complete-btn-wrapper') as HTMLElement | null;
+    if (!wrapper) return;
+    const slug = wrapper.dataset.moduleSlug;
+    const pathId = wrapper.dataset.pathId;
+    if (!slug || !pathId) return;
+
+    // Hide button entirely if user hasn't opted in to tracking for this path
+    if (!isTracking(pathId)) {
+      wrapper.hidden = true;
+      return;
+    }
+
+    const btn = document.getElementById('complete-btn') as HTMLButtonElement | null;
+    const completeState = document.getElementById('complete-state') as HTMLElement | null;
+    if (!btn || !completeState) return;
+
+    function showCompleted() {
+      btn!.hidden = true;
+      completeState!.hidden = false;
+      wrapper!.classList.add('is-complete');
+    }
+
+    if (isModuleComplete(pathId, slug)) {
+      showCompleted();
+      return;
+    }
+
+    btn.addEventListener('click', () => {
+      markComplete(pathId, slug);
+      btn.classList.add('completing');
+      setTimeout(() => showCompleted(), 400);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style define:vars={{ level }}>
+  .complete-btn-wrapper {
+    margin: var(--space-lg) 0 var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .complete-btn-wrapper.is-complete {
+    border-color: #16a34a;
+    background: color-mix(in srgb, #16a34a 6%, var(--color-surface));
+  }
+
+  .complete-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border: 2px solid var(--color-accent);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-accent);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .complete-btn:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .complete-btn.completing {
+    opacity: 0.6;
+    pointer-events: none;
+    transform: scale(0.97);
+  }
+
+  .complete-btn-icon {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .complete-state {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+  }
+
+  .complete-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #16a34a;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .complete-text {
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #16a34a;
+  }
+
+  .complete-next {
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: none;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--color-accent);
+    border-radius: 6px;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .complete-next:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+
+  [data-theme="dark"] .complete-btn-wrapper.is-complete {
+    border-color: #22c55e;
+    background: color-mix(in srgb, #22c55e 8%, var(--color-surface));
+  }
+
+  [data-theme="dark"] .complete-text { color: #22c55e; }
+  [data-theme="dark"] .complete-check { background: #22c55e; }
+</style>

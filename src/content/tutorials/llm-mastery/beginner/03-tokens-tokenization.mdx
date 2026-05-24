@@ -1,0 +1,349 @@
+---
+title: "Tokens and Tokenization"
+description: "How tokenization affects cost, context windows, latency, multilingual behavior, and practical engineering decisions."
+level: beginner
+path: llm-mastery
+pathTitle: "LLM Mastery"
+pathOrder: 6
+module: 4
+totalModules: 5
+roles: ["dev","qa","ba","pm","exec"]
+tags: ["Tokens","Context Window","Cost"]
+date: 2026-05-24
+estimatedTime: "30 min"
+prerequisites: ["How AI Models Work"]
+---
+> **LLM Mastery course page.** This lesson is part 4 of 5 in the beginner track. Use the lab and assessment sections as the completion standard, not optional reading.
+
+**Required mastery artifact:** by the end of this lesson, update the running enterprise readiness packet for a realistic use case. Treat examples and vendor names as dated illustrations; defend decisions with current model, cost, risk, and evaluation evidence.
+
+# 03 — Tokens & Tokenization
+
+> *Module 01 | Foundations*
+
+---
+
+## What is a Token?
+
+An LLM doesn't read text the way you do. It doesn't read character by character either.
+
+It reads **tokens**.
+
+A **token** is a chunk of text — usually a word, part of a word, or a punctuation mark.
+
+Think of it like this: if text is a pizza, tokens are the slices. Sometimes a slice is a whole word, sometimes it's just a syllable, sometimes it's punctuation.
+
+````
+"Hello, world!"
+→ ["Hello", ",", " world", "!"]
+→ 4 tokens
+```
+
+```
+"Tokenization is fascinating"
+→ ["Token", "ization", " is", " fasci", "nating"]
+→ 5 tokens
+````
+
+---
+
+## Why Not Just Use Letters? Or Words?
+
+Great question. Let's think through it.
+
+### Option 1: Character by character
+- "cat" → ['c', 'a', 't'] → 3 units
+- Pro: Simple, small vocabulary
+- Con: The model needs to learn that "c-a-t" means cat from scratch. Very long sequences. Hard to learn long-range patterns.
+
+### Option 2: Word by word
+- "cats" and "cat" are different words, but they're related
+- The model would need a separate entry for every word form: run, runs, running, ran, runner...
+- English alone has 1 million+ words. Too many.
+
+### Option 3: Tokens (subword units) ✅
+- "running" → ["run", "ning"] — two familiar pieces
+- The model can combine familiar pieces to understand new words
+- Vocabulary is manageable: ~50,000-150,000 tokens for most models
+- Works well across languages
+
+This is the sweet spot. Most modern LLMs use **subword tokenization**.
+
+---
+
+## How Tokenization Works: BPE
+
+The most popular tokenization algorithm is called **Byte Pair Encoding (BPE)**.
+
+Here's how it works conceptually:
+
+1. Start with every character as its own token
+2. Find the most common pair of adjacent tokens
+3. Merge them into one new token
+4. Repeat until you have your desired vocabulary size
+
+Example:
+````
+Start: "l o w l o w e r l o w e s t"
+
+Most common pair: "l o" → merge to "lo"
+Now:    "lo w lo w e r lo w e s t"
+
+Most common pair: "lo w" → merge to "low"
+Now:    "low low e r low e s t"
+
+And so on...
+```
+
+After millions of iterations on real text, you end up with a vocabulary of common words and word-parts.
+
+---
+
+## The Vocabulary
+
+Each token gets assigned a unique **ID number**.
+
+```
+"Hello"    → 15496
+"world"    → 995
+"!"        → 0
+" the"     → 262
+" cat"     → 3797
+```
+
+When the model "reads" text, it converts everything to these numbers. When it "writes" text, it picks a number and converts it back.
+
+This mapping is called the **vocabulary** or **tokenizer**.
+
+---
+
+## Practical Token Examples
+
+Let's see how different text tokenizes. Using GPT-4's tokenizer (cl100k):
+
+```
+"Hello"          → 1 token
+"Hello!"         → 2 tokens (Hello, !)
+"Hello world"    → 2 tokens
+"Tokenization"   → 2 tokens (Token, ization)
+"AI"             → 1 token
+"artificial"     → 2 tokens (art, ificial)
+"intelligence"   → 2 tokens (intel, ligence)
+```
+
+Interesting patterns:
+- Common short words = 1 token
+- Rare or long words = multiple tokens
+- Spaces are often part of the token that follows them
+
+---
+
+## Why This Matters for You as an Engineer
+
+### 1. Cost
+APIs charge by token, not by word.
+```
+"Explain machine learning to a 5-year-old in detail."
+= ~11 tokens
+= costs roughly 11/1,000,000 × $15 = very cheap
+
+But if you send a 10-page PDF as text:
+= ~8,000 tokens per page × 10 pages = 80,000 tokens input
+= much more expensive
+````
+
+### 2. Context limits
+Every model has a maximum token limit. You can't exceed it.
+````
+GPT-4 Turbo: 128,000 tokens (~96,000 words)
+Claude 3.5 Sonnet: 200,000 tokens (~150,000 words)
+LLaMA 3 8B: 8,192 tokens (~6,000 words)
+````
+
+### 3. Counting tokens is not counting words
+````python
+"The cat sat" = 3 words ≠ 3 tokens
+(usually 3 tokens here, but not always)
+
+"supercalifragilistic" = 1 word = 5+ tokens
+````
+
+### 4. Languages tokenize differently
+English is very efficient. Other languages aren't:
+
+````
+English: "Hello, how are you?" → ~5 tokens
+Japanese: "こんにちは、元気ですか？" → ~10-15 tokens
+
+This means:
+- APIs are more expensive for non-English text
+- Non-English models use context faster
+````
+
+### 5. Numbers tokenize strangely
+````
+"1234" → 1 token (common number)
+"1234567" → 2-3 tokens (broken up)
+"3.14159265" → 5+ tokens
+```
+
+This is WHY LLMs are bad at arithmetic. They see numbers as token chunks, not actual mathematical values.
+
+---
+
+## Common Tokenizers
+
+| Model Family | Tokenizer | Vocabulary Size |
+|-------------|-----------|----------------|
+| GPT-3.5/4 | tiktoken (cl100k) | ~100,000 |
+| LLaMA 1/2 | SentencePiece | ~32,000 |
+| LLaMA 3 | tiktoken variant | ~128,000 |
+| Claude | Anthropic custom | ~100,000+ |
+| Mistral | SentencePiece | ~32,000 |
+
+Bigger vocabulary = more tokens are single words = more efficient, but model needs more memory.
+
+---
+
+## Counting Tokens in Code
+
+```python
+# Using tiktoken (for OpenAI-style models)
+import tiktoken
+
+enc = tiktoken.get_encoding("cl100k_base")
+text = "Hello! How does tokenization work?"
+tokens = enc.encode(text)
+
+print(f"Token IDs: {tokens}")
+print(f"Token count: {len(tokens)}")
+print(f"Decoded: {[enc.decode([t]) for t in tokens]}")
+
+# Output:
+# Token IDs: [15496, 0, 2650, 1587, 47058, 2815, 30]
+# Token count: 7
+# Decoded: ['Hello', '!', ' How', ' does', ' token', 'ization', ' work?']
+```
+
+```python
+# Using Hugging Face tokenizer
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B")
+text = "Hello, how does tokenization work?"
+tokens = tokenizer.tokenize(text)
+ids = tokenizer.encode(text)
+
+print(f"Tokens: {tokens}")
+print(f"IDs: {ids}")
+print(f"Count: {len(ids)}")
+````
+
+---
+
+## Special Tokens
+
+Models use special tokens for structure. You'll see these everywhere:
+
+| Token | Meaning |
+|-------|---------|
+| `&lt;|endoftext|>` | End of document |
+| `&lt;s>` | Start of sequence |
+| `&lt;/s>` | End of sequence |
+| `[INST]` | Start of user instruction (LLaMA) |
+| `[/INST]` | End of user instruction |
+| `&lt;|im_start|>` | Start of message (chat format) |
+| `&lt;|im_end|>` | End of message |
+
+These are how models know who is speaking — the user, the assistant, or the system.
+
+---
+
+## Token Budget: A Practical Rule of Thumb
+
+For rough estimates:
+````
+1 token ≈ 0.75 words (English)
+1 token ≈ 4 characters (English)
+
+1,000 tokens ≈ 750 words ≈ 1.5 pages
+100,000 tokens ≈ 75,000 words ≈ a full novel
+````
+
+---
+
+## 📝 Summary
+
+| Concept | Plain English |
+|---------|--------------|
+| Token | A chunk of text (word, part-word, or punctuation) the model processes |
+| Tokenizer | The tool that converts text ↔ token IDs |
+| BPE | Algorithm that learns token boundaries from data |
+| Vocabulary | The full list of all possible tokens the model knows |
+| Context window | Maximum number of tokens a model can process at once |
+| Special tokens | Structural tokens like "start of message", "end of text" |
+
+---
+
+## 🧠 Mental Model
+
+> Tokens are like Lego blocks of text. Words are broken into standard-sized blocks that the model can snap together and understand. Some words are one block, some are many blocks. The model speaks Lego, not English.
+
+---
+
+## ❌ Beginner Mistakes to Avoid
+
+1. **"Token count = word count"** — Off by ~25-40%. Always use a tokenizer to count precisely.
+
+2. **"LLMs can't handle long documents"** — They can, within their context window. Split larger docs into chunks.
+
+3. **"All languages cost the same"** — Non-English text uses significantly more tokens per concept.
+
+4. **"The model reads character by character"** — No. It reads whole token chunks at once.
+
+5. **"I can save money by removing spaces"** — Spaces are usually part of tokens. Removing them changes tokenization unpredictably.
+
+---
+
+## 🏋️ Exercise
+
+**Task:** Explore tokenization hands-on.
+
+### Part 1: Use a visual tokenizer
+Visit: https://platform.openai.com/tokenizer
+Or: https://huggingface.co/spaces/Xenova/the-tokenizer-playground
+
+Try tokenizing:
+- Your full name
+- A paragraph in English
+- The same paragraph in another language (use Google Translate)
+- A URL
+- Some Python code
+- The number `3.14159265358979`
+
+### Part 2: Count tokens programmatically
+````python
+pip install tiktoken
+
+import tiktoken
+
+enc = tiktoken.get_encoding("cl100k_base")
+
+texts = [
+    "Hello world",
+    "Supercalifragilistic",
+    "こんにちは世界",  # Japanese: "Hello world"
+    "def fibonacci(n): return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)",
+    "3.14159265358979323846"
+]
+
+for text in texts:
+    count = len(enc.encode(text))
+    print(f"'{text[:30]}...' → {count} tokens")
+```
+
+**Think about:** Why does Japanese use more tokens? What does that mean for API costs?
+
+---
+
+*Next: 04 — Context Windows*

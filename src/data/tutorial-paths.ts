@@ -1,4 +1,4 @@
-export type TutorialPathId = 'genai' | 'llm-systems' | 'langgraph' | 'system-design' | 'ai-literacy';
+export type TutorialPathId = 'genai' | 'llm-systems' | 'langgraph' | 'system-design' | 'ai-literacy' | 'llm-mastery';
 export type TutorialLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export const TUTORIAL_LEVELS: Array<{
@@ -84,6 +84,18 @@ export const TUTORIAL_PATHS: Array<{
     order: 5,
     recommendedLevel: 'beginner',
     tags: ['Governance', 'Risk', 'Safety', 'Decision Making'],
+  },
+  {
+    id: 'llm-mastery',
+    title: 'LLM Mastery for Enterprise AI Engineering',
+    shortTitle: 'LLM Mastery',
+    description: 'A free enterprise AI engineering curriculum that turns LLM foundations, RAG, agents, fine-tuning, deployment, evaluation, and governance into one readiness packet.',
+    audience: 'AI engineers, platform engineers, product engineers, QA/risk partners, PMs, and technical leaders responsible for production LLM systems.',
+    outcome: 'Produce a defensible enterprise AI readiness packet: use-case brief, system choice, prototype, eval suite, deployment plan, governance evidence, and release decision.',
+    accent: 'var(--color-accent)',
+    order: 6,
+    recommendedLevel: 'beginner',
+    tags: ['Enterprise AI', 'LLM Engineering', 'Governance', 'Evaluation', 'Production AI'],
   },
 ];
 

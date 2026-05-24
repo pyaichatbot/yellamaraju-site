@@ -1,0 +1,228 @@
+---
+title: "Course Overview"
+description: "How to use LLM Mastery as a free enterprise AI engineering course."
+level: beginner
+path: llm-mastery
+pathTitle: "LLM Mastery"
+pathOrder: 6
+module: 1
+totalModules: 5
+roles: ["dev","qa","ba","pm","exec"]
+tags: ["LLM Mastery","Enterprise AI","Course Overview"]
+date: 2026-05-24
+estimatedTime: "20 min"
+prerequisites: []
+---
+> **LLM Mastery course page.** This lesson is part 1 of 5 in the beginner track. Use the lab and assessment sections as the completion standard, not optional reading.
+
+**Required mastery artifact:** by the end of this lesson, update the running enterprise readiness packet for a realistic use case. Treat examples and vendor names as dated illustrations; defend decisions with current model, cost, risk, and evaluation evidence.
+
+# LLM Mastery: Enterprise AI Engineering Curriculum
+
+> A practical curriculum for building, evaluating, deploying, and governing LLM systems in enterprise environments.
+
+This course is written for engineers, platform teams, product builders, and technical leaders who need to move from LLM concepts to production-grade systems. It still starts from first principles, but the completion standard is enterprise readiness: measurable quality, security controls, governance gates, operational runbooks, and a defensible release decision.
+
+---
+
+## Who This Is For
+
+| Role | What this curriculum prepares you to do |
+|------|-----------------------------------------|
+| AI engineer | Build RAG, fine-tuning, agent, evaluation, and deployment workflows |
+| Platform engineer | Operate model-serving, observability, access control, and release pipelines |
+| Product engineer | Turn LLM capabilities into usable workflows with quality and cost controls |
+| Security/risk partner | Review AI systems for data, access, logging, human oversight, and compliance gaps |
+| Technical leader | Decide when to use prompting, RAG, fine-tuning, local models, vendor APIs, or governed deployment |
+
+## Prerequisites
+
+- Comfortable reading Python examples.
+- Basic API, HTTP, JSON, and command-line familiarity.
+- For fine-tuning labs: access to Google Colab, a cloud GPU, or a local CUDA/Apple Silicon environment.
+- For enterprise readiness: willingness to document risks, controls, evidence, and release decisions.
+
+## Completion Standard
+
+You are done when you can produce the following artifacts for a realistic business use case:
+
+1. Use-case brief with user, data, risk, and success criteria.
+2. Model/system selection decision with cost, latency, privacy, and governance tradeoffs.
+3. Working prototype using prompting, RAG, fine-tuning, agents, or orchestration as appropriate.
+4. Evaluation suite with baseline, quality metrics, safety tests, and release thresholds.
+5. Deployment plan with identity, access control, logging, monitoring, rollback, and incident response.
+6. Governance packet with risk classification, data review, model inventory entry, human oversight plan, and approval checklist.
+
+## Recommended Pacing
+
+| Format | Suggested schedule |
+|--------|--------------------|
+| Self-paced | 4-6 weeks, 2-4 focused sessions per week |
+| Engineering cohort | 5 days intensive or 8 half-day sessions |
+| Enterprise enablement | 6-8 weeks with weekly labs, review boards, and capstone demos |
+
+---
+
+## How to Use This Curriculum
+
+Read the modules in order unless you already have production LLM experience. Each module has a summary, mental model, mistakes to avoid, and a hands-on exercise. Use the [assessment guide](/tutorials/llm-mastery/advanced/05-assessment-guide-certification) to turn exercises into graded enterprise training artifacts.
+
+Evaluation appears late as a full module, but you should introduce its habits early:
+
+- Before building: define the baseline and release threshold.
+- During prototyping: collect failure cases.
+- Before release: run quality, safety, privacy, and cost gates.
+- After release: monitor drift, incidents, and user feedback.
+
+---
+
+## Curriculum Map
+
+### Module 01 - Foundations
+> What is an LLM? How does it work? What should enterprise teams know before choosing one?
+
+| File | Topics |
+|------|--------|
+| [`01-foundations/01-llm-basics.md`](/tutorials/llm-mastery/beginner/01-what-is-an-llm) | What an LLM is, ecosystem, conversations, basic capabilities |
+| [`01-foundations/02-how-models-work.md`](/tutorials/llm-mastery/beginner/02-how-ai-models-work) | Neural networks, training, inference, architecture overview |
+| [`01-foundations/03-tokens-tokenization.md`](/tutorials/llm-mastery/beginner/03-tokens-tokenization) | Tokens, token budgets, costs, tokenizer behavior |
+| [`01-foundations/04-10-remaining-foundations.md`](/tutorials/llm-mastery/beginner/04-foundations-context-embeddings-transformers) | Context windows, embeddings, transformers, attention, parameters, training vs inference, open vs closed models |
+
+**Enterprise deliverable:** model-selection note explaining cost, privacy, latency, context, and open/closed model tradeoffs.
+
+### Module 02 - Datasets & Training
+> How training data works, how fine-tuning data should be prepared, and why data governance comes before training.
+
+| File | Topics |
+|------|--------|
+| [`02-datasets-training/complete-module-02.md`](/tutorials/llm-mastery/intermediate/01-datasets-training-governance) | SFT, instruction tuning, preference data, synthetic data, curation, formatting, fine-tuning basics, continued pretraining, hallucination reduction |
+
+**Enterprise deliverable:** data card with source, license, sensitivity, PII handling, retention, train/validation/test split, and approval status.
+
+### Module 03 - Fine-Tuning
+> How to customize models responsibly and how to prove the result is better than the baseline.
+
+| File | Topics |
+|------|--------|
+| [`03-fine-tuning/complete-module-03.md`](/tutorials/llm-mastery/intermediate/02-fine-tuning-lora-qlora-dpo) | LoRA, QLoRA, DPO, RLHF, quantization, checkpoints, adapters, GGUF |
+
+**Enterprise deliverable:** fine-tuning experiment report with baseline, dataset version, hyperparameters, eval results, regression risks, and rollback plan.
+
+### Module 04 - Inference & Optimization
+> How models become fast, cheap, and predictable enough for real users.
+
+| File | Topics |
+|------|--------|
+| [`04-inference-optimization/complete-module-04.md`](/tutorials/llm-mastery/intermediate/03-inference-optimization-serving) | KV cache, Flash Attention, speculative decoding, serving, batching, GPU/VRAM, latency-quality tradeoffs |
+
+**Enterprise deliverable:** capacity and cost estimate with latency budget, concurrency target, model size, and fallback strategy.
+
+### Module 05 - Local AI Ecosystem
+> The tools used to run, serve, fine-tune, and package local/open models.
+
+| File | Topics |
+|------|--------|
+| [`05-local-ai-ecosystem/complete-module-05.md`](/tutorials/llm-mastery/intermediate/04-local-ai-ecosystem) | llama.cpp, Ollama, vLLM, MLX, Hugging Face, Unsloth, Axolotl, PEFT/TRL |
+
+**Enterprise deliverable:** toolchain decision record covering supportability, security review, artifact provenance, and operational owner.
+
+### Module 06 - RAG & Memory
+> Retrieval, grounding, citations, memory, and access-controlled knowledge systems.
+
+| File | Topics |
+|------|--------|
+| [`06-rag-memory/complete-module-06.md`](/tutorials/llm-mastery/intermediate/05-rag-memory-access-control) | RAG, vector databases, chunking, retrieval pipelines, memory systems, semantic search |
+
+**Enterprise deliverable:** RAG architecture with document ACLs, tenant isolation, source freshness, retrieval metrics, and deletion process.
+
+### Module 07 - Agents & Workflows
+> Tool use, workflows, agents, multi-agent systems, and safe automation boundaries.
+
+| File | Topics |
+|------|--------|
+| [`07-agents-workflows/complete-module-07.md`](/tutorials/llm-mastery/intermediate/06-agents-workflows-tool-safety) | Prompt engineering, system prompts, tool/function calling, agents, agentic workflows, multi-agent systems, browser agents |
+
+**Enterprise deliverable:** agent control plan with tool allowlist, scoped credentials, approvals, transaction logs, and human override.
+
+### Module 08 - Model Types
+> How to choose among VLMs, SLMs, MoE models, coding models, and reasoning models.
+
+| File | Topics |
+|------|--------|
+| [`08-model-types/complete-module-08.md`](/tutorials/llm-mastery/intermediate/07-model-types-selection) | Vision-language models, small language models, dense vs MoE, coding models, reasoning models |
+
+**Enterprise deliverable:** model fit assessment mapping task complexity to model type, quality target, deployment constraint, and risk level.
+
+### Module 09 - Deployment
+> Production serving, edge/on-device deployment, cloud GPUs, API hardening, and operational ownership.
+
+| File | Topics |
+|------|--------|
+| [`09-deployment/complete-module-09.md`](/tutorials/llm-mastery/advanced/01-deployment-readiness) | Local inference, on-device AI, API serving, cloud GPUs, edge AI |
+
+**Enterprise deliverable:** deployment readiness review covering identity, RBAC, secrets, network controls, audit logs, monitoring, SLOs, rollback, and incident response.
+
+### Module 10 - Evaluation
+> How to decide whether an LLM system is good enough to ship and safe enough to operate.
+
+| File | Topics |
+|------|--------|
+| [`10-evaluation/complete-module-10.md`](/tutorials/llm-mastery/advanced/02-evaluation-release-gates) | Benchmarks, custom evals, human evals, LLM-as-judge, cost analysis, speed-quality benchmarking |
+
+**Enterprise deliverable:** release gate report with baseline comparison, quality metrics, safety/privacy tests, cost/latency data, and approval decision.
+
+### Module 11 - Real-World Skills
+> Building usable products and workflows from the technical pieces.
+
+| File | Topics |
+|------|--------|
+| [`11-real-world-skills/complete-module-11.md`](/tutorials/llm-mastery/advanced/03-real-world-skills-capstone) | Chatbots, copilots, automation, AI SaaS workflows, coding workflows, orchestration, product thinking, final capstone |
+
+**Enterprise deliverable:** capstone demo and implementation packet for a governed compliance automation product.
+
+### Module 12 - Enterprise Governance & Operations
+> The operating model that makes AI systems approvable, auditable, and maintainable.
+
+| File | Topics |
+|------|--------|
+| [`12-enterprise-governance/complete-module-12.md`](/tutorials/llm-mastery/advanced/04-enterprise-governance-operations) | AI risk classification, data governance, model/vendor governance, security architecture, eval gates, monitoring, incident response, change management |
+
+**Enterprise deliverable:** AI system readiness packet suitable for review by engineering, security, privacy, legal, risk, and operations stakeholders.
+
+### Reference - Patterns & Anti-Patterns
+
+| File | Topics |
+|------|--------|
+| [`00-design-patterns-antipatterns.md`](/tutorials/llm-mastery/intermediate/08-design-patterns-antipatterns) | Production patterns, anti-patterns, decision tables, scenarios |
+
+Use this as a reference during labs and capstone work.
+
+---
+
+## Learning Path Recommendations
+
+**New to LLMs:** Modules 01, 04, 06, 07, 10, 12, then the Module 11 capstone. Add Modules 02-03 when customization is needed.
+
+**Enterprise product builder:** Modules 01, 06, 07, 09, 10, 11, 12. Use Module 05 only for local/open-model decisions.
+
+**Fine-tuning path:** Modules 01, 02, 05, 03, 10, 09, 12. Do not fine-tune without a locked evaluation set and data approval.
+
+**Platform path:** Modules 04, 05, 09, 10, 12. Focus on serving, identity, auditability, SLOs, cost, rollback, and incident response.
+
+**Security/risk reviewer:** Modules 01, 06, 07, 09, 10, 12, plus the reference anti-patterns.
+
+---
+
+## Enterprise Training Artifacts
+
+Use these documents to run the course as a formal training program:
+
+- [Enterprise Assessment Guide](/tutorials/llm-mastery/advanced/05-assessment-guide-certification): objectives, rubrics, quizzes, capstone scoring, and facilitator checklist.
+- [Module 12 - Enterprise Governance & Operations](/tutorials/llm-mastery/advanced/04-enterprise-governance-operations): governance and operations module.
+- [Design Patterns & Anti-Patterns](/tutorials/llm-mastery/intermediate/08-design-patterns-antipatterns): field reference for implementation reviews.
+
+---
+
+## Final Note
+
+Understanding beats memorization. For enterprise systems, evidence beats confidence. Build, measure, document, review, and only then ship.

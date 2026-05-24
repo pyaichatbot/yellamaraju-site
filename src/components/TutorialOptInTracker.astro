@@ -1,0 +1,182 @@
+---
+// Opt-in tracking button for non-gated paths (LangGraph, LLM Systems).
+// No email required. Click → startTracking(pathId) → localStorage initialized.
+// Hides itself once tracking is active. Shows "Tracking active" state.
+interface Props {
+  pathId: string;
+  pathTitle: string;
+  moduleCount: number;
+  progressHref: string;
+}
+const { pathId, pathTitle, moduleCount, progressHref } = Astro.props;
+---
+
+<div
+  class="opt-in-tracker"
+  id="opt-in-tracker"
+  data-path-id={pathId}
+  data-progress-href={progressHref}
+>
+  <!-- Default: opt-in prompt -->
+  <div id="opt-in-prompt" class="opt-in-prompt">
+    <span class="opt-in-icon" aria-hidden="true">◎</span>
+    <div class="opt-in-copy">
+      <strong>Track your progress</strong>
+      <span>{moduleCount} modules · saved in your browser · no account needed</span>
+    </div>
+    <button class="opt-in-btn" id="opt-in-btn" type="button">
+      Start tracking
+    </button>
+  </div>
+
+  <!-- Active state -->
+  <div id="opt-in-active" class="opt-in-active" hidden>
+    <span class="active-check" aria-hidden="true">✓</span>
+    <span class="active-copy">Progress tracking active</span>
+    <a id="opt-in-progress-link" href={progressHref} class="active-link">View dashboard →</a>
+  </div>
+</div>
+
+<script>
+  import { isTracking, startTracking } from '../utils/tutorial-tracker';
+
+  function init() {
+    const root = document.getElementById('opt-in-tracker') as HTMLElement | null;
+    if (!root) return;
+    const pathId = root.dataset.pathId;
+    const progressHref = root.dataset.progressHref;
+    if (!pathId) return;
+
+    const prompt = document.getElementById('opt-in-prompt') as HTMLElement;
+    const active = document.getElementById('opt-in-active') as HTMLElement;
+    const btn = document.getElementById('opt-in-btn') as HTMLButtonElement;
+    const progressLink = document.getElementById('opt-in-progress-link') as HTMLAnchorElement;
+
+    if (progressHref && progressLink) progressLink.href = progressHref;
+
+    function showActive() {
+      prompt.hidden = true;
+      active.hidden = false;
+    }
+
+    if (isTracking(pathId)) {
+      showActive();
+      return;
+    }
+
+    btn.addEventListener('click', () => {
+      startTracking(pathId);
+      showActive();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+  .opt-in-tracker {
+    margin: var(--space-md) 0;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .opt-in-prompt,
+  .opt-in-active {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 0.75rem var(--space-md);
+    flex-wrap: wrap;
+  }
+
+  .opt-in-icon {
+    font-size: 1.1rem;
+    color: var(--color-text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .opt-in-copy {
+    flex: 1 1 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .opt-in-copy strong {
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    color: var(--color-text);
+  }
+
+  .opt-in-copy span {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .opt-in-btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--color-accent);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-accent);
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .opt-in-btn:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+
+  .opt-in-active {
+    background: color-mix(in srgb, #16a34a 5%, var(--color-surface));
+    border-color: #16a34a;
+  }
+
+  .active-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #16a34a;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .active-copy {
+    flex: 1;
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #16a34a;
+  }
+
+  .active-link {
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .active-link:hover { text-decoration: underline; }
+
+  [data-theme="dark"] .active-copy { color: #22c55e; }
+  [data-theme="dark"] .active-check { background: #22c55e; }
+  [data-theme="dark"] .opt-in-active { background: color-mix(in srgb, #22c55e 8%, var(--color-surface)); }
+</style>

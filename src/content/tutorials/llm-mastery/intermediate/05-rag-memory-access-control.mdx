@@ -1,0 +1,1040 @@
+---
+title: "RAG, Memory, and Access Control"
+description: "Retrieval-augmented generation, vector databases, chunking, memory systems, semantic search, and enterprise RAG security gates."
+level: intermediate
+path: llm-mastery
+pathTitle: "LLM Mastery"
+pathOrder: 6
+module: 5
+totalModules: 8
+roles: ["dev","qa","ba","pm","exec"]
+tags: ["RAG","Vector Databases","Memory","Access Control"]
+date: 2026-05-24
+estimatedTime: "60 min"
+prerequisites: ["Tokens and Tokenization","Embeddings"]
+---
+> **LLM Mastery course page.** This lesson is part 5 of 8 in the intermediate track. Use the lab and assessment sections as the completion standard, not optional reading.
+
+**Required mastery artifact:** by the end of this lesson, update the running enterprise readiness packet for a realistic use case. Treat examples and vendor names as dated illustrations; defend decisions with current model, cost, risk, and evaluation evidence.
+
+# Module 06 — RAG & Memory
+
+> *Teaching models to retrieve information and remember across sessions.*
+
+---
+
+# 01 — RAG: Retrieval-Augmented Generation
+
+## The Core Problem
+
+LLMs have a knowledge cutoff. They don't know:
+- What happened last week
+- Your company's internal documents
+- Your proprietary data
+- Specific domain information not in their training data
+
+Fine-tuning can help, but:
+- Knowledge becomes stale (models don't auto-update)
+- Fine-tuning is expensive
+- Facts drift and hallucinate over time in fine-tuned models
+
+**RAG** solves this differently: instead of baking knowledge into the model, **inject relevant knowledge at query time**.
+
+---
+
+## RAG in One Sentence
+
+> Find relevant documents → inject them into the prompt → let the model answer using those documents.
+
+---
+
+## The RAG Pipeline
+
+````
+User Question
+     ↓
+[Embed the question] — convert question to a vector
+     ↓
+[Search vector database] — find most relevant document chunks
+     ↓
+[Retrieve top-K chunks] — e.g., top 5 most relevant passages
+     ↓
+[Build augmented prompt]:
+  "Here is context:
+   [CHUNK 1]
+   [CHUNK 2]
+   [CHUNK 3]
+   
+   Based on the above context, answer: [USER QUESTION]"
+     ↓
+[Send to LLM] — model answers using the provided context
+     ↓
+Response (grounded in real documents)
+````
+
+---
+
+## Why RAG Works So Well
+
+1. **Grounded**: Model answers from real documents, not memory
+2. **Current**: Documents can be updated without retraining
+3. **Verifiable**: You can show sources
+4. **Cost-effective**: No expensive fine-tuning for knowledge updates
+5. **Controllable**: Only use authorized documents
+
+---
+
+## Simple RAG Implementation
+
+````python
+import anthropic
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+# 1. Initialize
+client = anthropic.Anthropic()
+embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
+# 2. Your knowledge base (in reality, from documents/database)
+documents = [
+    "GDPR Article 17 establishes the 'right to erasure' (right to be forgotten). Data subjects can request deletion of their personal data when it's no longer necessary, when consent is withdrawn, or when it was unlawfully processed.",
+    "PSD2 (Payment Services Directive 2) requires Strong Customer Authentication (SCA) for electronic payment transactions, using at least two of: knowledge (PIN/password), possession (phone/card), or inherence (biometrics).",
+    "Basel III requires banks to maintain Common Equity Tier 1 (CET1) ratio of at least 4.5%, Tier 1 capital ratio of 6%, and Total Capital ratio of 8% of risk-weighted assets.",
+    "DORA (Digital Operational Resilience Act) requires financial entities in the EU to have robust ICT risk management frameworks, incident reporting procedures, and conduct regular digital operational resilience testing.",
+    "MiFID II requires investment firms to record all communications relating to transactions, including phone calls and electronic communications, and retain these records for at least 5 years.",
+]
+
+# 3. Create embeddings for all documents (do this once, store in DB)
+doc_embeddings = embedder.encode(documents)
+
+def retrieve_relevant_chunks(query: str, top_k: int = 3) -> list[str]:
+    """Find most relevant document chunks for a query"""
+    query_embedding = embedder.encode(query)
+    
+    # Calculate cosine similarity
+    similarities = np.dot(doc_embeddings, query_embedding) / (
+        np.linalg.norm(doc_embeddings, axis=1) * np.linalg.norm(query_embedding)
+    )
+    
+    # Get top-k most similar
+    top_indices = np.argsort(similarities)[-top_k:][::-1]
+    
+    return [(documents[i], similarities[i]) for i in top_indices]
+
+def rag_answer(question: str) -> str:
+    """Answer a question using RAG"""
+    
+    # Retrieve relevant context
+    relevant_chunks = retrieve_relevant_chunks(question, top_k=3)
+    
+    # Build context
+    context = "\n\n".join([
+        f"Source {i+1} (relevance: {sim:.2f}):\n{chunk}"
+        for i, (chunk, sim) in enumerate(relevant_chunks)
+    ])
+    
+    # Build augmented prompt
+    prompt = f"""Here is relevant regulatory information:
+
+{context}
+
+Based ONLY on the provided information above, answer this question:
+{question}
+
+If the provided information doesn't contain the answer, say "I don't have specific information about this in the provided documents."
+Always cite which source you're drawing from."""
+
+    # Get LLM response
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=500,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    return response.content[0].text
+
+# Test it
+questions = [
+    "What are the SCA requirements for payments?",
+    "What is the minimum CET1 ratio under Basel III?",
+    "How long must investment communications be retained?"
+]
+
+for q in questions:
+    print(f"Q: {q}")
+    print(f"A: {rag_answer(q)}\n")
+    print("-" * 60)
+````
+
+---
+
+## RAG Quality Factors
+
+| Factor | Poor | Good |
+|--------|------|------|
+| Chunking | Too small (loses context) or too large (drowns signal) | Optimally sized with overlap |
+| Embeddings | Generic embeddings | Domain-specific embeddings |
+| Retrieval | Simple cosine similarity | Hybrid (semantic + keyword) |
+| Context injection | Dump all chunks | Filter, rank, deduplicate |
+| Prompting | No guidance | Clear instructions, cite sources |
+
+---
+
+## Enterprise RAG Security Gate
+
+Production RAG must enforce authorization before retrieved text reaches the model. A vector database is not automatically an access-control system.
+
+For every chunk, store:
+
+- `tenant_id`
+- source document ID and version
+- owner
+- data classification
+- allowed groups or ACL
+- retention/deletion policy
+- source approval status
+- source freshness timestamp
+
+Retrieval must filter by user permissions before prompt construction:
+
+````python
+def filter_authorized_chunks(user, chunks):
+    return [
+        chunk for chunk in chunks
+        if chunk["tenant_id"] == user["tenant_id"]
+        and chunk["classification"] in user["allowed_classifications"]
+        and bool(set(chunk["allowed_groups"]) & set(user["groups"]))
+        and chunk["source_status"] == "approved"
+    ]
+```
+
+Enterprise readiness checklist:
+
+| Control | Required evidence |
+|---------|-------------------|
+| Document ACLs | Unauthorized users cannot retrieve restricted chunks |
+| Tenant isolation | Cross-tenant queries return zero private chunks |
+| Source freshness | Stale or withdrawn documents are excluded |
+| Deletion | Removed documents are deleted from the index and backups according to policy |
+| Prompt-injection defense | Retrieved text is treated as untrusted content |
+| Retrieval audit | Query hash, user, chunk IDs, model, and decision are logged |
+
+If a RAG system cannot enforce these controls, it is not ready for enterprise data.
+
+---
+
+# 02 — Vector Databases
+
+## What is a Vector Database?
+
+A regular database stores: name, age, email (exact values).
+A vector database stores: embeddings (lists of 1536 numbers) and can find the **most similar** embeddings to a query embedding.
+
+This "similarity search" at scale is what makes RAG work.
+
+---
+
+## How Vector Search Works
+
+```
+Your query: "PSD2 authentication requirements"
+→ Embedding: [0.23, -0.14, 0.87, ...]
+
+Database has 100,000 document embeddings.
+Find: Which embeddings are closest to [0.23, -0.14, 0.87, ...]?
+
+Distance metrics:
+- Cosine similarity: angle between vectors (most common)
+- Euclidean (L2): direct distance
+- Dot product: similar to cosine if normalized
+
+Returns: Top 5 most similar documents (and their similarity scores)
+````
+
+---
+
+## Popular Vector Databases
+
+| Database | Type | Best For |
+|----------|------|---------|
+| **Chroma** | In-memory/local | Development, small scale |
+| **FAISS** | Library (not server) | Research, CPU search |
+| **Pinecone** | Cloud-managed | Production, no ops |
+| **Weaviate** | Open source server | Production, self-hosted |
+| **Qdrant** | Open source server | High performance, Rust-based |
+| **pgvector** | PostgreSQL extension | If you already use PostgreSQL |
+| **Milvus** | Open source cluster | Very large scale |
+
+**For most projects:** Start with Chroma (development), move to Qdrant or pgvector for production.
+
+---
+
+## Chroma — Getting Started
+
+````python
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+# Initialize
+client = chromadb.Client()  # In-memory
+# or: client = chromadb.PersistentClient(path="./chroma_db")
+
+# Create a collection
+collection = client.create_collection(
+    name="compliance_docs",
+    metadata={"hnsw:space": "cosine"}  # Use cosine similarity
+)
+
+# Add documents
+documents = [
+    "GDPR Article 17: Right to erasure...",
+    "PSD2 Strong Customer Authentication...",
+    "Basel III capital requirements...",
+]
+
+embedder = SentenceTransformer('all-MiniLM-L6-v2')
+embeddings = embedder.encode(documents).tolist()
+
+collection.add(
+    ids=["doc-001", "doc-002", "doc-003"],
+    documents=documents,
+    embeddings=embeddings,
+    metadatas=[
+        {"regulation": "GDPR", "article": "17"},
+        {"regulation": "PSD2", "section": "SCA"},
+        {"regulation": "Basel III", "category": "capital"},
+    ]
+)
+
+# Query
+results = collection.query(
+    query_embeddings=embedder.encode(["authentication requirements"]).tolist(),
+    n_results=2,
+    include=["documents", "distances", "metadatas"]
+)
+
+print(results["documents"])
+print(results["distances"])
+print(results["metadatas"])
+````
+
+---
+
+## Qdrant — Production-Ready
+
+````python
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
+
+# Connect
+client = QdrantClient(
+    url="http://localhost:6333",  # or cloud URL
+    api_key="your-api-key"       # for cloud
+)
+
+# Create collection
+client.create_collection(
+    collection_name="compliance_docs",
+    vectors_config=VectorParams(size=384, distance=Distance.COSINE)
+)
+
+# Insert documents
+client.upsert(
+    collection_name="compliance_docs",
+    points=[
+        PointStruct(
+            id=i,
+            vector=embedder.encode(doc).tolist(),
+            payload={"text": doc, "regulation": "GDPR", "page": i}
+        )
+        for i, doc in enumerate(documents)
+    ]
+)
+
+# Search
+results = client.search(
+    collection_name="compliance_docs",
+    query_vector=embedder.encode("authentication").tolist(),
+    limit=5,
+    with_payload=True
+)
+
+for result in results:
+    print(f"Score: {result.score:.3f}")
+    print(f"Text: {result.payload['text'][:100]}...")
+````
+
+---
+
+## pgvector — If You're Already Using PostgreSQL
+
+````sql
+-- Enable extension
+CREATE EXTENSION vector;
+
+-- Create table with vector column
+CREATE TABLE documents (
+    id SERIAL PRIMARY KEY,
+    content TEXT,
+    regulation TEXT,
+    embedding vector(384)  -- 384-dim embedding
+);
+
+-- Insert with embedding
+INSERT INTO documents (content, regulation, embedding)
+VALUES ('GDPR Article 17...', 'GDPR', '[0.23, -0.14, ...]');
+
+-- Similarity search
+SELECT content, regulation,
+       1 - (embedding <=> '[0.25, -0.12, ...]'::vector) AS similarity
+FROM documents
+ORDER BY embedding <=> '[0.25, -0.12, ...]'::vector
+LIMIT 5;
+```
+
+```python
+# Python with psycopg2 and pgvector
+import psycopg2
+from pgvector.psycopg2 import register_vector
+
+conn = psycopg2.connect("postgresql://user:pass@localhost/compliance_db")
+register_vector(conn)
+
+cursor = conn.cursor()
+cursor.execute("""
+    SELECT content, 1 - (embedding <=> %s) AS similarity
+    FROM documents
+    ORDER BY similarity DESC
+    LIMIT 5
+""", (query_embedding,))
+
+results = cursor.fetchall()
+````
+
+---
+
+# 03 — Chunking
+
+## The Art of Splitting Documents
+
+Before embedding documents, you need to split them into chunks.
+
+**Why not embed the whole document?**
+- Embeddings average meaning across the whole text → specific details get diluted
+- LLM context window can't hold a 100-page PDF
+- A specific answer is buried in a 10-page document
+
+**Why not split at every word?**
+- Individual sentences often lack context
+- "It was amended in 2018." — what was amended? Need context.
+
+---
+
+## Chunking Strategies
+
+### Fixed-size chunking
+Split every N characters (or N tokens), with overlap:
+
+````python
+def fixed_size_chunk(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        chunk = text[start:end]
+        chunks.append(chunk)
+        start = end - overlap  # Overlap for context continuity
+    return chunks
+
+# Example
+text = "GDPR Article 17 establishes..." * 100  # Long document
+chunks = fixed_size_chunk(text, chunk_size=500, overlap=50)
+print(f"Created {len(chunks)} chunks")
+````
+
+### Recursive character splitting (recommended default)
+Split on natural boundaries: paragraphs → sentences → words → characters:
+
+````python
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,         # Target chunk size in characters
+    chunk_overlap=50,       # Overlap between chunks
+    separators=["\n\n", "\n", ". ", " ", ""]  # Try these separators in order
+)
+
+chunks = splitter.split_text(long_document_text)
+````
+
+### Semantic chunking
+Split where meaning changes significantly:
+
+````python
+from langchain_experimental.text_splitter import SemanticChunker
+from langchain_openai import OpenAIEmbeddings
+
+splitter = SemanticChunker(
+    OpenAIEmbeddings(),
+    breakpoint_threshold_type="percentile",
+    breakpoint_threshold_amount=95  # Split when similarity drops below 95th percentile
+)
+
+chunks = splitter.split_text(text)
+# Chunks may vary greatly in size, but each is semantically coherent
+````
+
+### Document-structure-aware splitting
+For PDFs with headings, use the structure:
+
+````python
+# Split at headers (##, ###, etc.) for markdown documents
+from langchain.text_splitter import MarkdownHeaderTextSplitter
+
+headers_to_split_on = [
+    ("#", "H1"),
+    ("##", "H2"),
+    ("###", "H3"),
+]
+
+splitter = MarkdownHeaderTextSplitter(headers_to_split_on)
+chunks = splitter.split_text(markdown_document)
+# Each chunk includes its header hierarchy as metadata
+````
+
+---
+
+## Choosing Chunk Size
+
+| Use Case | Chunk Size | Overlap |
+|----------|-----------|---------|
+| Dense legal/regulatory text | 300-500 chars | 50-100 |
+| General documents | 500-1000 chars | 100-200 |
+| Code | Whole functions (variable) | 0-50 |
+| Conversational | 200-300 chars | 50 |
+
+**The golden rule:** Chunk size should match the granularity of questions you expect.
+
+If users ask about specific articles/clauses → smaller chunks.
+If users ask for broad summaries → larger chunks.
+
+---
+
+# 04 — Retrieval Pipelines
+
+## Beyond Simple Embedding Search
+
+Basic RAG: embed query → find nearest documents → inject into prompt
+
+Advanced RAG: multiple stages, multiple strategies, smart filtering.
+
+---
+
+## Hybrid Retrieval (Semantic + Keyword)
+
+Sometimes keyword matching beats semantic search:
+- "What does DORA article 5 paragraph 3 say?" → keyword search wins (exact article reference)
+- "What regulations apply to payment authentication?" → semantic search wins (conceptual query)
+
+**Hybrid search** combines both:
+
+````python
+from qdrant_client.models import SparseVector, NamedSparseVector
+
+# Qdrant supports hybrid search with sparse + dense vectors
+# BM25 (keyword) + Dense (semantic) combined with RRF (Reciprocal Rank Fusion)
+
+# Most production RAG systems use hybrid retrieval
+````
+
+---
+
+## Re-ranking
+
+Retrieve more candidates, then re-rank with a more powerful model:
+
+````python
+from sentence_transformers import CrossEncoder
+
+# Bi-encoder: fast, used for initial retrieval
+retriever = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Cross-encoder: slow but accurate, used for re-ranking
+reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+
+def retrieve_and_rerank(query: str, top_k: int = 3):
+    # Step 1: Fast retrieval — get top 20 candidates
+    candidates = vector_db_search(query, top_k=20)
+    
+    # Step 2: Re-rank with cross-encoder (compares query+document together)
+    scores = reranker.predict([(query, doc) for doc in candidates])
+    
+    # Step 3: Return top-k after re-ranking
+    ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
+    return [doc for doc, score in ranked[:top_k]]
+````
+
+---
+
+## Query Expansion & Transformation
+
+Sometimes the user's question is poorly phrased. Transform it first:
+
+````python
+def expand_query(original_query: str, client) -> list[str]:
+    """Generate multiple versions of the query for better retrieval"""
+    
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=200,
+        messages=[{
+            "role": "user",
+            "content": f"""Generate 3 different versions of this question, each phrased differently:
+            
+Original: {original_query}
+
+Output ONLY the 3 questions, one per line, no numbering."""
+        }]
+    )
+    
+    variants = response.content[0].text.strip().split('\n')
+    return [original_query] + variants  # Include original + variants
+
+# Then retrieve for all variants and merge results
+def multi_query_retrieve(query: str, top_k: int = 5):
+    query_variants = expand_query(query)
+    all_results = []
+    
+    for variant in query_variants:
+        results = vector_search(variant, top_k=top_k)
+        all_results.extend(results)
+    
+    # Deduplicate by document ID, keeping highest similarity
+    seen = {}
+    for result in all_results:
+        doc_id = result.id
+        if doc_id not in seen or result.score > seen[doc_id].score:
+            seen[doc_id] = result
+    
+    return sorted(seen.values(), key=lambda x: x.score, reverse=True)[:top_k]
+````
+
+---
+
+## RAG Evaluation Metrics
+
+| Metric | What It Measures |
+|--------|-----------------|
+| Recall@K | Did the relevant document appear in top K results? |
+| MRR (Mean Reciprocal Rank) | How highly ranked is the first relevant result? |
+| Answer correctness | Is the final answer right? |
+| Faithfulness | Does the answer stay faithful to the retrieved context? |
+| Context precision | How much of retrieved context was actually useful? |
+| Context recall | Did we retrieve all the relevant information? |
+
+````python
+# Using RAGAS library for RAG evaluation
+from ragas import evaluate
+from ragas.metrics import faithfulness, answer_relevancy, context_recall
+
+results = evaluate(
+    dataset=eval_dataset,  # Questions + retrieved context + generated answers + ground truth
+    metrics=[faithfulness, answer_relevancy, context_recall]
+)
+print(results)
+````
+
+---
+
+# 05 — AI Memory Systems
+
+## The Problem: LLMs Forget
+
+Every LLM conversation starts fresh. The model has no memory of previous sessions.
+
+For personal assistants, customer support bots, and ongoing workflows, this is a major limitation.
+
+---
+
+## Types of Memory
+
+### 1. Conversation Buffer (Short-term)
+Keep the full conversation history in context:
+````python
+messages = [
+    {"role": "user", "content": "My name is Praveen"},
+    {"role": "assistant", "content": "Nice to meet you, Praveen!"},
+    {"role": "user", "content": "What's my name?"},
+]
+# Works within one session, but context grows unbounded
+````
+
+### 2. Summary Memory
+Summarize old conversations to save tokens:
+````python
+# After every N turns, summarize old turns:
+summary = "User mentioned their name is Praveen and they work at Fiserv..."
+messages = [
+    {"role": "system", "content": f"Conversation summary: {summary}"},
+    # Only keep last 5 turns in full
+]
+````
+
+### 3. Entity Memory
+Extract and store specific facts about entities:
+````python
+memory_store = {
+    "Praveen": {
+        "employer": "Fiserv",
+        "role": "Senior Application Analyst",
+        "location": "Germany",
+        "interests": ["AI", "compliance automation"]
+    }
+}
+# Before each response, inject relevant entities
+````
+
+### 4. Episodic Memory (Long-term, Vector-based)
+Store important conversation moments as embeddings, retrieve relevant ones:
+````python
+# Store memorable conversation excerpts
+memory_db.add("Praveen mentioned he's preparing for FDE role at Anthropic")
+
+# Before each new conversation, search for relevant memories
+relevant_memories = memory_db.search(current_topic, top_k=5)
+system_prompt += f"\nRelevant memories:\n{relevant_memories}"
+````
+
+---
+
+## Practical Memory Architecture
+
+````python
+class ConversationMemory:
+    def __init__(self):
+        self.short_term = []        # Recent messages (last 10)
+        self.summary = ""           # Summary of older messages
+        self.entity_store = {}      # Known facts about entities
+        self.episodic_db = VectorDB()  # Searchable long-term memories
+    
+    def add_turn(self, role: str, content: str):
+        self.short_term.append({"role": role, "content": content})
+        
+        # If context getting long, summarize old turns
+        if len(self.short_term) > 20:
+            self._compress_memory()
+        
+        # Extract entities
+        self._extract_entities(content)
+        
+        # Store as episodic memory
+        self.episodic_db.add(content)
+    
+    def _compress_memory(self):
+        """Summarize older messages to save tokens"""
+        old_turns = self.short_term[:10]
+        self.short_term = self.short_term[10:]
+        
+        # Use LLM to summarize
+        summary = summarize(old_turns)
+        self.summary += f"\n{summary}"
+    
+    def get_context(self, current_query: str) -> list:
+        """Build context for a new response"""
+        context = []
+        
+        # Include summary of old conversation
+        if self.summary:
+            context.append({
+                "role": "system",
+                "content": f"Earlier conversation summary:\n{self.summary}"
+            })
+        
+        # Include relevant episodic memories
+        memories = self.episodic_db.search(current_query, top_k=3)
+        if memories:
+            context.append({
+                "role": "system",
+                "content": f"Relevant memories:\n{memories}"
+            })
+        
+        # Include recent messages
+        context.extend(self.short_term)
+        
+        return context
+````
+
+---
+
+## Memory Libraries
+
+````python
+# mem0 — managed AI memory
+from mem0 import Memory
+
+m = Memory()
+m.add("Praveen works at Fiserv and is building a compliance automation system", user_id="praveen")
+
+# Later:
+memories = m.search("compliance project", user_id="praveen")
+# Returns: [{"memory": "Working on compliance automation at Fiserv..."}]
+
+# Zep — production memory for AI applications
+from zep_cloud.client import Zep
+client = Zep(api_key="...")
+# Handles memory automatically per session
+````
+
+---
+
+# 06 — Semantic Search
+
+## Beyond Keyword Search
+
+Traditional search: matches exact words.
+Semantic search: matches meaning.
+
+````
+Query: "rules about deleting customer data"
+
+Keyword search finds:
+→ Documents containing "rules", "deleting", "customer", "data"
+
+Semantic search finds:
+→ "GDPR Article 17 right to erasure" ← correct, even though no word overlap!
+→ "data retention policies"
+→ "customer data deletion procedures"
+````
+
+---
+
+## Implementing Semantic Search
+
+````python
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+class SemanticSearch:
+    def __init__(self, model_name='all-MiniLM-L6-v2'):
+        self.model = SentenceTransformer(model_name)
+        self.documents = []
+        self.embeddings = None
+    
+    def index(self, documents: list[str]):
+        """Index documents for search"""
+        self.documents = documents
+        self.embeddings = self.model.encode(documents, 
+                                            show_progress_bar=True,
+                                            batch_size=32)
+        print(f"Indexed {len(documents)} documents")
+    
+    def search(self, query: str, top_k: int = 5) -> list[tuple]:
+        """Search for most relevant documents"""
+        query_embedding = self.model.encode(query)
+        
+        similarities = np.dot(self.embeddings, query_embedding) / (
+            np.linalg.norm(self.embeddings, axis=1) * np.linalg.norm(query_embedding)
+        )
+        
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        
+        return [(self.documents[i], float(similarities[i])) for i in top_indices]
+
+# Usage
+search = SemanticSearch()
+search.index(compliance_documents)
+
+results = search.search("how to handle customer data deletion requests")
+for doc, score in results:
+    print(f"Score: {score:.3f} | {doc[:100]}...")
+````
+
+---
+
+## Embedding Models for Semantic Search
+
+| Model | Dimensions | Speed | Quality | Use Case |
+|-------|-----------|-------|---------|---------|
+| all-MiniLM-L6-v2 | 384 | Very Fast | Good | General, development |
+| all-mpnet-base-v2 | 768 | Fast | Very Good | Production general |
+| bge-large-en-v1.5 | 1024 | Slow | Excellent | Production quality |
+| text-embedding-3-small | 1536 | API | Very Good | OpenAI, production |
+| text-embedding-3-large | 3072 | API | Excellent | OpenAI, high quality |
+| e5-mistral-7b | 4096 | Slow | Best | Top quality, slow |
+
+For production RAG with compliance data: **bge-large-en-v1.5** or **text-embedding-3-small**.
+
+---
+
+## 📝 Module 06 Summary
+
+| Concept | Key Takeaway |
+|---------|-------------|
+| RAG | Find relevant docs → inject into prompt → ground answers in reality |
+| Vector DB | Stores embeddings, finds similar documents by meaning (not keywords) |
+| Chunking | Split documents into optimally-sized pieces before embedding |
+| Hybrid retrieval | Combine semantic + keyword search for better coverage |
+| Re-ranking | First retrieve broadly, then re-rank with powerful cross-encoder |
+| Memory | Short-term (buffer), medium-term (summary), long-term (episodic) |
+| Semantic search | Find documents by meaning, not exact word matches |
+
+---
+
+## 🧠 Mental Model
+
+> RAG is like having a smart research assistant. When you ask a question:
+> 1. They search the library (vector DB) for relevant books/articles
+> 2. They bring you the most relevant passages (retrieval)
+> 3. They help you find the answer within those passages (LLM generation)
+> 
+> Without RAG, the LLM is a scholar answering from memory — great for general knowledge, risky for specifics.
+
+---
+
+## 🏋️ Module Exercise
+
+**Build a compliance RAG system with Chroma + Claude:**
+
+````python
+# pip install chromadb sentence-transformers anthropic
+
+import chromadb
+from sentence_transformers import SentenceTransformer
+import anthropic
+import json
+
+# Setup
+chroma_client = chromadb.PersistentClient(path="./compliance_db")
+collection = chroma_client.get_or_create_collection("regulations")
+embedder = SentenceTransformer('all-MiniLM-L6-v2')
+ai_client = anthropic.Anthropic()
+
+# Documents to index
+regulations = [
+    {"id": "gdpr-17", "text": "GDPR Article 17 (Right to Erasure): Data subjects have the right to request deletion of personal data when: it's no longer necessary for the purpose collected; consent is withdrawn; data was unlawfully processed; or erasure is required by law.", "regulation": "GDPR"},
+    {"id": "psd2-sca", "text": "PSD2 Strong Customer Authentication requires at least 2 of 3 factors: Knowledge (something only the user knows — PIN, password), Possession (something only the user has — card, phone), Inherence (something the user is — fingerprint, face).", "regulation": "PSD2"},
+    {"id": "basel3-capital", "text": "Basel III Capital Requirements: Minimum CET1 ratio 4.5%; Tier 1 capital ratio 6%; Total Capital ratio 8%. Conservation buffer of 2.5% CET1. Countercyclical buffer 0-2.5%. Total minimum with buffers: 10.5% CET1.", "regulation": "Basel III"},
+    {"id": "mifid2-records", "text": "MiFID II Article 16(7): Investment firms must keep records of all services, activities, and transactions. Communications relating to transactions must be recorded and retained for 5 years (regulators can extend to 7 years). Includes phone calls and electronic communications.", "regulation": "MiFID II"},
+    {"id": "dora-ict", "text": "DORA (Digital Operational Resilience Act): Financial entities must establish comprehensive ICT risk management framework, implement incident classification and reporting procedures, conduct annual TLPT (Threat-Led Penetration Testing), and manage third-party ICT risks.", "regulation": "DORA"},
+]
+
+# Index documents
+texts = [r["text"] for r in regulations]
+embeddings = embedder.encode(texts).tolist()
+
+collection.upsert(
+    ids=[r["id"] for r in regulations],
+    documents=texts,
+    embeddings=embeddings,
+    metadatas=[{"regulation": r["regulation"]} for r in regulations]
+)
+
+print(f"Indexed {len(regulations)} regulatory documents")
+
+def compliance_rag(question: str) -> dict:
+    """Answer a compliance question using RAG"""
+    
+    # 1. Embed the question
+    query_embedding = embedder.encode(question).tolist()
+    
+    # 2. Retrieve relevant documents
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=3,
+        include=["documents", "distances", "metadatas"]
+    )
+    
+    # 3. Build context
+    retrieved_docs = results["documents"][0]
+    metadatas = results["metadatas"][0]
+    distances = results["distances"][0]
+    
+    context_pieces = []
+    for doc, meta, dist in zip(retrieved_docs, metadatas, distances):
+        similarity = 1 - dist  # Chroma uses L2 distance, convert to similarity
+        context_pieces.append(f"[{meta['regulation']}] {doc}")
+    
+    context = "\n\n".join(context_pieces)
+    
+    # 4. Generate answer
+    response = ai_client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=500,
+        messages=[{
+            "role": "user",
+            "content": f"""You are a compliance expert. Use ONLY the provided regulatory information to answer.
+
+REGULATORY CONTEXT:
+{context}
+
+QUESTION: {question}
+
+Instructions:
+- Answer based strictly on the provided context
+- Cite the specific regulation (GDPR, PSD2, etc.)
+- If information is incomplete, say so
+- Keep answer concise but complete"""
+        }]
+    )
+    
+    return {
+        "question": question,
+        "answer": response.content[0].text,
+        "sources": [meta["regulation"] for meta in metadatas],
+        "retrieved_chunks": retrieved_docs
+    }
+
+# Test the system
+test_questions = [
+    "What authentication factors are required for EU payments?",
+    "How long must investment firms keep transaction records?",
+    "What is the minimum CET1 capital ratio?",
+    "What is the right to erasure under GDPR?"
+]
+
+for question in test_questions:
+    result = compliance_rag(question)
+    print(f"\nQ: {result['question']}")
+    print(f"A: {result['answer']}")
+    print(f"Sources: {', '.join(result['sources'])}")
+    print("-" * 60)
+```
+
+**Challenge:** Add a UI with Gradio or Streamlit. Add 20+ real regulatory documents. Evaluate answer quality.
+
+### Required Enterprise Extensions
+
+Add these before submitting the lab:
+
+1. **ACL metadata:** add `tenant_id`, `classification`, `allowed_groups`, and `source_status` to each indexed document.
+2. **Permission filter:** block unauthorized chunks before building the prompt.
+3. **Retrieval metrics:** report top-k source IDs, similarity scores, and whether the expected source was retrieved.
+4. **Citation scoring:** check whether the answer cites a retrieved approved source.
+5. **Prompt-injection test:** include at least one malicious document that says to ignore instructions, and prove the answer does not follow it.
+6. **Deletion test:** remove one source document, rebuild or update the index, and prove it is no longer retrieved.
+
+### Lab Submission
+
+Submit:
+
+- `rag_app.py` or notebook with the working RAG flow.
+- `rag_eval_cases.jsonl` with at least 10 questions and expected source IDs.
+- `rag_eval_results.json` with retrieval hit rate, citation pass rate, and failed cases.
+- `access-control-test.md` showing one allowed query and one blocked query.
+- `prompt-injection-test.md` showing the malicious document test and outcome.
+- `README.md` with setup, assumptions, and known limitations.
+
+### Pass/Fail Standard
+
+| Requirement | Pass standard |
+|-------------|---------------|
+| Retrieval | Expected source appears in top 3 for at least 80% of eval cases |
+| Citations | At least 90% of answers cite an approved retrieved source |
+| Access control | Unauthorized user cannot retrieve restricted chunks |
+| Tenant isolation | Cross-tenant query returns zero private chunks |
+| Prompt injection | Malicious retrieved text cannot override system instructions |
+| Deletion | Removed source no longer appears in retrieval results |
+
+---
+
+*Move to [Module 07 — Agents & Workflows](/tutorials/llm-mastery/intermediate/06-agents-workflows-tool-safety)*

@@ -6,9 +6,11 @@ interface Props {
   trackTitle: string;
   pathTitle?: string;
   pathHref?: string;
+  moduleSlug?: string;
+  pathId?: string;
 }
 
-const { module, totalModules, level, trackTitle, pathTitle, pathHref } = Astro.props;
+const { module, totalModules, level, trackTitle, pathTitle, pathHref, moduleSlug, pathId } = Astro.props;
 const percent = Math.round((module / totalModules) * 100);
 
 const levelColors = {
@@ -18,7 +20,12 @@ const levelColors = {
 };
 ---
 
-<div class="tutorial-progress" aria-label={`Tutorial ${module} of ${totalModules}`}>
+<div
+  class="tutorial-progress"
+  aria-label={`Tutorial ${module} of ${totalModules}`}
+  data-module-slug={moduleSlug}
+  data-path-id={pathId}
+>
   <div class="progress-meta">
     <span class="progress-track">
       {pathTitle && pathHref ? <a href={pathHref}>{pathTitle}</a> : pathTitle}
@@ -32,7 +39,36 @@ const levelColors = {
       style={`width: ${percent}%; background: ${levelColors[level]}`}
     />
   </div>
+  <span class="complete-badge" id="progress-complete-badge" hidden aria-label="Module complete">✓</span>
 </div>
+
+<script>
+  import { markVisited, isModuleComplete, isTracking, TRACKED_PATHS } from '../utils/tutorial-tracker';
+
+  function init() {
+    const el = document.querySelector('.tutorial-progress') as HTMLElement | null;
+    if (!el) return;
+    const slug = el.dataset.moduleSlug;
+    const pathId = el.dataset.pathId;
+    if (!slug || !pathId || !(pathId in TRACKED_PATHS)) return;
+
+    // Only track if user has opted in (or is enrolled for llm-mastery)
+    if (!isTracking(pathId)) return;
+
+    markVisited(pathId, slug);
+
+    if (isModuleComplete(pathId, slug)) {
+      const badge = document.getElementById('progress-complete-badge');
+      if (badge) badge.hidden = false;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
 
 <style>
   .tutorial-progress {
@@ -69,6 +105,25 @@ const levelColors = {
     border-radius: 2px;
     transition: width 0.4s ease;
   }
+
+  .complete-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #16a34a;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .tutorial-progress { position: relative; }
 
   @media (max-width: 640px) {
     .progress-meta { flex-direction: column; gap: 0.25rem; }

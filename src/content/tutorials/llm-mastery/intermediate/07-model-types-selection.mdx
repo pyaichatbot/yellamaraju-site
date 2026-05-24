@@ -1,0 +1,671 @@
+---
+title: "Model Types and Selection"
+description: "Vision-language models, small language models, dense vs MoE, coding models, reasoning models, and fit-for-purpose selection."
+level: intermediate
+path: llm-mastery
+pathTitle: "LLM Mastery"
+pathOrder: 6
+module: 7
+totalModules: 8
+roles: ["dev","qa","ba","pm","exec"]
+tags: ["Model Selection","VLMs","SLMs","Reasoning Models"]
+date: 2026-05-24
+estimatedTime: "45 min"
+prerequisites: ["LLM Foundations"]
+---
+> **LLM Mastery course page.** This lesson is part 7 of 8 in the intermediate track. Use the lab and assessment sections as the completion standard, not optional reading.
+
+**Required mastery artifact:** by the end of this lesson, update the running enterprise readiness packet for a realistic use case. Treat examples and vendor names as dated illustrations; defend decisions with current model, cost, risk, and evaluation evidence.
+
+# Module 08 — Model Types
+
+> *Not all models are the same. Knowing which model to pick is half the engineering.*
+
+---
+
+# 01 — VLMs: Vision-Language Models
+
+## What Are VLMs?
+
+Vision-Language Models (VLMs) accept both **images and text** as input and produce text output.
+
+Before VLMs: a model that reads text OR a model that sees images. Never both.
+After VLMs: one model that reasons across both modalities together.
+
+---
+
+## What VLMs Can Do
+
+| Task | Example |
+|------|---------|
+| Image understanding | "What is in this photo?" |
+| Document analysis | "Extract all data from this scanned invoice" |
+| Chart interpretation | "What trend does this graph show?" |
+| Screenshot reading | "Find the bug in this code screenshot" |
+| Form extraction | "Parse this handwritten form into JSON" |
+| Visual QA | "Which product in this image is most expensive?" |
+| OCR + reasoning | "Read this table and calculate the total" |
+
+---
+
+## Top VLMs (2024-2025)
+
+| Model | Who Made It | Open Source? | Strengths |
+|-------|------------|--------------|-----------|
+| Claude 3.5 Sonnet | Anthropic | No | Best document/chart analysis |
+| GPT-4o | OpenAI | No | Strong general vision |
+| Gemini 1.5 Pro | Google | No | Long context + vision |
+| LLaVA 1.6 | Community | Yes | Solid open-source baseline |
+| Qwen-VL 2.5 | Alibaba | Yes | Excellent OCR, multilingual |
+| InternVL 2 | OpenGVLab | Yes | Strong open-source performer |
+| Pixtral | Mistral | Yes | European open-source option |
+| moondream2 | vikhyatk | Yes | Tiny (1.8B), runs on edge |
+
+---
+
+## Using VLMs with Claude
+
+````python
+import anthropic
+import base64
+
+client = anthropic.Anthropic()
+
+def analyze_image(image_path: str, question: str) -> str:
+    """Analyze any image with Claude"""
+
+    with open(image_path, "rb") as f:
+        image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+
+    # Detect media type
+    if image_path.endswith(".png"):
+        media_type = "image/png"
+    elif image_path.endswith(".jpg") or image_path.endswith(".jpeg"):
+        media_type = "image/jpeg"
+    else:
+        media_type = "image/webp"
+
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1000,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": image_data
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": question
+                }
+            ]
+        }]
+    )
+    return response.content[0].text
+
+# Use cases:
+# analyze_image("invoice.jpg", "Extract all line items as JSON with quantity, description, unit_price, total")
+# analyze_image("chart.png", "What is the trend in this chart? What are the key data points?")
+# analyze_image("compliance_form.png", "Fill out this form data as structured JSON")
+````
+
+---
+
+## VLMs for Document Intelligence
+
+One of the most practical enterprise use cases:
+
+````python
+import anthropic
+import base64
+from pathlib import Path
+
+client = anthropic.Anthropic()
+
+def extract_from_pdf_page(pdf_page_image: str) -> dict:
+    """Extract structured data from a scanned document page"""
+
+    with open(pdf_page_image, "rb") as f:
+        img_b64 = base64.standard_b64encode(f.read()).decode("utf-8")
+
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1000,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
+                {"type": "text", "text": """Extract all information from this document page.
+Return as JSON with these fields:
+{
+  "document_type": "invoice/contract/regulation/report",
+  "dates": ["list of all dates found"],
+  "amounts": ["list of all monetary amounts"],
+  "parties": ["organizations or people mentioned"],
+  "key_obligations": ["main requirements or obligations"],
+  "reference_numbers": ["document IDs, article numbers, etc"]
+}"""}
+            ]
+        }]
+    )
+
+    import json
+    try:
+        return json.loads(response.content[0].text)
+    except:
+        return {"raw": response.content[0].text}
+
+# Process a folder of document images
+for img_file in Path("./documents").glob("*.png"):
+    data = extract_from_pdf_page(str(img_file))
+    print(f"{img_file.name}: {data['document_type']} - {len(data.get('key_obligations', []))} obligations")
+````
+
+---
+
+## When to Use VLMs vs Text-Only Models
+
+| Situation | Use |
+|-----------|-----|
+| Pure text documents (already extracted) | Text-only model (cheaper, faster) |
+| Scanned PDFs / images of documents | VLM |
+| Charts, graphs, diagrams | VLM |
+| Screenshots of UIs or code | VLM |
+| Handwritten text | VLM |
+| Tables in image format | VLM |
+| Clean digital text | Text-only |
+
+---
+
+# 02 — SLMs: Small Language Models
+
+## The Rise of Tiny but Mighty Models
+
+**Small Language Models** = capable LLMs under ~7B parameters, designed to run on edge devices or with minimal compute.
+
+---
+
+## Why SLMs Matter
+
+1. **Privacy**: Run 100% locally — data never leaves the device
+2. **Offline use**: No internet required
+3. **Cost**: Free to run after download
+4. **Latency**: Sub-100ms on modern hardware
+5. **Edge deployment**: Phones, IoT devices, embedded systems
+
+---
+
+## Top SLMs (2024-2025)
+
+| Model | Params | VRAM | Specialty |
+|-------|--------|------|-----------|
+| Phi-4 Mini | 3.8B | 3-4 GB | Best small reasoning |
+| LLaMA 3.2 3B | 3B | 3 GB | Strong general purpose |
+| LLaMA 3.2 1B | 1B | 1.5 GB | Ultra-fast, edge devices |
+| Gemma 2 2B | 2B | 2 GB | Good quality for size |
+| Qwen 2.5 1.5B | 1.5B | 1.5 GB | Excellent coding + multilingual |
+| SmolLM2 | 135M-1.7B | &lt;1 GB | Browser/microcontroller AI |
+| Phi-3 Mini | 3.8B | 4 GB | Strong reasoning |
+
+---
+
+## SLM Trade-offs
+
+| Capability | SLM (3B) | Medium (13B) | Large (70B) |
+|-----------|----------|-------------|-------------|
+| Simple Q&A | ✅ Good | ✅ Excellent | ✅ Excellent |
+| Complex reasoning | ⚠️ Struggles | ✅ Good | ✅ Excellent |
+| Long context | ⚠️ Limited | ✅ Good | ✅ Excellent |
+| Coding | ⚠️ Basic | ✅ Good | ✅ Excellent |
+| Following instructions | ✅ Good | ✅ Excellent | ✅ Excellent |
+| Speed (Q4 CPU) | ✅ 15-25 tok/s | ⚠️ 5-10 tok/s | ❌ 1-3 tok/s |
+| VRAM needed | ✅ 2-4 GB | ⚠️ 8-10 GB | ❌ 40+ GB |
+
+**Rule of thumb:** Use the smallest model that meets your quality bar. Never over-provision.
+
+---
+
+## SLMs in Practice
+
+````python
+# Ollama with a small model for real-time classification
+import requests
+
+def classify_document_realtime(text: str) -> str:
+    """Fast classification using 3B model — <1 second"""
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "llama3.2:3b",
+            "prompt": f"""Classify this text as one of: [invoice, contract, regulation, email, report]
+Return ONLY the category word.
+
+Text: {text[:200]}""",
+            "stream": False,
+            "options": {"temperature": 0}
+        }
+    )
+    return response.json()["response"].strip().lower()
+
+# vs using the big model for complex analysis
+def deep_compliance_analysis(text: str) -> str:
+    """Deep analysis — use larger model"""
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "llama3.1:70b",
+            "prompt": f"Analyze this document for all compliance obligations, risks, and required actions:\n\n{text}",
+            "stream": False
+        }
+    )
+    return response.json()["response"]
+````
+
+---
+
+# 03 — Dense vs MoE Models
+
+## Dense Models: Everyone Works All the Time
+
+In a **dense model**, every parameter participates in processing every token.
+
+````
+Token arrives → All 70 billion parameters activate → Output produced
+```
+
+Examples: LLaMA 3 70B, Claude 3, GPT-4 (estimated dense)
+
+**Pro:** Maximum parameter utilization
+**Con:** Expensive at large scales — every token costs the same compute
+
+---
+
+## Mixture of Experts (MoE): Smart Routing
+
+In an **MoE model**, a **router network** selects only a small subset of "expert" parameter groups for each token.
+
+```
+Token arrives
+    ↓
+[Router]: "This token is about financial law"
+    ↓
+Activates Expert 3 + Expert 7 (out of 64 experts)
+    ↓
+Only those 2 experts process the token
+    ↓
+Output produced
+````
+
+---
+
+## The MoE Math
+
+**Mixtral 8x7B example:**
+````
+Total parameters: 8 experts × 7B each = ~56B parameters
+Active per token: 2 experts × 7B = ~14B parameters
+
+Storage cost: 56B parameters (large download, more RAM)
+Compute cost: 14B parameters (fast inference!)
+
+Result: Quality of a 56B model at the speed of a 14B model
+````
+
+---
+
+## Dense vs MoE Comparison
+
+| Factor | Dense 70B | MoE (8×7B) |
+|--------|-----------|------------|
+| Total params | 70B | ~56B |
+| Active params per token | 70B | ~14B |
+| Inference speed | Slow | 2-4x faster |
+| Memory needed | 40 GB VRAM | 24-30 GB VRAM |
+| Quality | Excellent | Very Good |
+| Training stability | More stable | Requires care |
+
+---
+
+## Popular MoE Models
+
+| Model | Architecture | Notes |
+|-------|-------------|-------|
+| Mixtral 8×7B | 8 experts, 2 active | Strong open-source |
+| Mixtral 8×22B | 8 experts, 2 active | Near GPT-4 quality |
+| DeepSeek V3 | 256 experts, 8 active | State-of-art open-source |
+| Qwen 2.5 MoE | Multiple configs | Excellent multilingual |
+| GPT-4 | Rumored MoE | Not confirmed by OpenAI |
+
+---
+
+## When to Use MoE
+
+Use MoE when:
+- You need quality above what dense 13-34B can offer
+- But you can't afford dense 70B compute costs
+- Serving at scale where throughput matters
+
+Use Dense when:
+- Simpler deployment
+- Fine-tuning (MoE is harder to fine-tune)
+- You need extreme quality regardless of compute
+
+---
+
+# 04 — Coding Models
+
+## Why Specialized Coding Models?
+
+General models know code. Coding models live and breathe it.
+
+The difference:
+- Trained on far more code (GitHub, coding competitions, technical documentation)
+- Often use fill-in-the-middle training (predict code in the middle of a file)
+- Instruction-tuned on code-specific tasks (debugging, refactoring, documentation)
+
+---
+
+## Top Coding Models
+
+| Model | Open Source? | Strengths |
+|-------|-------------|-----------|
+| Claude 3.5 Sonnet | No | Best overall, excellent reasoning |
+| GPT-4o | No | Strong, good tool use |
+| Qwen2.5-Coder-32B | Yes | Best open-source coding model |
+| DeepSeek-Coder-V2 | Yes | Excellent, especially Python/C++ |
+| StarCoder2-15B | Yes | Code-specialized, efficient |
+| CodeLlama 70B | Yes | Meta's coding model |
+
+---
+
+## Coding Models for Engineers
+
+````python
+import anthropic
+
+client = anthropic.Anthropic()
+
+def code_review(code: str, language: str = "python") -> dict:
+    """Automated code review with structured feedback"""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1500,
+        system="""You are an expert software engineer performing code review.
+Be constructive, specific, and prioritize by severity.
+Always suggest improved code, not just problems.""",
+        messages=[{
+            "role": "user",
+            "content": f"""Review this {language} code for:
+1. Bugs and errors
+2. Security vulnerabilities
+3. Performance issues
+4. Code quality and readability
+5. Missing error handling
+
+Code:
+```{language}
+{code}
+```
+
+Return JSON:
+{{
+  "overall_rating": "1-10",
+  "critical_issues": [{{"issue": "...", "line": "...", "fix": "..."}}],
+  "warnings": [{{"issue": "...", "suggestion": "..."}}],
+  "improvements": ["list of style/quality suggestions"],
+  "improved_code": "the fixed version"
+}}"""
+        }]
+    )
+
+    import json
+    try:
+        return json.loads(response.content[0].text)
+    except:
+        return {"raw": response.content[0].text}
+
+# Example usage
+bad_code = """
+def get_user(user_id):
+    query = "SELECT * FROM users WHERE id = " + user_id
+    result = db.execute(query)
+    return result[0]
+"""
+
+review = code_review(bad_code)
+print(f"Rating: {review.get('overall_rating')}/10")
+print(f"Critical issues: {len(review.get('critical_issues', []))}")
+````
+
+---
+
+## Fill-in-the-Middle (FIM)
+
+A unique capability of coding models: predict code that belongs between two known sections.
+
+````python
+# With Ollama and a FIM-capable model like deepseek-coder
+import requests
+
+def complete_code_middle(prefix: str, suffix: str, model="deepseek-coder:6.7b") -> str:
+    """Fill in the middle of code"""
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": model,
+            "prompt": f"<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>",
+            "stream": False
+        }
+    )
+    return response.json()["response"]
+
+prefix = """def calculate_compound_interest(principal, rate, time):
+    \"\"\"Calculate compound interest\"\"\"
+    """
+
+suffix = """
+    return amount
+
+print(calculate_compound_interest(1000, 0.05, 10))
+"""
+
+middle = complete_code_middle(prefix, suffix)
+print(f"Generated:\n{prefix}{middle}{suffix}")
+````
+
+---
+
+# 05 — Reasoning Models
+
+## Models That Think Before They Answer
+
+Reasoning models are trained to generate long internal "thinking" chains before producing a final answer.
+
+**Standard model:**
+````
+Q: "A train leaves at 60 mph, another at 40 mph, they're 200 miles apart, when do they meet?"
+A: "They meet in 2 hours."   ← Sometimes wrong, no visible reasoning
+```
+
+**Reasoning model:**
+```
+Q: Same question
+<thinking>
+Let me define variables:
+- Train 1 speed: 60 mph, Train 2 speed: 40 mph
+- Combined closing speed: 60 + 40 = 100 mph
+- Distance: 200 miles
+- Time = Distance / Speed = 200 / 100 = 2 hours
+So they meet after 2 hours.
+</thinking>
+A: "The trains meet after 2 hours. Since they're approaching each other, their combined speed is 100 mph. 200 miles ÷ 100 mph = 2 hours."   ← Correct, with explanation
+````
+
+---
+
+## Key Reasoning Models
+
+| Model | Provider | Open Source? | Strength |
+|-------|---------|--------------|---------|
+| o3 | OpenAI | No | Best overall reasoning |
+| o1 | OpenAI | No | Strong, slower |
+| Claude 3.5 (extended thinking) | Anthropic | No | Excellent reasoning |
+| DeepSeek R1 | DeepSeek | Yes | Best open-source reasoning |
+| QwQ-32B | Alibaba | Yes | Strong open-source |
+| Phi-4 | Microsoft | Partial | Small but good reasoning |
+
+---
+
+## When to Use Reasoning Models
+
+**Use reasoning models for:**
+- Multi-step math problems
+- Complex logical puzzles
+- Scientific reasoning
+- Planning and strategy
+- Complex code debugging
+- Competitive programming
+
+**Don't use them for:**
+- Simple Q&A (overkill — 10-30x more expensive, 5-10x slower)
+- Creative writing (reasoning hurts creativity)
+- Conversational tasks
+- Document summarization
+
+````python
+# Choosing the right model by task complexity
+def choose_model(task_type: str, complexity: str) -> str:
+
+    routing = {
+        ("simple_qa", "low"): "claude-haiku-4-5-20251001",
+        ("simple_qa", "medium"): "claude-haiku-4-5-20251001",
+        ("analysis", "medium"): "claude-sonnet-4-20250514",
+        ("analysis", "high"): "claude-sonnet-4-20250514",
+        ("reasoning", "high"): "claude-opus-4",      # or o3 via OpenAI
+        ("math", "high"): "claude-opus-4",
+        ("code_complex", "high"): "claude-sonnet-4-20250514",
+    }
+
+    return routing.get((task_type, complexity), "claude-sonnet-4-20250514")
+````
+
+---
+
+## Extended Thinking with Claude
+
+````python
+import anthropic
+
+client = anthropic.Anthropic()
+
+# Enable extended thinking for hard problems
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=16000,
+    thinking={
+        "type": "enabled",
+        "budget_tokens": 10000  # How many tokens to think with
+    },
+    messages=[{
+        "role": "user",
+        "content": """A fintech company processes 50,000 transactions/day.
+They must comply with PSD2 SCA, GDPR data minimization, and AML transaction monitoring.
+Design a technical architecture that satisfies all three requirements simultaneously,
+noting where they conflict and how to resolve those conflicts."""
+    }]
+)
+
+# The thinking is in a separate block
+for block in response.content:
+    if block.type == "thinking":
+        print(f"Thinking ({len(block.thinking)} chars)...")
+        # print(block.thinking)  # Uncomment to see reasoning
+    elif block.type == "text":
+        print(f"Answer:\n{block.text}")
+````
+
+---
+
+## 📝 Module 08 Summary
+
+| Model Type | When to Use | Example Models |
+|-----------|-------------|----------------|
+| VLMs | Images, scanned docs, charts | Claude 3.5, GPT-4o, LLaVA |
+| SLMs | Edge devices, privacy, real-time | Phi-4 Mini, LLaMA 3.2 3B |
+| Dense | Balanced quality + simplicity | LLaMA 3 70B, Mistral Large |
+| MoE | High quality at lower compute cost | Mixtral, DeepSeek V3 |
+| Coding | Code gen, review, debugging | Claude 3.5, Qwen2.5-Coder |
+| Reasoning | Complex multi-step problems | o3, Claude extended thinking, R1 |
+
+---
+
+## 🧠 Mental Model
+
+> Think of model types like specialists in a hospital.
+> - General practitioner (Dense model): handles most things
+> - Radiologist (VLM): reads images specifically
+> - Surgeon with assistants (MoE): uses team efficiently
+> - Fast triage nurse (SLM): quick assessment, limited depth
+> - Diagnostic specialist (Reasoning model): methodical, thorough, expensive
+
+Match the specialist to the condition.
+
+---
+
+## 🏋️ Exercise
+
+**Route different tasks to appropriate models:**
+
+````python
+import anthropic, requests
+
+client = anthropic.Anthropic()
+
+tasks = [
+    {"type": "simple_qa", "content": "What is GDPR?"},
+    {"type": "image_analysis", "content": "analyze_chart.png"},
+    {"type": "complex_reasoning", "content": "Design a compliance architecture for a fintech startup"},
+    {"type": "code_review", "content": "Review this Python function for security issues"},
+    {"type": "realtime_classify", "content": "Classify: Customer requests account deletion"},
+]
+
+def route_and_run(task: dict) -> str:
+    t = task["type"]
+
+    if t == "simple_qa":
+        # Small model, fast, cheap
+        return client.messages.create(
+            model="claude-haiku-4-5-20251001", max_tokens=200,
+            messages=[{"role": "user", "content": task["content"]}]
+        ).content[0].text
+
+    elif t == "realtime_classify":
+        # Ultra-fast local SLM via Ollama
+        return requests.post("http://localhost:11434/api/generate",
+            json={"model": "llama3.2:3b", "prompt": task["content"], "stream": False}
+        ).json()["response"]
+
+    elif t == "complex_reasoning":
+        # Best model for complex tasks
+        return client.messages.create(
+            model="claude-sonnet-4-20250514", max_tokens=1500,
+            messages=[{"role": "user", "content": task["content"]}]
+        ).content[0].text
+
+    else:
+        return "Task type not handled"
+
+for task in tasks:
+    result = route_and_run(task)
+    print(f"[{task['type']}]: {result[:100]}...\n")
+````
+
+---
+
+*Move to [Module 09 — Deployment](/tutorials/llm-mastery/advanced/01-deployment-readiness)*

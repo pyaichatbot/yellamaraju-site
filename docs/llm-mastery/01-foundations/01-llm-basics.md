@@ -1,0 +1,217 @@
+# 01 — What is an LLM?
+
+> *Module 01 | Foundations | Start here.*
+
+---
+
+## The Big Picture First
+
+Before anything technical, let's answer the real question:
+
+**What is a Large Language Model (LLM)?**
+
+An LLM is a computer program that has read an enormous amount of text — books, websites, research papers, code, conversations — and learned to **predict what word comes next** in a sentence.
+
+That's it. At its core.
+
+Everything else — answering questions, writing code, summarizing documents, acting like a doctor or lawyer — all of it comes from that one simple trick: **predict the next word**.
+
+---
+
+## A Simple Analogy: The World's Most Well-Read Parrot
+
+Imagine you trained a parrot, but this parrot:
+- Read every book ever written
+- Read every website on the internet
+- Read every scientific paper
+- Read every forum post and conversation
+
+Now when you say "The capital of France is...", the parrot can confidently say "Paris" because it has seen that pattern millions of times.
+
+But here's what makes LLMs more than just parrots:
+
+Because they've read SO MUCH, they've absorbed:
+- How logic works
+- How cause and effect work
+- How to solve math step-by-step
+- How to write in different styles
+- How code behaves
+
+The "prediction" is so well-trained that it starts to **look like understanding**.
+
+---
+
+## Why "Large"?
+
+The "L" in LLM stands for **Large**.
+
+Large refers to two things:
+
+1. **The data it trained on** — Trillions of words from across the internet
+2. **The number of parameters** — Billions of internal settings (we'll cover parameters later)
+
+Compare:
+| Model | Parameters | Training Data |
+|-------|-----------|---------------|
+| GPT-2 (2019) | 1.5 Billion | ~40 GB of text |
+| GPT-4 (2023) | ~1 Trillion (estimated) | Hundreds of TBs |
+| LLaMA 3 70B | 70 Billion | ~15 Trillion tokens |
+
+The bigger the model, generally, the smarter it is — but also the more expensive to run.
+
+---
+
+## Why "Language"?
+
+LLMs work with **language** — text in, text out.
+
+They don't "see" the world. They don't "hear" music. They process sequences of text.
+
+(Note: Newer models like GPT-4o and Claude also handle images, audio, etc. — but their core is still language. We'll cover those in Module 08.)
+
+---
+
+## What Can LLMs Actually Do?
+
+Here's what surprises most people: LLMs were only designed to predict the next word. Yet they can:
+
+| Task | Why It Works |
+|------|-------------|
+| Answer questions | They've seen millions of Q&A pairs |
+| Write code | They've read millions of GitHub repos |
+| Translate languages | They've read multilingual documents |
+| Summarize text | They've seen text paired with summaries |
+| Do math | They've seen worked examples |
+| Act as a persona | They've seen character descriptions + dialogues |
+
+This is called **emergent behavior** — abilities that appear automatically from scale, not from being explicitly programmed.
+
+---
+
+## LLMs vs Traditional Software
+
+Old software works like a recipe:
+
+```
+if user says "what is 2+2":
+    return "4"
+```
+
+An LLM works like a trained professional:
+- You give it a problem
+- It reasons from experience
+- It gives you the most likely good answer
+
+| Traditional Software | LLM |
+|---------------------|-----|
+| Rule-based | Pattern-based |
+| Deterministic (same input → same output) | Probabilistic (can vary) |
+| Must be programmed for every case | Generalizes from training |
+| Breaks on edge cases | Handles edge cases (usually) |
+| Fast and cheap | Slower and more expensive |
+
+---
+
+## The LLM Ecosystem Today (2024–2025)
+
+### Closed-Source (You pay to use via API)
+- **GPT-4o / GPT-4.5** — OpenAI
+- **Claude 3.5 / Claude 4** — Anthropic
+- **Gemini 1.5 / 2.0** — Google
+
+### Open-Source (You can run/modify yourself)
+- **LLaMA 3** — Meta
+- **Mistral / Mixtral** — Mistral AI
+- **Qwen 2.5** — Alibaba
+- **Gemma 2** — Google
+- **Phi-3 / Phi-4** — Microsoft
+
+Open-source models have changed everything. You can now run powerful AI locally on your laptop for free.
+
+---
+
+## How Does a Conversation Work?
+
+When you chat with ChatGPT or Claude, here's what actually happens:
+
+```
+1. You type a message ("Explain quantum physics simply")
+
+2. Your message is converted to tokens (numbers the model can read)
+
+3. The model processes all tokens using billions of calculations
+
+4. It predicts the most likely next token, then the next, then the next...
+
+5. Those tokens are converted back to text and shown to you
+
+6. The whole conversation history is included every time you send a message
+```
+
+The model doesn't "think" between messages. It doesn't "remember" you from a previous session (unless there's a memory system built on top). Every reply is a fresh prediction run.
+
+---
+
+## Real-World Mental Model
+
+Think of an LLM like an **extremely well-read freelance consultant**:
+
+- They've read everything, but have no personal experiences
+- They're fast and available 24/7
+- They can work on almost any topic
+- Sometimes they confidently state wrong things (hallucination)
+- The more context you give them, the better they perform
+- They don't remember your last meeting unless you bring notes
+
+---
+
+## 📝 Summary
+
+| Concept | Plain English |
+|---------|--------------|
+| LLM | A program that predicts the next word, trained on massive text data |
+| "Large" | Billions of parameters, trained on trillions of words |
+| Emergent behavior | Abilities that appear from scale, not programming |
+| Inference | The process of getting a response from a trained model |
+| Tokens | The units of text the model processes (explained in depth later) |
+
+---
+
+## 🧠 Mental Model
+
+> An LLM is a **next-word prediction machine** trained on so much text that it appears to reason, write, and understand.
+
+The magic isn't magic. It's statistics at enormous scale.
+
+---
+
+## ❌ Beginner Mistakes to Avoid
+
+1. **"LLMs think like humans do"** — No. They predict. Very sophisticated prediction, but prediction.
+
+2. **"Bigger is always better"** — A 7B model fine-tuned on your specific task often beats a 70B general model.
+
+3. **"LLMs always tell the truth"** — They generate the most statistically likely response. That can be wrong.
+
+4. **"The model remembers me"** — No persistent memory unless explicitly built. Each call is stateless.
+
+5. **"One model for everything"** — Different tasks need different models. Picking the right model matters.
+
+---
+
+## 🏋️ Exercise
+
+**Task:** Have a conversation with an LLM (Claude, ChatGPT, or any) and try to "break" it.
+
+1. Ask it something very recent (last week's news)
+2. Ask it to count letters in a word (try "strawberry" — count the r's)
+3. Ask it a trick math question: "A bat and ball cost $1.10. The bat costs $1 more than the ball. How much does the ball cost?"
+4. Ask it to remember something from a previous session (if you haven't told it)
+
+**Goal:** See the limitations with your own eyes. Understanding failure modes is the first step to using LLMs well.
+
+**Observe:** Where does it fail? Why might it fail at those specific things?
+
+---
+
+*Next: [02 — How AI Models Work](./02-how-models-work.md)*

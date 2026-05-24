@@ -1,0 +1,818 @@
+# Module 09 — Deployment
+
+> *Getting your model in front of users reliably, scalably, and affordably.*
+
+---
+
+# 01 — Local Inference
+
+## Running Models on Your Own Machine
+
+Local inference means the model runs on hardware you control — your laptop, your server, your on-premise data center.
+
+No API calls. No data leaving your network. No per-token fees.
+
+---
+
+## Local Inference Options
+
+### Option 1: Ollama (Recommended for most cases)
+```bash
+# Install and run in minutes
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama run llama3.1:8b
+
+# As API server
+ollama serve  # Starts at http://localhost:11434
+```
+
+### Option 2: llama.cpp (Maximum control)
+```bash
+./llama-server -m model.gguf -c 4096 --port 8080
+```
+
+### Option 3: vLLM (Production local server)
+```bash
+python -m vllm.entrypoints.openai.api_server \
+  --model meta-llama/Meta-Llama-3-8B-Instruct \
+  --port 8000
+```
+
+### Option 4: LM Studio (GUI, Windows/Mac)
+- Download from lmstudio.ai
+- Point-and-click model management
+- Built-in chat UI + local API server
+
+---
+
+## Hardware Requirements for Local Inference
+
+**Minimum for useful work (7B model Q4):**
+- 8 GB RAM (CPU only, slow)
+- RTX 3060 12GB (reasonable speed)
+- M1 Mac 16GB (excellent via MLX)
+
+**Comfortable (13B model Q4):**
+- 16 GB RAM
+- RTX 3090/4090 24GB
+- M2 Pro 32GB
+
+**Power user (70B model Q4):**
+- 64 GB RAM (CPU) or 48 GB VRAM (GPU)
+- 2× RTX 4090 or A100 80GB
+- M3 Max / M4 Ultra (96-192 GB unified)
+
+---
+
+## Local Inference Stack for Praveen's M1 Pro
+
+```bash
+# M1 Pro 16GB — practical setup
+
+# Option A: Ollama (simplest)
+ollama pull llama3.1:8b     # 4.7 GB — good quality
+ollama pull phi4:mini        # 2.5 GB — fast, surprisingly capable
+ollama pull qwen2.5:7b       # 4.4 GB — excellent multilingual
+
+# Option B: MLX (fastest on Apple Silicon)
+pip install mlx-lm
+mlx_lm.generate --model mlx-community/Llama-3.1-8B-Instruct-4bit \
+  --prompt "Explain DORA requirements" --max-tokens 500
+```
+
+---
+
+## Building a Local AI Service
+
+```python
+# local_ai_service.py
+# Production-ready local AI service using FastAPI + Ollama
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import requests
+import time
+import logging
+
+app = FastAPI(title="Local AI Service")
+logger = logging.getLogger(__name__)
+
+OLLAMA_BASE = "http://localhost:11434"
+DEFAULT_MODEL = "llama3.1:8b"
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    model: str = DEFAULT_MODEL
+    max_tokens: int = 512
+    temperature: float = 0.7
+    system: str = ""
+
+class GenerateResponse(BaseModel):
+    text: str
+    model: str
+    tokens_generated: int
+    generation_time_ms: int
+
+@app.post("/generate", response_model=GenerateResponse)
+async def generate(request: GenerateRequest):
+    start = time.time()
+
+    try:
+        messages = []
+        if request.system:
+            messages.append({"role": "system", "content": request.system})
+        messages.append({"role": "user", "content": request.prompt})
+
+        response = requests.post(
+            f"{OLLAMA_BASE}/api/chat",
+            json={
+                "model": request.model,
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "temperature": request.temperature,
+                    "num_predict": request.max_tokens
+                }
+            },
+            timeout=120
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        elapsed_ms = int((time.time() - start) * 1000)
+        generated_text = data["message"]["content"]
+
+        return GenerateResponse(
+            text=generated_text,
+            model=request.model,
+            tokens_generated=data.get("eval_count", 0),
+            generation_time_ms=elapsed_ms
+        )
+
+    except requests.RequestException as e:
+        logger.error(f"Ollama error: {e}")
+        raise HTTPException(status_code=503, detail=f"Local model unavailable: {str(e)}")
+
+@app.get("/health")
+async def health():
+    try:
+        resp = requests.get(f"{OLLAMA_BASE}/api/tags", timeout=5)
+        models = [m["name"] for m in resp.json().get("models", [])]
+        return {"status": "healthy", "available_models": models}
+    except:
+        return {"status": "degraded", "error": "Cannot reach Ollama"}
+
+# Run: uvicorn local_ai_service:app --host 0.0.0.0 --port 8080
+```
+
+---
+
+# 02 — On-Device AI
+
+## AI That Runs Directly on the Device
+
+On-device AI = inference on the end-user's phone, laptop, or embedded device.
+
+No server. No network call. Complete privacy.
+
+---
+
+## On-Device AI Frameworks
+
+### Apple Core ML
+For iOS/macOS apps using Apple Neural Engine:
+```swift
+// iOS app using a Core ML LLM
+import CoreML
+
+let model = try! LlamaModel(configuration: .init())
+let input = LlamaModelInput(inputText: "Explain GDPR")
+let output = try! model.prediction(input: input)
+print(output.outputText)
+```
+
+### MLC LLM (Cross-platform)
+Run LLMs in mobile apps using WebGPU/Metal/OpenCL:
+```python
+# Convert model for mobile deployment
+from mlc_llm import MLC_LLM
+
+# Build for iOS
+mlc_llm compile llama-3-1b \
+  --device iphone \
+  --quantization q4f16_1
+
+# Python/JS API for web deployment
+```
+
+### llama.cpp Android
+```kotlin
+// Android: llama.cpp via JNI bindings
+val llama = LlamaAndroid()
+llama.loadModel("llama-3-1b-q4.gguf")
+val response = llama.complete("What is GDPR?")
+```
+
+### ONNX Runtime (Cross-platform)
+```python
+import onnxruntime as ort
+
+# Run any model exported to ONNX format
+session = ort.InferenceSession("model.onnx")
+outputs = session.run(None, {"input_ids": token_ids})
+```
+
+---
+
+## On-Device AI: Practical Limits
+
+| Device | Max Model Size | Realistic Model |
+|--------|---------------|----------------|
+| iPhone 15 Pro | ~4 GB model | Phi-3 Mini Q4, Gemma 2B |
+| Android flagship | ~3-4 GB | LLaMA 3.2 1B Q8 |
+| MacBook M1 16GB | ~8-10 GB | LLaMA 3.1 8B Q4 |
+| Raspberry Pi 5 | ~4 GB (slow) | Phi-3 Mini Q4 (very slow) |
+
+---
+
+# 03 — API Serving
+
+## Serving Your Model as an API
+
+When users or other services need to call your model over the network:
+
+```
+Client (web app, mobile, other service)
+         ↓ HTTP POST /generate
+[Your API Server]
+         ↓
+[Model Inference (vLLM/Ollama)]
+         ↓
+[Response] → JSON back to client
+```
+
+---
+
+## Production API with FastAPI + vLLM
+
+```python
+# production_api.py — OpenAI-compatible API wrapper
+
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import StreamingResponse
+from vllm import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
+from vllm.outputs import RequestOutput
+import asyncio
+import uuid
+import time
+import json
+
+app = FastAPI(title="Compliance AI API")
+
+# Initialize vLLM engine
+engine_args = AsyncEngineArgs(
+    model="./compliance-fine-tuned-model",
+    quantization="awq",
+    max_model_len=4096,
+    dtype="bfloat16",
+    gpu_memory_utilization=0.90,
+)
+engine = AsyncLLMEngine.from_engine_args(engine_args)
+
+@app.post("/v1/chat/completions")
+async def chat_completions(request: Request):
+    data = await request.json()
+
+    messages = data.get("messages", [])
+    max_tokens = data.get("max_tokens", 512)
+    temperature = data.get("temperature", 0.7)
+    stream = data.get("stream", False)
+
+    # Format prompt (apply chat template)
+    prompt = format_chat_messages(messages)
+
+    sampling_params = SamplingParams(
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stop=["<|eot_id|>", "<|end|>"]
+    )
+
+    request_id = str(uuid.uuid4())
+
+    if stream:
+        return StreamingResponse(
+            stream_generator(engine, prompt, sampling_params, request_id),
+            media_type="text/event-stream"
+        )
+
+    # Non-streaming
+    async for output in engine.generate(prompt, sampling_params, request_id):
+        if output.finished:
+            text = output.outputs[0].text
+            return {
+                "id": f"chatcmpl-{request_id}",
+                "object": "chat.completion",
+                "model": data.get("model", "compliance-model"),
+                "choices": [{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": text},
+                    "finish_reason": "stop"
+                }],
+                "usage": {
+                    "prompt_tokens": len(output.prompt_token_ids),
+                    "completion_tokens": len(output.outputs[0].token_ids),
+                    "total_tokens": len(output.prompt_token_ids) + len(output.outputs[0].token_ids)
+                }
+            }
+
+async def stream_generator(engine, prompt, params, request_id):
+    async for output in engine.generate(prompt, params, request_id):
+        if output.outputs:
+            chunk = {
+                "choices": [{
+                    "delta": {"content": output.outputs[0].text},
+                    "finish_reason": None if not output.finished else "stop"
+                }]
+            }
+            yield f"data: {json.dumps(chunk)}\n\n"
+    yield "data: [DONE]\n\n"
+
+def format_chat_messages(messages: list) -> str:
+    prompt = ""
+    for msg in messages:
+        role = msg["role"]
+        content = msg["content"]
+        if role == "system":
+            prompt += f"<|system|>\n{content}<|end|>\n"
+        elif role == "user":
+            prompt += f"<|user|>\n{content}<|end|>\n"
+        elif role == "assistant":
+            prompt += f"<|assistant|>\n{content}<|end|>\n"
+    prompt += "<|assistant|>\n"
+    return prompt
+```
+
+---
+
+## Rate Limiting and API Security
+
+```python
+from fastapi import Request, HTTPException
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# API Key authentication
+API_KEYS = {"your-secret-key-here"}  # In prod: from database
+
+def verify_api_key(request: Request):
+    api_key = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if api_key not in API_KEYS:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+@app.post("/v1/chat/completions")
+@limiter.limit("60/minute")  # 60 requests per minute per IP
+async def chat_completions(request: Request):
+    verify_api_key(request)
+    # ... rest of the handler
+```
+
+---
+
+## Enterprise Deployment Readiness Gate
+
+API keys and rate limits are not enough for enterprise production. Before release, document these controls:
+
+| Area | Required control |
+|------|------------------|
+| Identity | OIDC/SAML/SSO for users; workload identity for services |
+| Authorization | RBAC or ABAC by tenant, role, data classification, and use case |
+| Secrets | API keys and provider credentials stored in a secrets manager |
+| Network | Private networking, egress policy, firewall rules, and approved provider endpoints |
+| Data protection | Encryption in transit and at rest for prompts, outputs, embeddings, logs, and model artifacts |
+| Logging | Privacy-safe structured logs with prompt/response capture disabled by default |
+| Audit | Request ID, user, model version, retrieval sources, policy decision, and tool calls |
+| Supply chain | Container scanning, dependency scanning, model/checkpoint checksum, and artifact provenance |
+| Reliability | Health checks, timeouts, retries, fallback model, queue limits, and graceful degradation |
+| Operations | SLOs, dashboards, alerts, incident runbook, rollback plan, and named owner |
+
+Deployment readiness review:
+
+```markdown
+# Deployment Readiness Review
+
+**Service name:**
+**Owner:**
+**Data classification:**
+**User groups:**
+**Identity provider:**
+**Authorization model:**
+**Model version:**
+**Fallback behavior:**
+**SLO:** latency, availability, error rate
+**Audit fields captured:**
+**Prompt/response logging policy:**
+**Rollback procedure:**
+**Incident runbook link:**
+**Approval decision:** Approve / Approve with conditions / Block
+```
+
+Reference architecture:
+
+```text
+[User / Service]
+      |
+      v
+[SSO / Workload Identity]
+      |
+      v
+[AI Gateway: authz, quota, policy, audit]
+      |
+      +--> [RAG Retriever: ACL filter before retrieval]
+      |         |
+      |         v
+      |   [Vector DB + document metadata]
+      |
+      +--> [Model Provider or self-hosted vLLM]
+      |
+      v
+[Response Filter + Human Review for high risk]
+      |
+      v
+[Privacy-safe telemetry, eval traces, alerts]
+```
+
+---
+
+## Dockerizing Your API
+
+```dockerfile
+# Dockerfile
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y python3 python3-pip
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+# Download model during build (or mount at runtime)
+RUN python download_model.py
+
+EXPOSE 8000
+
+CMD ["uvicorn", "production_api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+```
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  compliance-ai:
+    build: .
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - MODEL_PATH=/models/compliance-model
+    volumes:
+      - ./models:/models
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - compliance-ai
+```
+
+---
+
+# 04 — Cloud GPUs
+
+## When to Use Cloud GPUs
+
+| Situation | Use Cloud GPU |
+|-----------|--------------|
+| Training / fine-tuning | Yes — run hourly, then stop |
+| Serving with bursty traffic | Yes — scale up/down |
+| Serving at high volume | Yes — managed infrastructure |
+| Development / experiments | Yes — save cost vs owning hardware |
+| Production 24/7 serving | Calculate: own vs cloud cost |
+
+---
+
+## Cloud GPU Providers
+
+### RunPod (best for LLM work)
+```bash
+# Typical workflow:
+# 1. Launch pod: 1× A100 80GB ($2.49/hr) or H100 80GB (~$3.89/hr)
+# 2. SSH in
+# 3. Install dependencies, run training
+# 4. Save output to persistent storage
+# 5. Terminate pod
+
+# Monthly cost estimate for occasional fine-tuning:
+# 10 training runs × 4 hours each × $2.50/hr = $100/month
+```
+
+### Modal (serverless inference)
+```python
+# modal_serve.py — Serverless LLM with auto-scaling
+import modal
+
+app = modal.App("compliance-ai")
+
+# GPU resources
+gpu = modal.gpu.A100(size="40GB")
+
+@app.function(
+    gpu=gpu,
+    image=modal.Image.debian_slim().pip_install("vllm", "transformers"),
+    timeout=600,
+    scaledown_window=60,   # Scale to 0 after 60s idle
+)
+def generate(prompt: str, max_tokens: int = 500) -> str:
+    from vllm import LLM, SamplingParams
+
+    llm = LLM(model="./compliance-model")
+    params = SamplingParams(max_tokens=max_tokens)
+    outputs = llm.generate([prompt], params)
+    return outputs[0].outputs[0].text
+
+@app.local_entrypoint()
+def main():
+    result = generate.remote("What are DORA requirements?")
+    print(result)
+```
+
+### Google Colab (free experimentation)
+```python
+# In Colab:
+# Runtime → Change runtime type → T4 GPU (free) or A100 (Pro)
+
+!pip install unsloth trl datasets -q
+
+from unsloth import FastLanguageModel
+# ... rest of fine-tuning code
+```
+
+---
+
+## Cost Optimization for Cloud GPUs
+
+```python
+# Cost calculator
+def estimate_training_cost(
+    model_params_b: float,
+    dataset_size_k: int,
+    num_epochs: int,
+    gpu_type: str = "A100_40GB"
+) -> dict:
+
+    # Tokens per second estimates
+    throughput = {
+        "T4": 800,       # tokens/sec during training (with QLoRA)
+        "A100_40GB": 3000,
+        "A100_80GB": 4000,
+        "H100_80GB": 8000,
+    }
+
+    # Hourly cost (USD)
+    cost_per_hour = {
+        "T4": 0.35,
+        "A100_40GB": 1.99,
+        "A100_80GB": 2.49,
+        "H100_80GB": 3.89,
+    }
+
+    # Estimate training tokens
+    avg_tokens_per_example = 512
+    total_tokens = dataset_size_k * 1000 * avg_tokens_per_example * num_epochs
+
+    # Estimate time
+    tps = throughput.get(gpu_type, 2000)
+    training_hours = total_tokens / tps / 3600
+
+    # Estimate cost
+    hourly = cost_per_hour.get(gpu_type, 2.49)
+    total_cost = training_hours * hourly
+
+    return {
+        "gpu": gpu_type,
+        "estimated_hours": round(training_hours, 2),
+        "estimated_cost_usd": round(total_cost, 2),
+        "total_training_tokens": f"{total_tokens:,}"
+    }
+
+# Example: Fine-tune 8B model on 5K examples for 3 epochs
+estimates = [
+    estimate_training_cost(8, 5, 3, "T4"),
+    estimate_training_cost(8, 5, 3, "A100_40GB"),
+    estimate_training_cost(8, 5, 3, "H100_80GB"),
+]
+
+for e in estimates:
+    print(f"{e['gpu']}: {e['estimated_hours']} hours = ${e['estimated_cost_usd']}")
+```
+
+---
+
+# 05 — Edge AI Basics
+
+## AI at the Network Edge
+
+Edge AI = running AI inference on devices close to the data source, rather than sending data to a central server.
+
+**Where edge AI runs:**
+- Mobile phones (iOS, Android)
+- Smart cameras
+- IoT sensors and gateways
+- Industrial equipment
+- Automotive systems
+- Retail checkout systems
+
+---
+
+## Why Edge AI
+
+| Factor | Cloud AI | Edge AI |
+|--------|---------|---------|
+| Latency | 100-500ms | <10ms |
+| Privacy | Data leaves device | Stays on device |
+| Connectivity | Requires internet | Works offline |
+| Cost at scale | Per-API-call | One-time hardware |
+| Model size | Unlimited | Severely constrained |
+
+---
+
+## Edge AI for LLMs
+
+LLMs on edge devices require aggressive optimization:
+
+### 1. Model quantization
+```python
+# Convert to ONNX + quantize for edge deployment
+from transformers import AutoModelForCausalLM
+from optimum.exporters.onnx import main_export
+from optimum.onnxruntime.quantization import quantize_dynamic
+
+# Export to ONNX
+main_export("phi-3-mini", output="./phi3-onnx", task="text-generation")
+
+# Quantize to INT8 for smaller size
+quantize_dynamic("./phi3-onnx", "./phi3-onnx-int8")
+```
+
+### 2. Smaller architectures
+Use models specifically designed for edge:
+- Phi-3 Mini 3.8B (Microsoft, designed for mobile)
+- moondream2 (1.8B, excellent for mobile vision)
+- SmolLM 135M-1.7B (designed for browser/embedded)
+- MobileLLM (Meta's mobile-first LLM research)
+
+### 3. Selective processing
+```python
+# Route simple queries locally, complex ones to cloud
+def smart_route(query: str, complexity_threshold: float = 0.7) -> str:
+    complexity = estimate_complexity(query)
+
+    if complexity < complexity_threshold:
+        # Fast, private, local SLM
+        return local_model_generate(query)
+    else:
+        # More capable cloud model
+        return cloud_model_generate(query)
+
+def estimate_complexity(query: str) -> float:
+    """Estimate query complexity 0-1"""
+    indicators = [
+        len(query.split()) > 50,          # Long query
+        "analyze" in query.lower(),        # Analysis task
+        "compare" in query.lower(),        # Comparison task
+        "why" in query.lower(),            # Reasoning required
+        any(word in query for word in ["optimize", "architecture", "design"]),
+    ]
+    return sum(indicators) / len(indicators)
+```
+
+---
+
+## 📝 Module 09 Summary
+
+| Topic | Key Takeaway |
+|-------|-------------|
+| Local inference | Ollama for dev, vLLM for production, llama.cpp for max control |
+| On-device AI | Core ML (Apple), MLC LLM (cross-platform), ONNX Runtime |
+| API serving | FastAPI + vLLM = production OpenAI-compatible API |
+| Cloud GPUs | RunPod for training, Modal for serverless inference, Colab for experiments |
+| Edge AI | Quantize aggressively, use purpose-built small models, route by complexity |
+
+---
+
+## 🧠 Mental Model
+
+> Deployment is about matching three constraints: **latency** (how fast?), **privacy** (where does data go?), and **cost** (what does it cost at scale?).
+>
+> Local = private + free + slow. Cloud API = fast + costly + less private. Self-hosted cloud = middle ground. Edge = fastest + most private + smallest model.
+
+---
+
+## 🏋️ Module Exercise
+
+**Deploy a compliance AI service locally and benchmark it:**
+
+```bash
+# Step 1: Start Ollama
+ollama pull llama3.2:3b
+ollama pull llama3.1:8b
+
+# Step 2: Run the benchmark
+python3 << 'EOF'
+import requests
+import time
+
+OLLAMA_URL = "http://localhost:11434/api/generate"
+
+def benchmark(model: str, prompt: str, runs: int = 5) -> dict:
+    times = []
+    token_counts = []
+
+    for _ in range(runs):
+        start = time.time()
+        resp = requests.post(OLLAMA_URL, json={
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"num_predict": 200}
+        })
+        elapsed = time.time() - start
+        data = resp.json()
+
+        times.append(elapsed)
+        token_counts.append(data.get("eval_count", 0))
+
+    avg_time = sum(times) / len(times)
+    avg_tokens = sum(token_counts) / len(token_counts)
+
+    return {
+        "model": model,
+        "avg_time_sec": round(avg_time, 2),
+        "avg_tokens": int(avg_tokens),
+        "tokens_per_sec": round(avg_tokens / avg_time, 1)
+    }
+
+test_prompt = "Explain GDPR Article 17 right to erasure concisely."
+
+for model in ["llama3.2:3b", "llama3.1:8b"]:
+    result = benchmark(model, test_prompt)
+    print(f"\n{result['model']}:")
+    print(f"  Speed: {result['tokens_per_sec']} tok/s")
+    print(f"  Time: {result['avg_time_sec']}s for {result['avg_tokens']} tokens")
+EOF
+```
+
+**Goal:** Understand the real latency/quality tradeoff between model sizes on your hardware.
+
+### Deployment Readiness Submission
+
+Connect the benchmark to an operational review. Submit:
+
+- `benchmark_results.json` or a table comparing at least two models.
+- `deployment-readiness-review.md` using the template from this module.
+- `slo.md` defining latency, availability, error-rate, and cost targets.
+- `audit-fields.md` listing metadata captured per request without raw sensitive prompt logging.
+- `fallback-and-rollback.md` explaining what happens when the local model, API, or host fails.
+- `incident-assumptions.md` with alert triggers, owner, severity levels, and first response.
+
+### Pass/Fail Standard
+
+| Requirement | Pass standard |
+|-------------|---------------|
+| Benchmark | Reports average and P95 latency or clearly explains why P95 is unavailable |
+| SLOs | Defines realistic latency, availability, error, and cost targets |
+| Security | Names identity, authorization, secrets, network, and logging assumptions |
+| Auditability | Captures request ID, model, version, token counts, latency, and policy decision |
+| Fallback | Documents safe degraded response or alternate model path |
+| Rollback | Explains how to return to the prior model/configuration |
+
+---
+
+*Move to [Module 10 — Evaluation](../10-evaluation/complete-module-10.md)*

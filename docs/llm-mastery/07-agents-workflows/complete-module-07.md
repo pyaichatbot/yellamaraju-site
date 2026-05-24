@@ -1,0 +1,808 @@
+# Module 07 — Agents & Workflows
+
+> *From single LLM calls to autonomous, multi-step AI systems.*
+
+---
+
+# 01 — Prompt Engineering
+
+## Why Prompts Matter Enormously
+
+Same model. Different prompt. Completely different quality.
+
+```
+Bad prompt: "Summarize this."
+
+Good prompt: "Summarize the following compliance document in 3-5 bullet points.
+Focus on key obligations and deadlines. Use plain English suitable
+for a non-legal audience."
+```
+
+Prompting is free and often the highest-leverage improvement you can make.
+
+---
+
+## The Six Core Techniques
+
+### 1. Be Specific and Clear
+```
+# Vague
+"Tell me about GDPR"
+
+# Specific
+"Explain GDPR Article 17 (Right to Erasure) to a compliance officer.
+Include:
+1. When a data subject can invoke this right
+2. When organizations can refuse
+3. Timeline for organizations to respond
+4. Consequences of non-compliance
+Format as structured sections with headers."
+```
+
+### 2. Role Assignment (Persona Prompting)
+```python
+system = """You are a senior EU compliance counsel with 20 years of experience
+in financial services regulation. You advise Tier 1 banks on regulatory matters.
+Your advice is precise, cites specific regulation articles, and acknowledges
+edge cases and ambiguities where they exist."""
+```
+
+### 3. Few-Shot Examples
+Show the model exactly what output you want:
+```
+Classify the following regulatory queries by urgency.
+
+Examples:
+Query: "What is GDPR?" → LOW (general information)
+Query: "We received a DSR, what do we do?" → HIGH (active obligation)
+Query: "Regulator audit starts Monday" → CRITICAL (immediate action)
+
+Now classify:
+Query: "Customer threatening to report us to ICO for data breach"
+```
+
+### 4. Chain of Thought (CoT)
+Force step-by-step reasoning before final answer:
+```
+Determine if this transaction requires enhanced due diligence.
+
+Think step by step:
+1. Is the customer classified as a PEP?
+2. Is the transaction amount above EUR 15,000?
+3. Does the destination country have an AML risk rating above medium?
+4. Are there unusual patterns compared to customer profile?
+
+Transaction: {transaction_details}
+
+After analyzing each step, provide your EDD determination with reasoning.
+```
+
+### 5. Structured Output
+```
+Analyze this compliance document and return ONLY valid JSON:
+{
+  "regulation": "name",
+  "effective_date": "YYYY-MM-DD or null",
+  "obligations": ["list"],
+  "penalties": "description",
+  "applies_to": ["entity types"]
+}
+```
+
+### 6. Negative Instructions
+Tell the model what NOT to do:
+```
+Answer the question below.
+- Do NOT add disclaimers about seeking legal advice
+- Do NOT repeat the question back
+- Do NOT use bullet points
+- Do NOT exceed 3 sentences
+```
+
+---
+
+## Prompt Chaining
+
+Break complex tasks into a sequence of simpler prompts:
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+def prompt_chain(document: str) -> dict:
+
+    # Step 1: Classify
+    step1 = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=50,
+        messages=[{
+            "role": "user",
+            "content": f"Classify this document as one of: [regulation, contract, policy, report]. Return ONLY the category word.\n\n{document[:500]}"
+        }]
+    )
+    doc_type = step1.content[0].text.strip()
+
+    # Step 2: Extract based on type
+    step2 = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=500,
+        messages=[{
+            "role": "user",
+            "content": f"This is a {doc_type}. Extract all compliance obligations as a JSON list of strings.\n\n{document}"
+        }]
+    )
+    obligations = step2.content[0].text
+
+    # Step 3: Risk assess
+    step3 = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=300,
+        messages=[{
+            "role": "user",
+            "content": f"Rate the overall compliance risk (low/medium/high/critical) of these obligations and explain why:\n\n{obligations}"
+        }]
+    )
+
+    return {
+        "document_type": doc_type,
+        "obligations": obligations,
+        "risk_assessment": step3.content[0].text
+    }
+```
+
+---
+
+## Prompting Mental Model
+
+> Prompting is giving instructions to a capable but literal employee.
+> State the role → describe the task → give examples → specify format → add constraints.
+
+---
+
+## ❌ Beginner Prompt Mistakes
+
+1. **Too vague**: "Help me with compliance" → Be specific about what you need
+2. **No output format**: Model chooses randomly → always specify format
+3. **No examples for complex tasks**: Without examples, model guesses your standard
+4. **Injecting user input unsanitized**: Security risk — always sanitize user content before injecting into prompts
+5. **Ignoring temperature**: Use low temp (0.1-0.3) for factual tasks, higher (0.7-1.0) for creative
+
+---
+
+# 02 — System Prompts
+
+## System Prompts Define Identity
+
+The system prompt is the persistent instruction that shapes ALL responses in a session.
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1000,
+    system="""You are ComplianceGPT, an AI assistant for Fiserv's regulatory team.
+
+IDENTITY:
+- Specialize in EU financial regulations: GDPR, PSD2, MiFID II, DORA, Basel III, AML/KYC
+- You are an assistant, not a replacement for qualified legal counsel
+
+BEHAVIOR:
+- Always cite specific regulation articles (e.g., "GDPR Article 17(1)")
+- Express uncertainty clearly: "Based on my understanding..." when not certain
+- Refuse off-topic requests: "I specialize in financial compliance. For [topic], please use a general assistant."
+- Never give binding legal advice — always recommend professional review for implementation
+
+OUTPUT FORMAT:
+- Use headers (##) for complex answers
+- Bold key regulatory terms on first use
+- End compliance advice with: "⚠️ Verify with qualified legal counsel before acting."
+
+KNOWLEDGE BOUNDARIES:
+- Flag fast-changing regulatory areas: "This area evolves quickly — check for recent regulatory guidance."
+""",
+    messages=[{"role": "user", "content": "What are DORA's key requirements?"}]
+)
+```
+
+---
+
+## System Prompt Best Practices
+
+| Element | Example |
+|---------|---------|
+| Role | "You are a senior compliance analyst..." |
+| Scope | "You only answer questions about EU financial regulation" |
+| Format | "Always respond in structured markdown with headers" |
+| Tone | "Be precise and professional, not conversational" |
+| Limits | "Never give binding legal advice" |
+| Uncertainty | "Say 'I'm not certain' when you lack confidence" |
+
+---
+
+# 03 — Tool & Function Calling
+
+## LLMs That Take Actions
+
+Tool calling lets LLMs call functions, access APIs, and interact with the world — not just generate text.
+
+The model decides WHAT to call. You execute it. The model uses the result.
+
+```
+User: "What capital does Fiserv need if RWA is €500M?"
+         ↓
+Model: "I need to calculate capital requirements. I'll call calculate_capital(rwa=500, framework='Basel III')"
+         ↓
+Your code executes the function → returns {"cet1": 22.5, "tier1": 30.0, "total": 40.0}
+         ↓
+Model: "Under Basel III, with €500M in RWA, Fiserv needs:
+        - CET1: €22.5M (4.5%)
+        - Tier 1: €30M (6%)
+        - Total Capital: €40M (8%)"
+```
+
+---
+
+## Enterprise Tool-Use Control Gate
+
+Any tool that reads sensitive data, writes records, sends messages, spends money, changes permissions, or affects customers needs explicit controls.
+
+Minimum controls:
+
+| Control | Why it matters |
+|---------|----------------|
+| Tool allowlist | The model can only call approved tools |
+| Scoped credentials | Each tool has the least privilege needed for its task |
+| Argument validation | Tool inputs are checked before execution |
+| Human approval | High-impact actions require review before execution |
+| Transaction log | Every tool call records user, request ID, arguments hash, result, and decision |
+| Replay protection | Duplicate or stale actions are rejected |
+| Compensating action | There is a rollback, undo, or escalation path |
+
+Example policy:
+
+```python
+TOOL_POLICY = {
+    "search_regulations": {"approval": "none", "scope": "read_public"},
+    "read_internal_policy": {"approval": "none", "scope": "read_authorized_docs"},
+    "create_ticket": {"approval": "user_confirm", "scope": "write_ticket"},
+    "update_compliance_record": {"approval": "manager_approve", "scope": "write_compliance"},
+    "send_external_email": {"approval": "human_review", "scope": "send_email"},
+}
+
+def can_execute(tool_name, user, args):
+    policy = TOOL_POLICY[tool_name]
+    if policy["scope"] not in user["scopes"]:
+        return {"allowed": False, "reason": "missing_scope"}
+    if policy["approval"] != "none":
+        return {"allowed": False, "reason": f"requires_{policy['approval']}"}
+    return {"allowed": True}
+```
+
+Enterprise agents are allowed to be useful. They are not allowed to be unbounded.
+
+---
+
+## Tool Definition + Execution
+
+```python
+import anthropic
+import json
+
+client = anthropic.Anthropic()
+
+# 1. Define tools (JSON Schema)
+tools = [
+    {
+        "name": "search_regulation",
+        "description": "Search regulatory database for compliance requirements",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "regulation": {"type": "string", "description": "e.g., GDPR, PSD2, MiFID2"},
+                "topic": {"type": "string", "description": "Specific topic to search"}
+            },
+            "required": ["regulation", "topic"]
+        }
+    },
+    {
+        "name": "calculate_capital",
+        "description": "Calculate Basel III capital requirements from RWA",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "rwa_millions": {"type": "number", "description": "Risk-weighted assets in EUR millions"},
+                "include_buffer": {"type": "boolean", "description": "Include conservation buffer"}
+            },
+            "required": ["rwa_millions"]
+        }
+    }
+]
+
+# 2. Implement tool functions
+def search_regulation(regulation: str, topic: str) -> str:
+    db = {
+        ("GDPR", "erasure"): "Article 17: Right to erasure when data no longer necessary, consent withdrawn, or unlawful processing.",
+        ("PSD2", "SCA"): "Article 97: SCA requires 2 of 3 factors: knowledge, possession, inherence.",
+        ("MiFID2", "record keeping"): "Article 16(7): Retain transaction communications 5 years (7 if regulator requires).",
+    }
+    key = (regulation.upper(), topic.lower())
+    return db.get(key, f"No specific data found for {regulation} - {topic}. Recommend checking EUR-Lex.")
+
+def calculate_capital(rwa_millions: float, include_buffer: bool = True) -> dict:
+    result = {
+        "rwa": rwa_millions,
+        "cet1_minimum": round(rwa_millions * 0.045, 2),
+        "tier1_minimum": round(rwa_millions * 0.06, 2),
+        "total_minimum": round(rwa_millions * 0.08, 2),
+    }
+    if include_buffer:
+        result["cet1_with_buffer"] = round(rwa_millions * 0.07, 2)  # 4.5% + 2.5% conservation
+    return result
+
+# 3. The agentic loop
+def run_with_tools(user_question: str) -> str:
+    messages = [{"role": "user", "content": user_question}]
+
+    while True:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            tools=tools,
+            messages=messages
+        )
+
+        if response.stop_reason == "end_turn":
+            return response.content[0].text
+
+        if response.stop_reason == "tool_use":
+            tool_results = []
+            for block in response.content:
+                if block.type == "tool_use":
+                    if block.name == "search_regulation":
+                        result = search_regulation(**block.input)
+                    elif block.name == "calculate_capital":
+                        result = calculate_capital(**block.input)
+                    else:
+                        result = "Tool not found"
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": json.dumps(result) if isinstance(result, dict) else result
+                    })
+
+            messages.append({"role": "assistant", "content": response.content})
+            messages.append({"role": "user", "content": tool_results})
+
+# Test
+print(run_with_tools("What capital requirements apply to a bank with €2 billion RWA under Basel III?"))
+```
+
+---
+
+# 04 — AI Agents
+
+## What Makes Something an Agent?
+
+A chatbot: you ask → it answers → done.
+
+An agent: it receives a goal → plans → acts → observes result → adjusts → continues until done.
+
+**The key: feedback loop + multiple steps + autonomous decision making.**
+
+---
+
+## The ReAct Pattern (Reasoning + Acting)
+
+```
+Thought: What do I need to do first?
+Action: search_regulation(regulation="GDPR", topic="data breach notification")
+Observation: "Article 33: Notify supervisory authority within 72 hours of becoming aware of a breach."
+
+Thought: I have the timeline. Now I need the notification content requirements.
+Action: search_regulation(regulation="GDPR", topic="breach notification content")
+Observation: "Article 33(3): Notification must include nature of breach, categories affected, likely consequences, measures taken."
+
+Thought: I now have both timeline and content requirements. I can answer.
+Final Answer: Under GDPR Article 33, you must notify the supervisory authority within 72 hours...
+```
+
+```python
+def react_agent(goal: str, max_steps: int = 8) -> str:
+    """Agent following the ReAct pattern"""
+
+    system = """You are a compliance research agent using the ReAct pattern.
+For each step, think about what you need, then use a tool.
+When you have enough information, give a final answer.
+
+Format:
+Thought: [your reasoning]
+Action: [tool name and why]
+(wait for observation)
+...
+Final Answer: [complete answer]"""
+
+    messages = [{"role": "user", "content": f"Goal: {goal}"}]
+
+    for step in range(max_steps):
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            system=system,
+            tools=tools,
+            messages=messages
+        )
+
+        if response.stop_reason == "end_turn":
+            return response.content[0].text
+
+        if response.stop_reason == "tool_use":
+            tool_results = process_tool_calls(response.content)
+            messages.append({"role": "assistant", "content": response.content})
+            messages.append({"role": "user", "content": tool_results})
+
+    return "Agent reached maximum steps without completing goal."
+```
+
+---
+
+# 05 — Agentic Workflows
+
+## Structured Multi-Step Automation
+
+Unlike free-form agents, workflows have defined steps with conditional branching.
+
+```python
+class ComplianceDocumentWorkflow:
+    """
+    Workflow: Ingest document → Extract → Classify risk → Route → Draft memo
+    """
+
+    def __init__(self):
+        self.client = anthropic.Anthropic()
+
+    def run(self, document_text: str, document_name: str) -> dict:
+        print(f"Processing: {document_name}")
+
+        # Step 1: Classify document type
+        doc_type = self._classify(document_text)
+        print(f"  Type: {doc_type}")
+
+        # Step 2: Extract obligations
+        obligations = self._extract_obligations(document_text, doc_type)
+        print(f"  Obligations found: {len(obligations)}")
+
+        # Step 3: Risk assessment
+        risk = self._assess_risk(obligations)
+        print(f"  Risk level: {risk['level']}")
+
+        # Step 4: Conditional routing
+        if risk["level"] == "critical":
+            actions = self._generate_urgent_actions(obligations, risk)
+            escalate = True
+        elif risk["level"] == "high":
+            actions = self._generate_priority_actions(obligations, risk)
+            escalate = False
+        else:
+            actions = self._generate_standard_actions(obligations)
+            escalate = False
+
+        # Step 5: Draft memo
+        memo = self._draft_memo(document_name, doc_type, obligations, risk, actions)
+
+        return {
+            "document": document_name,
+            "type": doc_type,
+            "obligations": obligations,
+            "risk": risk,
+            "actions": actions,
+            "memo": memo,
+            "escalate_to_legal": escalate
+        }
+
+    def _classify(self, text: str) -> str:
+        resp = self.client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=20,
+            messages=[{"role": "user", "content": f"Classify as one word: regulation/contract/policy/notice\n\n{text[:300]}"}]
+        )
+        return resp.content[0].text.strip().lower()
+
+    def _extract_obligations(self, text: str, doc_type: str) -> list:
+        resp = self.client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{"role": "user", "content": f"Extract all compliance obligations from this {doc_type}. Return as JSON list of strings.\n\n{text}"}]
+        )
+        try:
+            return json.loads(resp.content[0].text)
+        except:
+            return [resp.content[0].text]
+
+    def _assess_risk(self, obligations: list) -> dict:
+        resp = self.client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=200,
+            messages=[{"role": "user", "content": f"Rate compliance risk as JSON: {{\"level\": \"low|medium|high|critical\", \"reason\": \"...\"}}\n\nObligations:\n{json.dumps(obligations)}"}]
+        )
+        try:
+            return json.loads(resp.content[0].text)
+        except:
+            return {"level": "medium", "reason": "Unable to parse risk assessment"}
+
+    def _draft_memo(self, name, doc_type, obligations, risk, actions) -> str:
+        resp = self.client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=800,
+            messages=[{"role": "user", "content": f"""Draft a compliance memo for:
+Document: {name} ({doc_type})
+Risk Level: {risk['level']}
+Key Obligations: {json.dumps(obligations[:5])}
+Required Actions: {json.dumps(actions[:5])}
+
+Format as a professional internal memo."""}]
+        )
+        return resp.content[0].text
+
+    def _generate_urgent_actions(self, obligations, risk):
+        return [{"action": f"URGENT: Address - {ob}", "deadline": "48 hours"} for ob in obligations[:3]]
+
+    def _generate_priority_actions(self, obligations, risk):
+        return [{"action": f"Review and implement: {ob}", "deadline": "2 weeks"} for ob in obligations[:5]]
+
+    def _generate_standard_actions(self, obligations):
+        return [{"action": f"Standard review: {ob}", "deadline": "30 days"} for ob in obligations]
+```
+
+---
+
+# 06 — Multi-Agent Systems
+
+## Why Multiple Agents?
+
+A single agent:
+- Limited context window
+- Can't simultaneously be a legal expert AND a financial modeler
+- Unreliable on very long, complex tasks
+
+Multi-agent systems divide labor:
+
+```
+┌─────────────────────────────────────────┐
+│           ORCHESTRATOR AGENT             │
+│  "This query needs research + calc"     │
+└──────────┬──────────────────┬───────────┘
+           ↓                  ↓
+┌──────────────┐    ┌──────────────────┐
+│ RESEARCH     │    │ CALCULATOR       │
+│ AGENT        │    │ AGENT            │
+│ Finds regs   │    │ Runs numbers     │
+└──────┬───────┘    └────────┬─────────┘
+       └────────────┬─────────┘
+                    ↓
+        ┌──────────────────┐
+        │  WRITER AGENT    │
+        │  Drafts output   │
+        └──────────────────┘
+```
+
+---
+
+## Handoff Pattern (Pipeline)
+
+```python
+class ComplianceMultiAgentSystem:
+
+    def __init__(self):
+        self.client = anthropic.Anthropic()
+
+    def _call(self, system: str, prompt: str, model="claude-haiku-4-5-20251001", max_tokens=500) -> str:
+        resp = self.client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return resp.content[0].text
+
+    def research_agent(self, query: str) -> str:
+        """Agent 1: Finds relevant regulatory information"""
+        return self._call(
+            system="You are a regulatory research specialist. Find relevant EU financial regulations for the query. Be specific and cite articles.",
+            prompt=query
+        )
+
+    def analysis_agent(self, research: str, original_query: str) -> str:
+        """Agent 2: Analyzes the research"""
+        return self._call(
+            system="You are a compliance analyst. Analyze regulatory research and identify gaps, risks, and key obligations.",
+            prompt=f"Original question: {original_query}\n\nResearch findings:\n{research}\n\nAnalyze this.",
+            model="claude-sonnet-4-20250514"
+        )
+
+    def writer_agent(self, analysis: str, query: str) -> str:
+        """Agent 3: Produces final output"""
+        return self._call(
+            system="You are a compliance writer. Produce clear, actionable compliance guidance from analysis.",
+            prompt=f"Question: {query}\n\nAnalysis:\n{analysis}\n\nWrite clear compliance guidance.",
+            model="claude-sonnet-4-20250514",
+            max_tokens=800
+        )
+
+    def run(self, user_query: str) -> dict:
+        print("Agent 1: Researching...")
+        research = self.research_agent(user_query)
+
+        print("Agent 2: Analyzing...")
+        analysis = self.analysis_agent(research, user_query)
+
+        print("Agent 3: Writing response...")
+        final = self.writer_agent(analysis, user_query)
+
+        return {
+            "query": user_query,
+            "research": research,
+            "analysis": analysis,
+            "response": final
+        }
+
+# Usage
+system = ComplianceMultiAgentSystem()
+result = system.run("What are our obligations if we experience a data breach affecting 10,000 EU customers?")
+print(result["response"])
+```
+
+---
+
+# 07 — Browser Agents
+
+## Agents That Browse the Web
+
+Browser agents use tools to navigate websites, click elements, and extract information.
+
+```python
+# Using Playwright for browser automation
+# pip install playwright && playwright install chromium
+
+import asyncio
+from playwright.async_api import async_playwright
+import anthropic
+
+client = anthropic.Anthropic()
+
+async def research_regulation_online(regulation_name: str) -> str:
+    """Browse EUR-Lex and extract regulatory information"""
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+
+        # Navigate to EU law database
+        await page.goto("https://eur-lex.europa.eu/homepage.html")
+        await page.fill('input[name="query"]', regulation_name)
+        await page.press('input[name="query"]', 'Enter')
+        await page.wait_for_load_state("networkidle")
+
+        # Get page text
+        content = await page.locator("body").inner_text()
+        await browser.close()
+
+        # Use Claude to extract relevant info
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            messages=[{
+                "role": "user",
+                "content": f"Extract key information about {regulation_name} from this search result:\n\n{content[:4000]}"
+            }]
+        )
+        return response.content[0].text
+
+# Run it
+result = asyncio.run(research_regulation_online("DORA Digital Operational Resilience Act"))
+print(result)
+```
+
+---
+
+## 📝 Module 07 Summary
+
+| Concept | Key Takeaway |
+|---------|-------------|
+| Prompt Engineering | Most leverage for least cost. Specificity + examples + format = quality |
+| System Prompts | Define model identity, scope, tone, and output format permanently |
+| Tool Calling | LLM decides what to call; you execute; model uses result |
+| AI Agents | Goal + tools + feedback loop = autonomous multi-step task completion |
+| Agentic Workflows | Defined pipelines with LLM steps, conditional branching |
+| Multi-Agent | Divide complex tasks among specialist agents; orchestrator coordinates |
+| Browser Agents | Navigate and extract from web pages programmatically |
+
+---
+
+## 🏋️ Module Exercise
+
+**Build a 3-agent compliance research system:**
+
+```python
+# Agents: Researcher → Fact Checker → Report Writer
+# Task: Research any compliance topic and produce a verified report
+
+import anthropic, json
+client = anthropic.Anthropic()
+
+def agent(system, prompt, model="claude-haiku-4-5-20251001", max_tokens=600):
+    return client.messages.create(
+        model=model, max_tokens=max_tokens,
+        system=system,
+        messages=[{"role": "user", "content": prompt}]
+    ).content[0].text
+
+def compliance_research_pipeline(topic: str) -> str:
+    # Agent 1: Research
+    research = agent(
+        "You are a regulatory researcher. Find all relevant EU regulations for the topic. List specific articles.",
+        f"Research: {topic}"
+    )
+
+    # Agent 2: Fact check
+    verified = agent(
+        "You are a compliance fact-checker. Review the research and flag any uncertain or potentially incorrect claims. Add confidence ratings.",
+        f"Fact-check this research:\n{research}",
+        model="claude-sonnet-4-20250514"
+    )
+
+    # Agent 3: Write report
+    report = agent(
+        "You are a compliance report writer. Produce a clear, actionable compliance brief from verified research.",
+        f"Topic: {topic}\nVerified Research:\n{verified}",
+        model="claude-sonnet-4-20250514",
+        max_tokens=1000
+    )
+
+    return report
+
+print(compliance_research_pipeline("DORA requirements for cloud service providers"))
+```
+
+### Required Agent Control Plan
+
+Submit an `agent-control-plan.md` with:
+
+| Section | Required content |
+|---------|------------------|
+| Tool allowlist | Every tool the agent may call and why it is needed |
+| Approval rules | Which actions require user, manager, or compliance approval |
+| Scoped credentials | What each tool can read/write and what it cannot access |
+| Argument validation | Required schema checks before tool execution |
+| Transaction log | Fields captured for every tool call |
+| Rollback behavior | How to undo, compensate, or escalate failed/high-risk actions |
+| Failure tests | At least 5 cases covering bad input, unsupported topic, tool failure, unsafe action, and low confidence |
+
+### Lab Submission
+
+Submit:
+
+- `agent_pipeline.py` or notebook.
+- `agent-control-plan.md`.
+- `tool-call-log-sample.json`.
+- `failure-tests.md` with expected and observed behavior.
+- `README.md` with setup and operating assumptions.
+
+### Pass/Fail Standard
+
+| Requirement | Pass standard |
+|-------------|---------------|
+| Workflow | Researcher, fact-checker, and writer roles are clearly separated |
+| Tool safety | No tool can execute outside the allowlist |
+| Approval | High-impact actions stop for human review |
+| Logging | Tool calls record request ID, tool name, argument hash, result, and decision |
+| Failure handling | Tool failure and low-confidence output produce safe fallback behavior |
+| Scope control | Agent refuses or escalates out-of-scope compliance claims |
+
+---
+
+*Move to [Module 08 — Model Types](../08-model-types/complete-module-08.md)*

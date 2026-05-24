@@ -1,0 +1,267 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { TRACKED_PATHS, getPathModules } from '../../../utils/tutorial-tracker';
+import { getTutorialPath } from '../../../data/tutorial-paths';
+
+export function getStaticPaths() {
+  return Object.keys(TRACKED_PATHS).map((pathId) => ({ params: { path: pathId } }));
+}
+
+const { path: pathId } = Astro.params as { path: string };
+const pathConfig = TRACKED_PATHS[pathId];
+const pathInfo = getTutorialPath(pathId);
+
+if (!pathConfig) return Astro.redirect('/tutorials', 302);
+
+const modules = getPathModules(pathId);
+const isGated = pathId === 'llm-mastery';
+const pathTitle = pathConfig.title;
+---
+
+<BaseLayout
+  title={`My ${pathTitle} Progress`}
+  description={`Track your progress through the ${pathTitle} tutorial path.`}
+>
+  <div class="progress-page">
+    <header class="progress-header">
+      <a href={`/tutorials/${pathId}`} class="back-link">← {pathTitle}</a>
+      <h1>My Progress</h1>
+      <p class="progress-desc">{pathTitle} · {modules.length} modules</p>
+    </header>
+
+    <div id="not-tracking-state" class="not-tracking" hidden>
+      {isGated ? (
+        <>
+          <p>You haven't enrolled yet.</p>
+          <a href={`/tutorials/${pathId}/beginner/00-course-overview`} class="action-link">
+            Start the course to enroll →
+          </a>
+        </>
+      ) : (
+        <>
+          <p>You haven't started tracking yet.</p>
+          <a href={`/tutorials/${pathId}`} class="action-link">
+            Open the path and click "Start tracking" →
+          </a>
+        </>
+      )}
+    </div>
+
+    <div id="tracking-state" hidden>
+      <section class="summary-grid">
+        <div class="summary-card ring-card">
+          <div class="summary-ring" aria-hidden="true">
+            <svg viewBox="0 0 80 80" class="ring-svg">
+              <circle cx="40" cy="40" r="34" class="ring-track" />
+              <circle cx="40" cy="40" r="34" class="ring-fill" id="ring-fill" />
+            </svg>
+            <div class="ring-label">
+              <span class="ring-pct" id="ring-pct">0%</span>
+              <span class="ring-sub">complete</span>
+            </div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-stat" id="stat-since">—</div>
+          <div class="summary-label">Tracking since</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-stat" id="stat-visited">0 / {modules.length}</div>
+          <div class="summary-label">Modules visited</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-stat" id="stat-completed">0 / {modules.length}</div>
+          <div class="summary-label">Modules complete</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-stat" id="stat-streak">0</div>
+          <div class="summary-label">Day streak</div>
+        </div>
+      </section>
+
+      <section class="modules-section">
+        <h2 class="modules-heading">All Modules</h2>
+        <div class="modules-grid" id="modules-grid"></div>
+      </section>
+
+      <section class="actions-section">
+        <button class="action-btn export-btn" id="export-btn">Export Progress JSON</button>
+        <button class="action-btn reset-btn" id="reset-btn">Reset Progress</button>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ pathId, modules, moduleLabels: pathConfig.moduleLabels }}>
+  const pathHrefs = {};
+  for (const slug of modules) {
+    const [level, ...rest] = slug.split('/');
+    pathHrefs[slug] = `/tutorials/${pathId}/${level}/${rest.join('/')}`;
+  }
+
+  function levelColor(level) {
+    if (level === 'beginner') return 'var(--tut-beginner)';
+    if (level === 'intermediate') return 'var(--tut-intermediate)';
+    return 'var(--tut-advanced)';
+  }
+
+  function formatDate(iso) {
+    try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+    catch { return iso.slice(0, 10); }
+  }
+
+  function setRing(pct) {
+    const fill = document.getElementById('ring-fill');
+    const label = document.getElementById('ring-pct');
+    if (!fill || !label) return;
+    const circumference = 2 * Math.PI * 34;
+    fill.style.strokeDasharray = String(circumference);
+    fill.style.strokeDashoffset = String(circumference * (1 - pct / 100));
+    label.textContent = `${Math.round(pct)}%`;
+  }
+
+  function renderModules(progress) {
+    const grid = document.getElementById('modules-grid');
+    if (!grid) return;
+    grid.innerHTML = modules.map((slug, idx) => {
+      const label = moduleLabels[slug] ?? slug;
+      const href = pathHrefs[slug] ?? '#';
+      const level = slug.split('/')[0];
+      const m = progress.modules[slug];
+      const isComplete = m?.completed;
+      const isVisited = m?.visited;
+      const color = levelColor(level);
+      let statusClass = 'status-unstarted';
+      let statusLabel = 'Not started';
+      let statusIcon = '○';
+      if (isComplete) { statusClass = 'status-complete'; statusLabel = 'Complete'; statusIcon = '✓'; }
+      else if (isVisited) { statusClass = 'status-visited'; statusLabel = 'In progress'; statusIcon = '◐'; }
+      return `<a href="${href}" class="module-card ${statusClass}" style="--card-color:${color}">
+        <div class="card-top">
+          <span class="card-num">${String(idx + 1).padStart(2, '0')}</span>
+          <span class="card-status-icon" title="${statusLabel}">${statusIcon}</span>
+        </div>
+        <div class="card-level" style="color:${color}">${level}</div>
+        <div class="card-title">${label}</div>
+        <div class="card-status-label">${statusLabel}</div>
+      </a>`;
+    }).join('');
+  }
+
+  function getStorageKey(pid) { return `${pid}-progress`; }
+
+  function loadProgress() {
+    try {
+      const raw = localStorage.getItem(getStorageKey(pathId));
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return p?.version === 1 ? p : null;
+    } catch { return null; }
+  }
+
+  function exportProgress() {
+    const p = loadProgress();
+    return p ? JSON.stringify(p, null, 2) : '{}';
+  }
+
+  function init() {
+    const notTracking = document.getElementById('not-tracking-state');
+    const trackingState = document.getElementById('tracking-state');
+    const progress = loadProgress();
+
+    if (!progress) {
+      if (notTracking) notTracking.hidden = false;
+      return;
+    }
+
+    if (trackingState) trackingState.hidden = false;
+
+    const visitedCount = modules.filter(s => progress.modules[s]?.visited || progress.modules[s]?.completed).length;
+    const completedCount = modules.filter(s => progress.modules[s]?.completed).length;
+
+    document.getElementById('stat-since').textContent = formatDate(progress.enrolledAt);
+    document.getElementById('stat-visited').textContent = `${visitedCount} / ${modules.length}`;
+    document.getElementById('stat-completed').textContent = `${completedCount} / ${modules.length}`;
+    document.getElementById('stat-streak').textContent = String(progress.streakDays);
+
+    setRing(progress.completionPercent);
+    renderModules(progress);
+
+    document.getElementById('export-btn')?.addEventListener('click', () => {
+      const json = exportProgress();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${pathId}-progress.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('reset-btn')?.addEventListener('click', () => {
+      if (confirm('Reset all progress for this path? Cannot be undone.')) {
+        localStorage.removeItem(getStorageKey(pathId));
+        location.reload();
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+  .progress-page { max-width: 960px; margin: 0 auto; padding: var(--space-xl) var(--space-md); }
+  .back-link { font-size: 0.875rem; color: var(--color-text-tertiary); text-decoration: none; display: inline-block; margin-bottom: var(--space-md); }
+  .back-link:hover { color: var(--color-accent); }
+  .progress-header h1 { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -0.04em; margin: 0 0 var(--space-xs); }
+  .progress-desc { color: var(--color-text-secondary); margin: 0 0 var(--space-lg); font-size: 1rem; }
+
+  .not-tracking { text-align: center; padding: var(--space-xl); color: var(--color-text-secondary); }
+  .action-link { display: inline-block; margin-top: var(--space-sm); color: var(--color-accent); font-weight: 600; text-decoration: none; }
+  .action-link:hover { text-decoration: underline; }
+
+  .summary-grid { display: grid; grid-template-columns: auto repeat(4, 1fr); gap: var(--space-md); margin-bottom: var(--space-xl); align-items: center; }
+  .summary-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-md); text-align: center; }
+  .ring-card { padding: var(--space-sm); }
+  .summary-stat { font-size: 1.5rem; font-weight: 800; color: var(--color-text); letter-spacing: -0.04em; font-family: var(--font-sans); }
+  .summary-label { font-size: 0.78rem; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--font-sans); margin-top: 0.25rem; }
+
+  .summary-ring { position: relative; width: 80px; height: 80px; margin: 0 auto; }
+  .ring-svg { width: 80px; height: 80px; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--color-border); stroke-width: 8; }
+  .ring-fill { fill: none; stroke: var(--color-accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-pct { font-size: 1rem; font-weight: 800; color: var(--color-text); font-family: var(--font-sans); line-height: 1; }
+  .ring-sub { font-size: 0.6rem; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .modules-heading { font-size: 1.2rem; margin: 0 0 var(--space-md); }
+  .modules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-sm); margin-bottom: var(--space-xl); }
+
+  :global(.module-card) { display: block; padding: var(--space-sm); border: 1px solid var(--color-border); border-radius: 10px; text-decoration: none; color: inherit; background: var(--color-surface); transition: border-color 0.15s, transform 0.1s; }
+  :global(.module-card:hover) { border-color: var(--card-color, var(--color-accent)); transform: translateY(-2px); }
+  :global(.status-complete) { border-color: #16a34a !important; background: color-mix(in srgb, #16a34a 6%, var(--color-surface)) !important; }
+  :global(.status-visited) { border-color: color-mix(in srgb, var(--card-color) 40%, var(--color-border)); }
+  :global(.card-top) { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; }
+  :global(.card-num) { font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-text-tertiary); font-weight: 700; }
+  :global(.card-status-icon) { font-size: 1rem; color: var(--card-color, var(--color-text-tertiary)); }
+  :global(.status-complete .card-status-icon) { color: #16a34a; }
+  :global(.card-level) { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; font-family: var(--font-sans); margin-bottom: 0.3rem; }
+  :global(.card-title) { font-size: 0.88rem; font-weight: 600; color: var(--color-text); font-family: var(--font-sans); line-height: 1.35; margin-bottom: 0.3rem; }
+  :global(.card-status-label) { font-size: 0.72rem; color: var(--color-text-tertiary); font-family: var(--font-sans); }
+  :global(.status-complete .card-status-label) { color: #16a34a; }
+  :global(.status-visited .card-status-label) { color: var(--card-color); }
+
+  .actions-section { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+  .action-btn { padding: 0.55rem 1.25rem; border-radius: 8px; font-family: var(--font-sans); font-size: 0.88rem; font-weight: 700; cursor: pointer; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); transition: background 0.15s, border-color 0.15s; }
+  .action-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+  .reset-btn:hover { border-color: #dc2626 !important; color: #dc2626 !important; }
+
+  @media (max-width: 760px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .modules-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  }
+</style>

@@ -5,6 +5,11 @@ const root = process.cwd();
 const tutorialsDir = path.join(root, 'src/content/tutorials');
 const blogDir = path.join(root, 'src/content/blog');
 const publicDir = path.join(root, 'public');
+const tutorialLevelOrder = new Map([
+  ['beginner', 1],
+  ['intermediate', 2],
+  ['advanced', 3],
+]);
 
 async function listMdxFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -49,9 +54,20 @@ function stripMdxForLlms(body) {
   const lines = body.split('\n');
   const kept = [];
   let skippingSelfClosingComponent = false;
+  let inFence = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
+
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence;
+      kept.push(line);
+      continue;
+    }
+
+    if (!inFence && /^import\s+.*?;?$/.test(trimmed)) {
+      continue;
+    }
 
     if (skippingSelfClosingComponent) {
       if (trimmed.endsWith('/>')) skippingSelfClosingComponent = false;
@@ -71,7 +87,6 @@ function stripMdxForLlms(body) {
   }
 
   return kept.join('\n')
-    .replace(/^import\s+.*?;?\n/gm, '')
     .replace(/<\/?([A-Z][A-Za-z0-9]*)\b[^>]*>/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -122,17 +137,23 @@ function contentSection(item, url) {
   ].join('\n');
 }
 
-async function buildTutorialsLlms() {
+async function buildTutorialsLlms(options = {}) {
+  const {
+    pathFilter,
+    title = 'yellamaraju.com Tutorials LLM Export',
+    purpose = 'Purpose: consolidated tutorial content for LLM-assisted reading, search, and offline reference.',
+  } = options;
   const files = await listMdxFiles(tutorialsDir);
   const items = await Promise.all(files.map((file) => readContentFile(file, tutorialsDir)));
   const publicItems = items
     .filter((item) => item.data.draft !== true)
+    .filter((item) => !pathFilter || item.data.path === pathFilter)
     .sort((a, b) => {
       const pathOrder = (a.data.pathOrder ?? 99) - (b.data.pathOrder ?? 99);
       if (pathOrder !== 0) return pathOrder;
       const pathCompare = String(a.data.path ?? '').localeCompare(String(b.data.path ?? ''));
       if (pathCompare !== 0) return pathCompare;
-      const levelCompare = String(a.data.level ?? '').localeCompare(String(b.data.level ?? ''));
+      const levelCompare = (tutorialLevelOrder.get(a.data.level) ?? 99) - (tutorialLevelOrder.get(b.data.level) ?? 99);
       if (levelCompare !== 0) return levelCompare;
       return (a.data.module ?? 99) - (b.data.module ?? 99);
     });
@@ -146,9 +167,9 @@ async function buildTutorialsLlms() {
 
   const sections = publicItems.map((item) => contentSection(item, tutorialUrl(item))).join('\n\n---\n\n');
   return [
-    '# yellamaraju.com Tutorials LLM Export',
+    `# ${title}`,
     '',
-    'Purpose: consolidated tutorial content for LLM-assisted reading, search, and offline reference.',
+    purpose,
     '',
     '## Index',
     index,
@@ -190,7 +211,13 @@ async function buildFieldGuideLlms() {
 
 await fs.mkdir(publicDir, { recursive: true });
 await fs.writeFile(path.join(publicDir, 'tutorials-llms.txt'), await buildTutorialsLlms());
+await fs.writeFile(path.join(publicDir, 'llm-mastery-llms.txt'), await buildTutorialsLlms({
+  pathFilter: 'llm-mastery',
+  title: 'yellamaraju.com LLM Mastery Course LLM Export',
+  purpose: 'Purpose: complete free LLM Mastery course content for LLM-assisted study, search, cohort preparation, and offline reference.',
+}));
 await fs.writeFile(path.join(publicDir, 'field-guide-llms.txt'), await buildFieldGuideLlms());
 
 console.log('Generated public/tutorials-llms.txt');
+console.log('Generated public/llm-mastery-llms.txt');
 console.log('Generated public/field-guide-llms.txt');

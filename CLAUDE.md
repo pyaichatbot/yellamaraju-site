@@ -1,0 +1,1 @@
+All the instructions are available at AGENTS.md which must be followed strictly.

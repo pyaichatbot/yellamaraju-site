@@ -1674,6 +1674,8 @@ Models are becoming commodities. The harness is where the actual engineering adv
 Here is a minimal but real harness pattern, without any framework, just Python:
 
 ```python
+import anthropic
+import json
 from typing import Any
 
 def run_agent(user_message: str, tools: list[dict]) -> str:
@@ -1924,6 +1926,7 @@ You are not clustering by input similarity alone. You are clustering by failure 
 
 ```python
 from sklearn.cluster import DBSCAN
+import numpy as np
 
 def cluster_failures(
     failure_traces: list[FailureTrace],
@@ -4565,6 +4568,7 @@ DePIN solves this through **separation of concerns**:
 **Core Function**: Match compute tasks to optimal nodes using multi-objective optimization. This [AI agent](https://www.anthropic.com/engineering/building-effective-agents) acts as an intelligent scheduler.
 
 ```python
+import networkx as nx
 
 class ExecutorAgent:
     def __init__(self, node_graph):
@@ -4762,6 +4766,8 @@ depin-mvp/
 
 ```python
 # data/generate_nodes.py
+import pandas as pd
+import random
 
 nodes = []
 for i in range(100):
@@ -4783,6 +4789,8 @@ pd.DataFrame(nodes).to_csv('data/nodes.csv', index=False)
 
 ```python
 # src/executor_agent.py
+import networkx as nx
+import pandas as pd
 
 class GreenExecutor:
     def __init__(self, nodes_csv):
@@ -4835,6 +4843,8 @@ print(f"Allocated to {selected} (score: {score:.2f})")
 ```python
 # src/blockchain_anchor.py
 from web3 import Web3
+import hashlib
+import json
 
 class TestnetAnchor:
     def __init__(self, provider_url):
@@ -4880,6 +4890,7 @@ print(f"Proof anchored: {tx_proof}")
 from src.executor_agent import GreenExecutor
 from src.verifier_agent import HashVerifier
 from src.blockchain_anchor import TestnetAnchor
+import time
 
 # Initialize components
 executor = GreenExecutor('data/nodes.csv')
@@ -5265,6 +5276,8 @@ In this first part, we'll cover the foundation layer: training data and promptin
 
 ```python
 # Example: Data quality audit before training
+import pandas as pd
+import numpy as np
 
 def audit_training_data(df):
     """
@@ -5489,6 +5502,7 @@ RAG systems can still hallucinate at a 90% error rate in some domains, like when
 
 ```python
 from datetime import datetime, timedelta
+import numpy as np
 from typing import List, Dict
 
 class RAGQualityManager:
@@ -5639,6 +5653,7 @@ Think of it like giving someone a 500-page manual when they just asked how to tu
 
 ```python
 from typing import List, Dict, Tuple
+import tiktoken
 
 class ContextEngineer:
     """
@@ -6002,6 +6017,7 @@ Each major provider now ships a reasonably ergonomic Python SDK, but the ergonom
 ```python
 # openai_client.py
 from openai import OpenAI
+import os
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
@@ -6012,6 +6028,8 @@ openai_client = OpenAI(
 
 ```python
 # anthropic_client.py
+import anthropic
+import os
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 
@@ -6023,6 +6041,7 @@ anthropic_client = anthropic.Anthropic(
 ```python
 # google_client.py
 from google import genai
+import os
 
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
@@ -6171,6 +6190,8 @@ This tree separates "try again" problems from "stop now" problems, which is esse
 
 ```python
 # llm_wrapper.py
+import time
+import logging
 from typing import Optional
 from .clients import openai_client, anthropic_client, gemini_client
 from .schemas import LLMRequest
@@ -6350,6 +6371,8 @@ Common approaches:
 
 ```python
 # rate_limiter.py
+import time
+import threading
 
 class TokenBucket:
     def __init__(self, rate_per_sec: float, capacity: int):
@@ -6387,6 +6410,7 @@ Bringing everything together, here is a simplified wrapper class that you can gr
 
 ```python
 # production_llm_client.py
+import logging
 from typing import Optional
 from .schemas import LLMRequest
 from .llm_wrapper import call_llm, LLMError
@@ -6464,6 +6488,7 @@ As a final practical tool, here is a tiny CLI script you can run locally to esti
 
 ```python
 # cost_cli.py
+import argparse
 from pricing import estimate_cost
 
 def main():
@@ -6778,6 +6803,7 @@ versions:
 
 ```python
 # loader.py
+import yaml
 from pathlib import Path
 
 def load_prompt(prompt_id: str, version: str) -> str:

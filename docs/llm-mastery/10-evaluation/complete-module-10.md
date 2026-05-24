@@ -1,0 +1,884 @@
+# Module 10 — Evaluation
+
+> *How do you know if your model is actually good? Measure everything.*
+
+---
+
+# 01 — AI Benchmarks
+
+## Why Benchmarks Exist
+
+A benchmark is a standardized test with known correct answers, run against many models so you can compare them objectively.
+
+Without benchmarks:
+- "Model A is better" → based on what?
+- Fine-tuned model vs base model → which is better?
+- How does your model compare to the industry?
+
+---
+
+## Key Benchmarks You Should Know
+
+### General Knowledge
+| Benchmark | What It Tests | Example Question |
+|-----------|--------------|-----------------|
+| MMLU | 57 subjects: law, medicine, math, history... | "Which of the following is a property of acids?" |
+| ARC | Grade school science | "What layer of Earth is the thinnest?" |
+| TruthfulQA | Tendency to hallucinate | "What happens if you swallow a watermelon seed?" |
+| HellaSwag | Common-sense reasoning | Complete the most likely next sentence |
+
+### Reasoning & Math
+| Benchmark | What It Tests |
+|-----------|-------------|
+| GSM8K | Grade school math word problems |
+| MATH | Undergraduate-level math (hard) |
+| GPQA | Graduate-level science (very hard) |
+| AQuA | Algebra word problems |
+
+### Coding
+| Benchmark | What It Tests |
+|-----------|-------------|
+| HumanEval | Python function generation |
+| MBPP | Simple Python programming problems |
+| LiveCodeBench | Real competitive programming (harder to "leak") |
+| SWE-bench | Real GitHub issue resolution (very hard) |
+
+### Long Context
+| Benchmark | What It Tests |
+|-----------|-------------|
+| RULER | Retrieval in very long contexts |
+| NIAH | Needle-in-a-haystack: find fact in 100K+ tokens |
+| BABILong | Multi-hop reasoning across long documents |
+
+---
+
+## The Benchmark Overfitting Problem
+
+**The dirty secret:** Models can be trained to score well on benchmarks without being better in practice.
+
+This happens because:
+1. Training data may include benchmark questions
+2. Models can be fine-tuned specifically on benchmark-style questions
+3. Benchmark questions become stale once widely used
+
+**What this means for you:**
+- Don't pick a model based solely on benchmark scores
+- Always evaluate on your ACTUAL use case
+- Prefer newer, "contamination-resistant" benchmarks (LiveCodeBench, GPQA)
+- Create your OWN evaluation set and test on it
+
+---
+
+## Running Benchmarks
+
+```python
+# Using lm-evaluation-harness (industry standard)
+# pip install lm-eval
+
+# Evaluate your fine-tuned model on MMLU
+!python -m lm_eval \
+  --model hf \
+  --model_args pretrained="./your-fine-tuned-model" \
+  --tasks mmlu \
+  --device cuda:0 \
+  --batch_size 8 \
+  --output_path "./eval_results"
+
+# Evaluate on multiple benchmarks
+!python -m lm_eval \
+  --model hf \
+  --model_args pretrained="./your-model" \
+  --tasks mmlu,gsm8k,hellaswag,arc_easy \
+  --device cuda:0 \
+  --batch_size 8
+
+# Compare to a baseline (base model before fine-tuning)
+!python -m lm_eval \
+  --model hf \
+  --model_args pretrained="meta-llama/Meta-Llama-3-8B-Instruct" \
+  --tasks mmlu,gsm8k \
+  --device cuda:0
+```
+
+---
+
+## Evaluating Domain-Specific Performance
+
+For compliance AI, standard benchmarks don't measure what matters. Build your own:
+
+```python
+import anthropic
+import json
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class EvalCase:
+    question: str
+    expected_answer: str
+    required_keywords: list[str]
+    forbidden_phrases: list[str]
+    regulation: str
+    difficulty: str  # easy/medium/hard
+
+# Your domain-specific test suite
+COMPLIANCE_EVAL_SET = [
+    EvalCase(
+        question="Under GDPR, how long does a controller have to respond to a data subject access request?",
+        expected_answer="One month, extendable to three months for complex cases",
+        required_keywords=["one month", "30 days", "Article 12"],
+        forbidden_phrases=["I'm not sure", "you should ask a lawyer"],
+        regulation="GDPR",
+        difficulty="easy"
+    ),
+    EvalCase(
+        question="What are the conditions under which GDPR SCA exemptions apply to contactless payments?",
+        expected_answer="Contactless payments below EUR 50 per transaction, not exceeding EUR 150 cumulative or 5 consecutive contactless transactions",
+        required_keywords=["50", "150", "contactless", "SCA"],
+        forbidden_phrases=["I don't know", "unclear"],
+        regulation="PSD2",
+        difficulty="hard"
+    ),
+    # Add 50-100 more cases
+]
+
+def evaluate_model_on_compliance(model_id: str, eval_set: list[EvalCase]) -> dict:
+    client = anthropic.Anthropic()
+    results = []
+
+    for case in eval_set:
+        response = client.messages.create(
+            model=model_id,
+            max_tokens=300,
+            system="You are an expert in EU financial compliance regulations.",
+            messages=[{"role": "user", "content": case.question}]
+        )
+        answer = response.content[0].text
+
+        # Scoring
+        keyword_hits = sum(1 for kw in case.required_keywords
+                          if kw.lower() in answer.lower())
+        keyword_recall = keyword_hits / len(case.required_keywords) if case.required_keywords else 1.0
+
+        forbidden_hits = sum(1 for ph in case.forbidden_phrases
+                            if ph.lower() in answer.lower())
+
+        passed = keyword_recall >= 0.7 and forbidden_hits == 0
+
+        results.append({
+            "question": case.question,
+            "answer": answer,
+            "keyword_recall": keyword_recall,
+            "forbidden_phrases_found": forbidden_hits,
+            "passed": passed,
+            "regulation": case.regulation,
+            "difficulty": case.difficulty
+        })
+
+    # Aggregate metrics
+    total = len(results)
+    passed = sum(1 for r in results if r["passed"])
+
+    by_difficulty = {}
+    for diff in ["easy", "medium", "hard"]:
+        diff_results = [r for r in results if r["difficulty"] == diff]
+        if diff_results:
+            by_difficulty[diff] = sum(1 for r in diff_results if r["passed"]) / len(diff_results)
+
+    by_regulation = {}
+    for reg in set(r["regulation"] for r in results):
+        reg_results = [r for r in results if r["regulation"] == reg]
+        by_regulation[reg] = sum(1 for r in reg_results if r["passed"]) / len(reg_results)
+
+    return {
+        "model": model_id,
+        "overall_pass_rate": passed / total,
+        "by_difficulty": by_difficulty,
+        "by_regulation": by_regulation,
+        "avg_keyword_recall": sum(r["keyword_recall"] for r in results) / total,
+        "detailed_results": results
+    }
+
+# Compare base model vs fine-tuned
+base_results = evaluate_model_on_compliance("claude-haiku-4-5-20251001", COMPLIANCE_EVAL_SET)
+# fine_tuned_results = evaluate_model_on_compliance("your-fine-tuned-model", COMPLIANCE_EVAL_SET)
+
+print(f"Pass rate: {base_results['overall_pass_rate']:.1%}")
+print(f"By difficulty: {base_results['by_difficulty']}")
+print(f"By regulation: {base_results['by_regulation']}")
+```
+
+---
+
+# 02 — Human Evals
+
+## When Automated Metrics Aren't Enough
+
+Some qualities are hard to measure programmatically:
+- Is the response tone appropriate?
+- Is the explanation clear and engaging?
+- Does it match the expected format perfectly?
+- Does it feel helpful rather than just technically correct?
+
+Human evaluation captures these nuances.
+
+---
+
+## Designing Human Evaluations
+
+### Pairwise comparison (most reliable)
+Show evaluators two responses side-by-side, ask which is better.
+
+```python
+def create_pairwise_eval_task(question: str, response_a: str, response_b: str) -> dict:
+    return {
+        "question": question,
+        "response_a": response_a,
+        "response_b": response_b,
+        "evaluator_prompt": """Compare these two responses to the question.
+
+Question: {question}
+
+Response A:
+{response_a}
+
+Response B:
+{response_b}
+
+Rate each response on:
+1. Accuracy (1-5): Is the information correct?
+2. Completeness (1-5): Does it fully answer the question?
+3. Clarity (1-5): Is it easy to understand?
+4. Appropriateness (1-5): Right tone and format?
+
+Which response would you prefer? (A / B / Tie)
+Explain your reasoning briefly."""
+    }
+```
+
+### LLM-as-Judge (scalable alternative)
+Use a strong model to evaluate outputs — much cheaper than human raters:
+
+```python
+def llm_judge(question: str, response: str, criteria: str, judge_model="claude-sonnet-4-20250514") -> dict:
+    """Use Claude as evaluator — scalable human eval proxy"""
+
+    client = anthropic.Anthropic()
+
+    judge_prompt = f"""You are an expert compliance evaluator.
+Rate the following response to this compliance question.
+
+QUESTION: {question}
+
+RESPONSE TO EVALUATE:
+{response}
+
+EVALUATION CRITERIA: {criteria}
+
+Evaluate and return JSON:
+{{
+  "accuracy": {{
+    "score": 1-5,
+    "reasoning": "explanation"
+  }},
+  "completeness": {{
+    "score": 1-5,
+    "reasoning": "explanation"
+  }},
+  "clarity": {{
+    "score": 1-5,
+    "reasoning": "explanation"
+  }},
+  "overall": {{
+    "score": 1-5,
+    "verdict": "pass/fail",
+    "key_issues": ["list of main problems if any"]
+  }}
+}}
+
+Be strict and objective. A score of 5 means essentially perfect."""
+
+    response_obj = client.messages.create(
+        model=judge_model,
+        max_tokens=600,
+        messages=[{"role": "user", "content": judge_prompt}]
+    )
+
+    try:
+        return json.loads(response_obj.content[0].text)
+    except json.JSONDecodeError:
+        return {"error": "Could not parse evaluation", "raw": response_obj.content[0].text}
+
+
+# Run LLM-as-judge on your eval set
+def batch_llm_eval(eval_cases: list, model_to_evaluate: str) -> dict:
+    client = anthropic.Anthropic()
+    all_scores = []
+
+    for case in eval_cases:
+        # Get model response
+        resp = client.messages.create(
+            model=model_to_evaluate,
+            max_tokens=300,
+            messages=[{"role": "user", "content": case["question"]}]
+        )
+        model_answer = resp.content[0].text
+
+        # Judge it
+        evaluation = llm_judge(
+            question=case["question"],
+            response=model_answer,
+            criteria="Accuracy of regulatory information, completeness, appropriate citations"
+        )
+
+        all_scores.append({
+            "question": case["question"],
+            "answer": model_answer,
+            "evaluation": evaluation
+        })
+
+    # Aggregate
+    avg_accuracy = sum(s["evaluation"].get("accuracy", {}).get("score", 0) for s in all_scores) / len(all_scores)
+    avg_completeness = sum(s["evaluation"].get("completeness", {}).get("score", 0) for s in all_scores) / len(all_scores)
+    pass_rate = sum(1 for s in all_scores if s["evaluation"].get("overall", {}).get("verdict") == "pass") / len(all_scores)
+
+    return {
+        "model": model_to_evaluate,
+        "avg_accuracy": round(avg_accuracy, 2),
+        "avg_completeness": round(avg_completeness, 2),
+        "pass_rate": round(pass_rate, 3),
+        "n_evaluated": len(all_scores),
+        "details": all_scores
+    }
+```
+
+---
+
+## Human Eval Best Practices
+
+| Practice | Why |
+|---------|-----|
+| Use multiple evaluators | Single evaluator introduces bias |
+| Blind evaluation | Don't reveal which model produced which output |
+| Calibration examples | Show evaluators what 1, 3, 5 look like |
+| Measure inter-rater agreement | If evaluators disagree > 40%, criteria unclear |
+| Random ordering | Presentation order affects ratings |
+| Mix A/B randomly | Prevent position bias (first response rated higher) |
+
+---
+
+# 03 — Cost-Per-Token Analysis
+
+## Why Cost Matters
+
+Quality × Cost = Business viability.
+
+A model can be perfect quality but too expensive for your use case. Or cheap but too low quality. You need to find the right balance.
+
+---
+
+## Building a Cost Model
+
+```python
+# Complete cost analysis toolkit
+
+class TokenCostCalculator:
+    """Calculate and compare costs across models"""
+
+    # Prices per million tokens (verify current prices at provider websites)
+    PRICING = {
+        # Anthropic
+        "claude-haiku-4-5-20251001": {"input": 0.25, "output": 1.25},
+        "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
+        "claude-opus-4": {"input": 15.00, "output": 75.00},
+        # OpenAI
+        "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+        "gpt-4o": {"input": 2.50, "output": 10.00},
+        # Self-hosted (electricity + hardware amortization — rough estimate)
+        "llama-3-8b-local": {"input": 0.0001, "output": 0.0005},
+        "llama-3-70b-local-a100": {"input": 0.001, "output": 0.005},
+    }
+
+    def per_call_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        if model not in self.PRICING:
+            raise ValueError(f"Unknown model: {model}")
+        p = self.PRICING[model]
+        return (input_tokens / 1e6 * p["input"]) + (output_tokens / 1e6 * p["output"])
+
+    def monthly_cost(self, model: str, calls_per_day: int,
+                     avg_input: int, avg_output: int) -> dict:
+        per_call = self.per_call_cost(model, avg_input, avg_output)
+        daily = per_call * calls_per_day
+        monthly = daily * 30
+        annual = daily * 365
+
+        return {
+            "model": model,
+            "per_call_usd": round(per_call, 6),
+            "daily_usd": round(daily, 4),
+            "monthly_usd": round(monthly, 2),
+            "annual_usd": round(annual, 2),
+            "calls_per_day": calls_per_day,
+        }
+
+    def compare_models(self, models: list, calls_per_day: int,
+                       avg_input: int, avg_output: int) -> list:
+        results = []
+        for model in models:
+            try:
+                result = self.monthly_cost(model, calls_per_day, avg_input, avg_output)
+                results.append(result)
+            except ValueError as e:
+                print(f"Warning: {e}")
+
+        return sorted(results, key=lambda x: x["monthly_usd"])
+
+# Usage
+calc = TokenCostCalculator()
+
+# Scenario: Compliance query service, 1000 queries/day, 500 input + 300 output tokens each
+scenario = {
+    "calls_per_day": 1000,
+    "avg_input_tokens": 500,
+    "avg_output_tokens": 300,
+}
+
+models_to_compare = [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-20250514",
+    "gpt-4o-mini",
+    "gpt-4o",
+    "llama-3-8b-local",
+]
+
+comparison = calc.compare_models(models_to_compare, **scenario)
+
+print(f"\nCost comparison for {scenario['calls_per_day']} calls/day, "
+      f"{scenario['avg_input_tokens']} input + {scenario['avg_output_tokens']} output tokens:\n")
+print(f"{'Model':<35} {'Per Call':>10} {'Monthly':>12} {'Annual':>12}")
+print("-" * 75)
+for r in comparison:
+    print(f"{r['model']:<35} ${r['per_call_usd']:>9.5f} ${r['monthly_usd']:>11.2f} ${r['annual_usd']:>11.2f}")
+```
+
+---
+
+## The Quality-Cost Frontier
+
+```python
+def find_cost_quality_optimum(models_with_quality_scores: list) -> dict:
+    """
+    Given models with quality scores and costs, find the optimal choice.
+
+    models_with_quality_scores: list of {model, quality_score, monthly_cost}
+    """
+
+    # Normalize both dimensions 0-1
+    max_quality = max(m["quality_score"] for m in models_with_quality_scores)
+    max_cost = max(m["monthly_cost"] for m in models_with_quality_scores)
+
+    # Add efficiency score: quality per dollar
+    for m in models_with_quality_scores:
+        m["efficiency"] = m["quality_score"] / (m["monthly_cost"] + 0.01)  # avoid /0
+        m["norm_quality"] = m["quality_score"] / max_quality
+        m["norm_cost"] = m["monthly_cost"] / max_cost
+
+    # Sort by efficiency
+    ranked = sorted(models_with_quality_scores, key=lambda x: x["efficiency"], reverse=True)
+
+    return {
+        "most_efficient": ranked[0],   # Best quality per dollar
+        "best_quality": max(models_with_quality_scores, key=lambda x: x["quality_score"]),
+        "cheapest": min(models_with_quality_scores, key=lambda x: x["monthly_cost"]),
+        "all_ranked_by_efficiency": ranked
+    }
+
+# Example
+models_evaluated = [
+    {"model": "claude-haiku-4-5-20251001", "quality_score": 78, "monthly_cost": 15},
+    {"model": "claude-sonnet-4-20250514", "quality_score": 91, "monthly_cost": 135},
+    {"model": "gpt-4o-mini", "quality_score": 75, "monthly_cost": 7},
+    {"model": "llama-3-8b-local", "quality_score": 71, "monthly_cost": 3},
+]
+
+result = find_cost_quality_optimum(models_evaluated)
+print(f"\nMost efficient: {result['most_efficient']['model']}")
+print(f"Best quality: {result['best_quality']['model']}")
+print(f"Cheapest: {result['cheapest']['model']}")
+```
+
+---
+
+# 04 — Speed & Quality Benchmarking
+
+## Measuring What Actually Matters in Production
+
+Speed metrics that matter:
+- **Time to First Token (TTFT)**: Perceived responsiveness
+- **Tokens Per Second (TPS)**: Generation throughput
+- **End-to-end latency**: Full request time
+- **Throughput**: Concurrent requests handled
+
+---
+
+## Latency Benchmarking
+
+```python
+import time
+import asyncio
+import anthropic
+from statistics import mean, stdev
+
+client = anthropic.Anthropic()
+
+def benchmark_latency(
+    model: str,
+    prompt: str,
+    max_tokens: int = 200,
+    runs: int = 10
+) -> dict:
+    """Measure TTFT and TPS for a model"""
+
+    ttfts = []
+    total_times = []
+    token_counts = []
+
+    for i in range(runs):
+        start = time.time()
+        first_token_time = None
+        all_tokens = []
+
+        # Streaming to measure TTFT
+        with client.messages.stream(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}]
+        ) as stream:
+            for text in stream.text_stream:
+                if first_token_time is None:
+                    first_token_time = time.time()
+                all_tokens.append(text)
+
+        end = time.time()
+
+        ttft = (first_token_time - start) * 1000 if first_token_time else 0
+        total_time = end - start
+        token_count = len("".join(all_tokens).split())  # Rough token count
+
+        ttfts.append(ttft)
+        total_times.append(total_time)
+        token_counts.append(token_count)
+
+        print(f"  Run {i+1}/{runs}: TTFT={ttft:.0f}ms, Total={total_time:.2f}s")
+
+    avg_tokens = mean(token_counts)
+    avg_total = mean(total_times)
+
+    return {
+        "model": model,
+        "runs": runs,
+        "ttft_ms": {
+            "mean": round(mean(ttfts), 1),
+            "stdev": round(stdev(ttfts) if len(ttfts) > 1 else 0, 1),
+            "min": round(min(ttfts), 1),
+            "max": round(max(ttfts), 1),
+        },
+        "total_time_sec": {
+            "mean": round(avg_total, 2),
+            "stdev": round(stdev(total_times) if len(total_times) > 1 else 0, 2),
+        },
+        "avg_tokens_per_second": round(avg_tokens / avg_total, 1),
+        "avg_output_tokens": round(avg_tokens, 1),
+    }
+
+# Benchmark test
+test_prompt = "Explain the key requirements of DORA for financial entities operating cloud infrastructure."
+
+print("Benchmarking Claude Haiku...")
+haiku_results = benchmark_latency("claude-haiku-4-5-20251001", test_prompt)
+
+print("\nBenchmarking Claude Sonnet...")
+sonnet_results = benchmark_latency("claude-sonnet-4-20250514", test_prompt)
+
+# Print comparison
+print("\n" + "="*60)
+print("BENCHMARK RESULTS")
+print("="*60)
+for results in [haiku_results, sonnet_results]:
+    print(f"\n{results['model']}:")
+    print(f"  TTFT: {results['ttft_ms']['mean']}ms ± {results['ttft_ms']['stdev']}ms")
+    print(f"  Total: {results['total_time_sec']['mean']}s ± {results['total_time_sec']['stdev']}s")
+    print(f"  Speed: {results['avg_tokens_per_second']} tokens/sec")
+```
+
+---
+
+## Quality vs Speed Dashboard
+
+```python
+def build_eval_dashboard(models: list, eval_cases: list) -> dict:
+    """Complete evaluation: quality + speed + cost in one shot"""
+
+    dashboard = []
+
+    for model in models:
+        print(f"Evaluating {model}...")
+
+        # Quality eval
+        quality = evaluate_model_on_compliance(model, eval_cases)  # from Module 10 section 01
+
+        # Speed benchmark (3 runs, quick)
+        speed = benchmark_latency(model, eval_cases[0]["question"], runs=3)
+
+        # Cost
+        calc = TokenCostCalculator()
+        cost_data = calc.monthly_cost(model, calls_per_day=500, avg_input=500, avg_output=250)
+
+        dashboard.append({
+            "model": model,
+            "quality": {
+                "pass_rate": quality["overall_pass_rate"],
+                "avg_keyword_recall": quality.get("avg_keyword_recall", 0)
+            },
+            "speed": {
+                "ttft_ms": speed["ttft_ms"]["mean"],
+                "tokens_per_sec": speed["avg_tokens_per_second"]
+            },
+            "cost": {
+                "per_call_usd": cost_data["per_call_usd"],
+                "monthly_usd": cost_data["monthly_usd"]
+            }
+        })
+
+    return dashboard
+
+# Print formatted comparison table
+def print_dashboard(dashboard: list):
+    print(f"\n{'Model':<35} {'Pass%':>6} {'TTFT':>8} {'TPS':>6} {'$/mo':>10}")
+    print("-" * 75)
+    for d in dashboard:
+        print(
+            f"{d['model']:<35} "
+            f"{d['quality']['pass_rate']:.0%}  "
+            f"{d['speed']['ttft_ms']:>6.0f}ms "
+            f"{d['speed']['tokens_per_sec']:>6.1f} "
+            f"${d['cost']['monthly_usd']:>9.2f}"
+        )
+```
+
+---
+
+## 📝 Module 10 Summary
+
+| Concept | Key Takeaway |
+|---------|-------------|
+| AI benchmarks | Standardized tests for comparing models — but measure YOUR task |
+| Custom eval suite | 50-100 domain-specific test cases is your most valuable evaluation tool |
+| LLM-as-Judge | Scalable human eval proxy — use a strong model to judge a weaker one |
+| Human evals | Essential for subjective quality — use pairwise comparison, blind evaluation |
+| Cost analysis | Quality × Cost = viability. Find the model that maximizes quality per dollar |
+| Speed benchmarks | TTFT for perceived latency, TPS for throughput, both matter for UX |
+
+---
+
+## Enterprise Release Gate
+
+For enterprise systems, evaluation is a release decision. A model is not "better" unless it is better on the business task and safe enough for the intended deployment context.
+
+Required gates:
+
+| Gate | Example threshold |
+|------|-------------------|
+| Baseline comparison | Beats current process or base model by agreed margin |
+| Domain quality | >= 85% pass rate on locked domain eval set |
+| Hallucination severity | Zero critical hallucinations in release suite |
+| Prompt injection | Blocks or safely handles known attack patterns |
+| Privacy leakage | No PII/secrets emitted from red-team cases |
+| RAG citation quality | >= 90% answers cite relevant approved sources |
+| Agent authorization | No unauthorized tool execution in test suite |
+| Cost | Within monthly budget at expected traffic |
+| Latency | Meets P95 target for target user workflow |
+| Human oversight | High-risk outputs require review before action |
+
+Release decision template:
+
+```markdown
+# Evaluation Release Gate
+
+**System/version:**
+**Baseline:**
+**Eval dataset version:**
+**Quality pass rate:**
+**Safety test result:**
+**Privacy test result:**
+**Cost estimate:**
+**Latency result:**
+**Known failures:**
+**Residual risk:**
+**Decision:** Approve / Approve with conditions / Block
+**Required follow-up:**
+```
+
+---
+
+## 🧠 Mental Model
+
+> Evaluation is the scientific method for AI systems.
+> Hypothesis: "My fine-tuned model is better."
+> Experiment: Run both models on 100 test cases you didn't train on.
+> Measure: Pass rate, accuracy, latency, cost.
+> Conclusion: Is the hypothesis supported by data?
+>
+> Never deploy without measuring.
+
+---
+
+## ❌ Beginner Mistakes
+
+1. **Evaluating on training data** — That's measuring memorization, not learning. Always hold out a test set.
+2. **Only using benchmark scores** — Run on YOUR task. Benchmarks are a proxy, not the truth.
+3. **Ignoring cost** — The best quality model at 10× the cost may not be viable.
+4. **No baseline comparison** — Always compare to the base model or current system.
+5. **Single evaluator** — Human bias is real. Use multiple evaluators or LLM-as-judge.
+6. **Not tracking over time** — Eval should run automatically in CI/CD on every model update.
+
+---
+
+## 🏋️ Module Exercise
+
+**Build a complete evaluation pipeline for a compliance model:**
+
+```python
+import anthropic
+import json
+import time
+
+client = anthropic.Anthropic()
+
+# Step 1: Create a small eval dataset (manually or with Claude)
+eval_dataset = [
+    {
+        "question": "Under GDPR, what is the maximum fine for serious violations?",
+        "required_keywords": ["20 million", "4%", "annual", "turnover", "Article 83"],
+        "expected_topics": ["fines", "penalties", "enforcement"]
+    },
+    {
+        "question": "What does PSD2 require for Strong Customer Authentication?",
+        "required_keywords": ["two factors", "knowledge", "possession", "inherence", "SCA"],
+        "expected_topics": ["authentication", "payment security"]
+    },
+    {
+        "question": "How many days does GDPR give organizations to report a data breach to supervisory authority?",
+        "required_keywords": ["72 hours", "Article 33", "supervisory authority"],
+        "expected_topics": ["breach notification", "timeline"]
+    },
+]
+
+# Step 2: Evaluate multiple models
+models_to_test = ["claude-haiku-4-5-20251001", "claude-sonnet-4-20250514"]
+results = {}
+
+for model in models_to_test:
+    model_results = []
+    start_total = time.time()
+
+    for case in eval_dataset:
+        start = time.time()
+        resp = client.messages.create(
+            model=model,
+            max_tokens=250,
+            system="You are an expert in EU financial compliance regulations.",
+            messages=[{"role": "user", "content": case["question"]}]
+        )
+        latency_ms = (time.time() - start) * 1000
+        answer = resp.content[0].text
+
+        kw_score = sum(1 for kw in case["required_keywords"]
+                      if kw.lower() in answer.lower()) / len(case["required_keywords"])
+
+        model_results.append({
+            "question": case["question"],
+            "answer": answer,
+            "keyword_score": kw_score,
+            "latency_ms": round(latency_ms, 1),
+            "pass": kw_score >= 0.6
+        })
+
+    total_time = time.time() - start_total
+    results[model] = {
+        "pass_rate": sum(1 for r in model_results if r["pass"]) / len(model_results),
+        "avg_keyword_score": sum(r["keyword_score"] for r in model_results) / len(model_results),
+        "avg_latency_ms": sum(r["latency_ms"] for r in model_results) / len(model_results),
+        "total_eval_time_sec": round(total_time, 1),
+        "details": model_results
+    }
+
+# Step 3: Print results
+print("\n" + "="*60)
+print("COMPLIANCE MODEL EVALUATION RESULTS")
+print("="*60)
+
+for model, r in results.items():
+    print(f"\n{model}:")
+    print(f"  Pass rate:       {r['pass_rate']:.1%}")
+    print(f"  Avg KW score:    {r['avg_keyword_score']:.1%}")
+    print(f"  Avg latency:     {r['avg_latency_ms']:.0f}ms")
+
+# Save results
+with open("eval_results.json", "w") as f:
+    json.dump(results, f, indent=2)
+print("\nResults saved to eval_results.json")
+```
+
+### Required Enterprise Evaluation Extensions
+
+Expand the dataset beyond keyword checks:
+
+| Case type | Minimum count | Purpose |
+|-----------|---------------|---------|
+| Domain accuracy | 10 | Measures normal task quality |
+| Safety/refusal | 5 | Checks legal advice, unsupported claims, and out-of-scope requests |
+| Privacy | 3 | Checks whether the system exposes or asks for sensitive data unnecessarily |
+| Prompt injection | 3 | Checks instruction hierarchy and retrieved-content attacks |
+| Failure severity | All failures | Classify as low, medium, high, or critical |
+
+Add a release decision:
+
+```markdown
+# Evaluation Release Decision
+
+**Quality threshold:**
+**Safety threshold:**
+**Privacy threshold:**
+**Cost threshold:**
+**Latency threshold:**
+**Result:** Approve / Approve with conditions / Block
+**Threshold justification:**
+**Top failure modes:**
+**Required fixes before rollout:**
+```
+
+### Lab Submission
+
+Submit:
+
+- `eval_cases.jsonl` with domain, safety, privacy, and prompt-injection cases.
+- `eval_results.json`.
+- `failure_analysis.md` with severity, root cause, and remediation.
+- `release_decision.md` with thresholds and approval decision.
+- `README.md` explaining how to rerun the evaluation.
+
+### Pass/Fail Standard
+
+| Requirement | Pass standard |
+|-------------|---------------|
+| Coverage | Includes domain, safety, privacy, and prompt-injection cases |
+| Baseline | Compares at least two models or current vs candidate system |
+| Severity | Every failed case has severity and remediation |
+| Thresholds | Release thresholds are defined before interpreting results |
+| Decision | Final decision is approve, approve with conditions, or block |
+| Reproducibility | Eval cases, model versions, and run date are recorded |
+
+---
+
+*Move to [Module 11 — Real-World Skills](../11-real-world-skills/complete-module-11.md)*

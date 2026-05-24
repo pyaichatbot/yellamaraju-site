@@ -18,6 +18,16 @@
   to = "/.netlify/functions/newsletter"
   status = 200
 
+[[redirects]]
+  from = "/api/enroll"
+  to = "/.netlify/functions/enroll"
+  status = 200
+
+[[redirects]]
+  from = "/api/enrollments"
+  to = "/.netlify/functions/enrollments"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

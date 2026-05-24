@@ -1,0 +1,313 @@
+---
+title: "How AI Models Work"
+description: "Neural networks, training, softmax, architecture, and why next-token prediction becomes useful behavior."
+level: beginner
+path: llm-mastery
+pathTitle: "LLM Mastery"
+pathOrder: 6
+module: 3
+totalModules: 5
+roles: ["dev","qa","ba","pm","exec"]
+tags: ["LLM Foundations","Neural Networks","Training"]
+date: 2026-05-24
+estimatedTime: "30 min"
+prerequisites: ["What Is an LLM?"]
+---
+> **LLM Mastery course page.** This lesson is part 3 of 5 in the beginner track. Use the lab and assessment sections as the completion standard, not optional reading.
+
+**Required mastery artifact:** by the end of this lesson, update the running enterprise readiness packet for a realistic use case. Treat examples and vendor names as dated illustrations; defend decisions with current model, cost, risk, and evaluation evidence.
+
+# 02 — How AI Models Work
+
+> *Module 01 | Foundations*
+
+---
+
+## Starting Simple: Neural Networks
+
+Before LLMs, there were neural networks.
+
+A **neural network** is a system of math operations inspired loosely by how the brain works.
+
+### The Brain Analogy (and Where It Breaks Down)
+
+Your brain has ~86 billion neurons. Each neuron connects to others. When you see an apple, certain neurons fire. Over time, patterns of firing get stronger — that's learning.
+
+A neural network has **artificial neurons** (called nodes). They:
+- Receive numbers as input
+- Multiply those numbers by **weights** (the model's learned settings)
+- Pass the result forward
+
+But don't take the brain analogy too seriously. Neural networks are math, not biology.
+
+---
+
+## The Simplest Neural Network
+
+Imagine you want to predict house prices based on size.
+
+````
+Input: House size (1500 sqft)
+↓
+Multiply by weight: 1500 × 200 = 300,000
+↓
+Output: Predicted price = $300,000
+```
+
+That "200" is a **weight** — the model learned it by looking at real houses and their prices.
+
+For LLMs, instead of one number in, one number out, we have:
+- Thousands of numbers in (representing tokens)
+- Thousands of numbers out (representing possible next tokens)
+
+---
+
+## Layers: Stacking the Math
+
+A deep neural network stacks many layers:
+
+```
+Input Layer → Hidden Layer 1 → Hidden Layer 2 → ... → Output Layer
+```
+
+Each layer learns different patterns:
+- Early layers: simple patterns (like "this word follows that word often")
+- Middle layers: grammar, syntax, basic logic
+- Deep layers: complex reasoning, world knowledge, context
+
+LLMs have hundreds of these layers. GPT-4 is estimated to have 120+ layers.
+
+---
+
+## How Training Works (Simple Version)
+
+Training is how the model learns from data.
+
+### Step 1: Feed it text
+```
+Input text: "The cat sat on the"
+Goal: Predict next word → "mat"
+````
+
+### Step 2: Make a guess
+The model guesses: maybe "floor" (probability 30%), "mat" (probability 25%), "table" (probability 20%)...
+
+### Step 3: Calculate the error
+The real answer was "mat". The model gave "mat" only 25% probability. That's a mistake.
+
+We calculate **how wrong it was** using a formula called the **loss function**.
+
+Loss = how far the model's guess was from the right answer.
+
+### Step 4: Adjust the weights (Backpropagation)
+The training algorithm looks at the error and figures out which weights to adjust, and by how much.
+
+This process is called **backpropagation** + **gradient descent**.
+
+Imagine you're hiking to find the lowest valley (minimum loss). You look at the slope around you and take a small step downhill. Then repeat. Eventually you reach the bottom.
+
+````
+High loss (confused model)
+→ Adjust weights slightly
+→ Lower loss (slightly less confused)
+→ Adjust again
+→ Even lower loss
+→ ... millions of times ...
+→ Very low loss (well-trained model)
+````
+
+### Step 5: Repeat on trillions of examples
+This runs on billions of text examples. The model adjusts its weights each time until it becomes very good at predicting the next word.
+
+---
+
+## The Training Formula (Simplified)
+
+````python
+for each batch of text:
+    1. Make predictions (forward pass)
+    2. Calculate loss (how wrong we were)
+    3. Calculate gradients (which direction to adjust)
+    4. Update weights (backpropagation)
+    5. Repeat
+```
+
+GPT-4's training ran this loop **trillions of times** over months on thousands of GPUs.
+
+---
+
+## From "Predict Next Word" to "Answer Questions"
+
+Here's the key insight many miss:
+
+**Predicting the next word IS answering questions.**
+
+Consider this sequence of predictions:
+
+```
+Prompt: "What is the capital of France?"
+Model predicts: "The" (most likely next word)
+Then predicts: "capital" 
+Then predicts: "of"
+Then predicts: "France"
+Then predicts: "is"
+Then predicts: "Paris"
+Then predicts: "."
+```
+
+The model generates one token at a time. Each new token is added to the context, and the next prediction uses the updated context. This is called **autoregressive generation**.
+
+---
+
+## Softmax: How the Model Picks the Next Word
+
+The model doesn't just pick one word. It produces a **probability distribution** over all possible next words.
+
+```
+After "The cat sat on the":
+"mat"    → 35%
+"floor"  → 28%
+"table"  → 15%
+"roof"   → 8%
+"couch"  → 6%
+... (thousands more possibilities)
+```
+
+The function that converts raw scores to percentages is called **softmax**. The model then samples from this distribution.
+
+**Temperature** controls how random this sampling is:
+- Low temperature (0.1) → always picks the highest probability word (more predictable)
+- High temperature (1.0) → samples more freely (more creative, sometimes more random)
+- Very high temperature (2.0) → very random, often nonsensical
+
+---
+
+## The Full Picture: LLM Architecture Overview
+
+```
+You type: "Explain gravity simply"
+         ↓
+[Tokenizer] → Converts to numbers: [49, 5337, 12, 25, 6...]
+         ↓
+[Embedding Layer] → Converts each token to a rich vector (list of ~4096 numbers)
+         ↓
+[Transformer Layers] (×96 or more)
+  - Attention: which words should pay attention to which others?
+  - Feed-forward: process and transform the information
+         ↓
+[Output Layer] → Produces probability distribution over ~50,000 possible next tokens
+         ↓
+[Sampling] → Picks a token based on temperature/settings
+         ↓
+[Detokenizer] → Converts token back to text: "Gravity"
+         ↓
+Repeat until response is complete
+```
+
+We'll cover each of these components in depth in upcoming modules.
+
+---
+
+## Pre-training vs Fine-tuning vs RLHF
+
+LLM training happens in stages:
+
+### Stage 1: Pre-training
+- Feed the model trillions of tokens of internet text
+- Train it purely to predict next tokens
+- This gives it broad world knowledge
+- Cost: Millions of dollars, months of compute
+
+### Stage 2: Supervised Fine-tuning (SFT)
+- Take the pre-trained model
+- Fine-tune it on curated instruction-response pairs
+- "When asked X, respond like Y"
+- Teaches the model to be helpful
+- Cost: Thousands of dollars, days of compute
+
+### Stage 3: RLHF (Reinforcement Learning from Human Feedback)
+- Humans rate model responses
+- Train the model to prefer higher-rated responses
+- Makes the model safer, less harmful, more aligned
+- Cost: Thousands of dollars, more days of compute
+
+The result of all three stages is what you use when you talk to Claude or ChatGPT.
+
+---
+
+## Key Terms Decoded
+
+| Term | Plain English |
+|------|--------------|
+| Neural network | Math system inspired by the brain; learns from examples |
+| Weight | A number the model learned; controls how it processes info |
+| Loss function | A score that measures how wrong the model's prediction was |
+| Backpropagation | The algorithm that adjusts weights based on errors |
+| Gradient descent | The method of following the error slope to improve weights |
+| Autoregressive | Generating one token at a time, using previous outputs as input |
+| Softmax | Converts raw scores to probabilities (all add up to 100%) |
+| Temperature | Controls randomness of output sampling |
+
+---
+
+## 📝 Summary
+
+- LLMs are deep neural networks: layers of math that transform numbers
+- Training = feeding data, measuring errors, adjusting weights, repeat
+- Prediction = turn text into numbers → process through layers → sample next token
+- Three stages: pre-training (knowledge) → SFT (helpfulness) → RLHF (safety)
+- The model generates one token at a time, autoregressively
+
+---
+
+## 🧠 Mental Model
+
+> An LLM is like a student who studied everything ever written.
+> Training is the studying. Inference is the exam.
+> During the exam, it writes one word at a time, each word informed by everything it wrote before.
+
+---
+
+## ❌ Beginner Mistakes to Avoid
+
+1. **"The model understands meaning"** — It processes statistical patterns. Understanding is an interpretation.
+
+2. **"Higher temperature = smarter"** — Higher temperature = more random. Smarter needs better training, not more randomness.
+
+3. **"Training is like programming"** — You don't write rules. You show examples. The model figures out the rules.
+
+4. **"I can retrain a model quickly"** — Pre-training costs millions. Fine-tuning is fast. Know which you need.
+
+5. **"The model picks the best word every time"** — It picks based on probability. Sometimes wrong words have high probability.
+
+---
+
+## 🏋️ Exercise
+
+**Task:** Observe autoregressive generation in action.
+
+1. Go to any LLM chat interface
+2. Ask a question and watch the response stream in word by word (or token by token)
+3. Notice: it's not thinking the whole answer then showing it — it generates progressively
+
+**Deeper task:**
+```python
+# If you have Python + openai or anthropic installed:
+import anthropic
+
+client = anthropic.Anthropic()
+
+with client.messages.stream(
+    model="claude-haiku-4-5-20251001",
+    max_tokens=200,
+    messages=[{"role": "user", "content": "Count from 1 to 10 slowly"}]
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+```
+
+**Observe:** Each token appears one at a time. That's autoregressive generation live.
+
+---
+
+*Next: [03 — Tokens & Tokenization](/tutorials/llm-mastery/beginner/03-tokens-tokenization)*

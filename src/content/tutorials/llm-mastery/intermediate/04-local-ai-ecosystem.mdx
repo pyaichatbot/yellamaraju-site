@@ -1,0 +1,927 @@
+---
+title: "Local AI Ecosystem"
+description: "llama.cpp, Ollama, vLLM, MLX, Hugging Face, Unsloth, Axolotl, PEFT, and TRL."
+level: intermediate
+path: llm-mastery
+pathTitle: "LLM Mastery"
+pathOrder: 6
+module: 4
+totalModules: 8
+roles: ["dev","qa","ba","pm","exec"]
+tags: ["Local AI","vLLM","Ollama","Hugging Face"]
+date: 2026-05-24
+estimatedTime: "50 min"
+prerequisites: ["Inference and Optimization"]
+---
+> **LLM Mastery course page.** This lesson is part 4 of 8 in the intermediate track. Use the lab and assessment sections as the completion standard, not optional reading.
+
+**Required mastery artifact:** by the end of this lesson, update the running enterprise readiness packet for a realistic use case. Treat examples and vendor names as dated illustrations; defend decisions with current model, cost, risk, and evaluation evidence.
+
+# Module 05 — Local AI Ecosystem
+
+> *The tools of the trade: llama.cpp, Ollama, vLLM, MLX, HuggingFace, Unsloth, Axolotl, PEFT, TRL.*
+
+---
+
+# 01 — llama.cpp
+
+## What is llama.cpp?
+
+llama.cpp is a C++ implementation of LLaMA inference that runs LLMs on CPU (and GPU).
+
+Created by Georgi Gerganov in early 2023. One of the most impactful open-source AI projects ever.
+
+Before llama.cpp: running LLMs required expensive GPUs and Python/PyTorch.
+After llama.cpp: you can run a 7B model on your MacBook.
+
+---
+
+## Why It's Fast on CPU
+
+1. **Written in C++**: No Python overhead, no heavy frameworks
+2. **GGUF quantization**: 4-bit models fit in RAM
+3. **SIMD optimizations**: Uses CPU's specialized math instructions (AVX2, AVX512)
+4. **Metal/CUDA support**: Can offload layers to GPU for speed
+5. **Memory mapping**: Loads models without copying them entirely into RAM
+
+---
+
+## Using llama.cpp
+
+### Installation
+````bash
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+
+# CPU only
+make
+
+# With CUDA (NVIDIA GPU)
+make LLAMA_CUDA=1
+
+# With Metal (Apple Silicon)
+make LLAMA_METAL=1
+````
+
+### Basic inference
+````bash
+# Download a GGUF model (e.g., from HuggingFace)
+wget https://huggingface.co/bartowski/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf
+
+# Run it
+./llama-cli \
+  -m Meta-Llama-3-8B-Instruct-Q4_K_M.gguf \
+  -p "What is the capital of Germany?" \
+  -n 100 \
+  --temp 0.7
+
+# Interactive chat
+./llama-cli \
+  -m Meta-Llama-3-8B-Instruct-Q4_K_M.gguf \
+  -i \
+  --chat-template llama3
+````
+
+### As a server (OpenAI-compatible API)
+````bash
+./llama-server \
+  -m Meta-Llama-3-8B-Instruct-Q4_K_M.gguf \
+  --port 8080 \
+  -c 4096 \
+  -ngl 33  # Number of layers to offload to GPU (33 = all layers for 8B)
+
+# Now you have an OpenAI-compatible API at localhost:8080
+````
+
+### Python client for llama.cpp server
+````python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8080/v1", api_key="local")
+
+response = client.chat.completions.create(
+    model="llama-3-8b",
+    messages=[{"role": "user", "content": "Hello, are you running locally?"}]
+)
+print(response.choices[0].message.content)
+````
+
+---
+
+## Layer Offloading
+
+Split model across CPU RAM and GPU VRAM:
+
+````bash
+# 8B model has 33 layers (including embed/output)
+# -ngl 0: CPU only (slow but works with just RAM)
+# -ngl 20: 20 layers on GPU, rest on CPU (balanced)
+# -ngl 33: All layers on GPU (fastest, needs ~5 GB VRAM for Q4)
+
+./llama-cli -m model.gguf -ngl 20 -p "Your prompt"
+```
+
+This lets you use GPU acceleration even when the model doesn't fully fit in VRAM.
+
+---
+
+# 02 — Ollama
+
+## What is Ollama?
+
+Ollama is the user-friendly wrapper around llama.cpp (and other backends).
+
+**Analogy:** llama.cpp is the engine. Ollama is the car — it adds the dashboard, steering wheel, and easy controls.
+
+Ollama handles:
+- Model downloading (like Docker images)
+- Model management (list, delete, update)
+- Running models as a local service
+- OpenAI-compatible REST API
+- Cross-platform (Mac, Windows, Linux)
+
+---
+
+## Getting Started with Ollama
+
+```bash
+# Install (Mac/Linux)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Windows: Download from ollama.com
+
+# Pull a model (like docker pull)
+ollama pull llama3.2:3b       # 3B — fastest
+ollama pull llama3.1:8b       # 8B — good balance
+ollama pull llama3.1:70b      # 70B — best quality (needs 48+ GB RAM/VRAM)
+ollama pull mistral:7b        # Alternative
+ollama pull qwen2.5:7b        # Alibaba's model
+
+# Run in terminal
+ollama run llama3.2:3b
+>>> Hello! I'm running locally!
+
+# List installed models
+ollama list
+
+# Remove a model
+ollama rm llama3.2:3b
+
+# See model info
+ollama show llama3.1:8b
+````
+
+---
+
+## Ollama as API Server
+
+Ollama automatically starts as an API server at `http://localhost:11434`.
+
+````python
+# Option 1: Raw Ollama API
+import requests
+
+response = requests.post(
+    "http://localhost:11434/api/chat",
+    json={
+        "model": "llama3.1:8b",
+        "messages": [{"role": "user", "content": "What is Fiserv?"}],
+        "stream": False
+    }
+)
+print(response.json()["message"]["content"])
+
+# Option 2: OpenAI-compatible endpoint
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:11434/v1",
+    api_key="ollama"
+)
+
+response = client.chat.completions.create(
+    model="llama3.1:8b",
+    messages=[{"role": "user", "content": "Explain PSD2 regulation"}]
+)
+print(response.choices[0].message.content)
+
+# Option 3: Ollama Python library
+import ollama
+
+response = ollama.chat(
+    model="llama3.1:8b",
+    messages=[{"role": "user", "content": "Write a Python sort function"}]
+)
+print(response["message"]["content"])
+````
+
+---
+
+## Custom Modelfiles
+
+Like Dockerfiles for models — define your own model configuration:
+
+````dockerfile
+# compliance-expert.Modelfile
+
+FROM llama3.1:8b
+
+SYSTEM """You are an expert in EU financial compliance regulations.
+You have deep knowledge of GDPR, PSD2, MiFID II, DORA, and Basel III.
+Always cite specific regulation articles when possible.
+If you're unsure, say so — never hallucinate regulatory requirements."""
+
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER num_ctx 4096
+```
+
+```bash
+# Build your custom model
+ollama create compliance-expert -f compliance-expert.Modelfile
+
+# Run it
+ollama run compliance-expert
+>>> Tell me about DORA compliance requirements
+````
+
+---
+
+## Ollama with LangChain / LlamaIndex
+
+````python
+from langchain_community.llms import Ollama
+from langchain_core.prompts import ChatPromptTemplate
+
+llm = Ollama(model="llama3.1:8b", temperature=0.3)
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful compliance expert."),
+    ("human", "{question}")
+])
+
+chain = prompt | llm
+result = chain.invoke({"question": "What is GDPR article 17?"})
+print(result)
+````
+
+---
+
+# 03 — vLLM
+
+## Production-Grade LLM Serving
+
+Ollama is great for development. **vLLM** is for production serving at scale.
+
+Key features:
+- **PagedAttention**: Novel KV cache management — near-perfect GPU utilization
+- **Continuous batching**: Mix different-length requests efficiently
+- **High throughput**: 20-50x higher throughput than naive HuggingFace serving
+- **OpenAI-compatible API**: Drop-in replacement for OpenAI API
+- **Multi-GPU**: Tensor parallelism across multiple GPUs
+- **LoRA serving**: Serve multiple LoRA adapters on one base model
+
+---
+
+## vLLM Quickstart
+
+````bash
+# Install
+pip install vllm
+
+# Start server
+python -m vllm.entrypoints.openai.api_server \
+  --model meta-llama/Meta-Llama-3-8B-Instruct \
+  --dtype bfloat16 \
+  --port 8000 \
+  --max-model-len 4096
+
+# With multiple GPUs (tensor parallelism)
+python -m vllm.entrypoints.openai.api_server \
+  --model meta-llama/Meta-Llama-3-70B-Instruct \
+  --tensor-parallel-size 4 \
+  --port 8000
+
+# With quantization
+python -m vllm.entrypoints.openai.api_server \
+  --model meta-llama/Meta-Llama-3-8B-Instruct \
+  --quantization awq \
+  --port 8000
+````
+
+---
+
+## vLLM Python API
+
+````python
+from vllm import LLM, SamplingParams
+
+# Load model
+llm = LLM(
+    model="meta-llama/Meta-Llama-3-8B-Instruct",
+    quantization="awq",       # or "gptq"
+    dtype="bfloat16",
+    max_model_len=4096,
+    tensor_parallel_size=1    # GPUs to use
+)
+
+# Configure sampling
+sampling_params = SamplingParams(
+    temperature=0.7,
+    top_p=0.9,
+    max_tokens=512,
+    stop=["<|eot_id|>"]  # LLaMA 3 stop token
+)
+
+# Generate (handles batching automatically)
+prompts = [
+    "What is MiFID II?",
+    "Explain Basel III",
+    "What is GDPR article 5?",
+    # Can send thousands at once for batch processing
+]
+
+outputs = llm.generate(prompts, sampling_params)
+
+for output in outputs:
+    print(f"Q: {output.prompt}")
+    print(f"A: {output.outputs[0].text}\n")
+````
+
+---
+
+## vLLM vs Ollama Comparison
+
+| Factor | Ollama | vLLM |
+|--------|--------|------|
+| Ease of setup | Very easy | Moderate |
+| Target use | Development, local | Production serving |
+| Throughput | Moderate | Very high (20-50x) |
+| Multi-GPU | Basic | Excellent |
+| Quantization | GGUF (llama.cpp) | AWQ, GPTQ, bitsandbytes |
+| LoRA support | Limited | Full |
+| Windows support | Yes | Linux/Mac only |
+| Memory efficiency | Good | Excellent (PagedAttention) |
+
+**Rule:** Ollama for development, vLLM for production.
+
+---
+
+# 04 — MLX (Apple Silicon)
+
+## Apple's ML Framework
+
+MLX is Apple's machine learning framework optimized for Apple Silicon (M1, M2, M3, M4).
+
+Unlike PyTorch which treats CPU and GPU as separate, MLX uses **unified memory** — the CPU and GPU share the same memory pool. This is why M2 Max (96 GB unified memory) can run very large models.
+
+---
+
+## MLX for LLM Inference
+
+````bash
+# Install
+pip install mlx-lm
+
+# Run a model
+mlx_lm.generate \
+  --model mlx-community/Meta-Llama-3-8B-Instruct-4bit \
+  --prompt "What is MLX?"
+
+# Chat interface
+mlx_lm.chat --model mlx-community/Meta-Llama-3-8B-Instruct-4bit
+```
+
+```python
+# Python API
+from mlx_lm import load, generate
+
+model, tokenizer = load("mlx-community/Meta-Llama-3-8B-Instruct-4bit")
+
+response = generate(
+    model,
+    tokenizer,
+    prompt="What is Apple Silicon's advantage for LLMs?",
+    max_tokens=500,
+    verbose=True  # Shows tokens/second
+)
+````
+
+---
+
+## Apple Silicon Performance
+
+| Chip | Unified Memory | LLM Performance |
+|------|---------------|-----------------|
+| M1 (base) | 8-16 GB | 7B Q4 (slow ~15 tok/s) |
+| M2 Pro | 16-32 GB | 13B Q4 (~25 tok/s) |
+| M2 Max | 32-96 GB | 34B Q4 (~20 tok/s) |
+| M3 Max | 36-128 GB | 70B Q4 (~15 tok/s) |
+| M4 Ultra | 192 GB | 70B Q8 (~25 tok/s) |
+
+Apple Silicon is genuinely competitive with cloud inference for personal use.
+
+---
+
+## Fine-tuning with MLX on Mac
+
+````bash
+# Fine-tune on Mac (no NVIDIA GPU needed!)
+mlx_lm.lora \
+  --model mlx-community/Meta-Llama-3-8B-Instruct-4bit \
+  --train \
+  --data ./my_data \
+  --batch-size 4 \
+  --lora-layers 16 \
+  --iters 1000
+
+# Convert adapter for deployment
+mlx_lm.fuse \
+  --model mlx-community/Meta-Llama-3-8B-Instruct-4bit \
+  --adapter-path ./adapters
+```
+
+For Praveen with M1 Pro 16GB: You can fine-tune 8B models with LoRA. Performance is good.
+
+---
+
+# 05 — Hugging Face
+
+## The GitHub of AI Models
+
+Hugging Face is the central hub of the open-source AI ecosystem.
+
+What it provides:
+- **Model Hub**: 500,000+ models to download
+- **Dataset Hub**: 100,000+ datasets
+- **Spaces**: Demo apps for models
+- **Inference API**: Run models without local hardware
+- **Transformers library**: The standard Python library for working with LLMs
+- **PEFT, TRL, Datasets**: Key fine-tuning libraries
+
+---
+
+## The Transformers Library
+
+The most important library for LLM engineering:
+
+```python
+from transformers import (
+    AutoModelForCausalLM,  # Load any causal LM
+    AutoTokenizer,          # Load matching tokenizer
+    AutoConfig,             # Load model config
+    pipeline,               # High-level inference
+    Trainer,               # Training loop
+    TrainingArguments,     # Training config
+    BitsAndBytesConfig,    # Quantization config
+    GenerationConfig,      # Generation settings
+)
+
+# Load any model from Hub
+model = AutoModelForCausalLM.from_pretrained("meta-llama/Meta-Llama-3-8B")
+tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B")
+
+# Easy inference pipeline
+pipe = pipeline("text-generation", model="gpt2")
+result = pipe("Hello, world!")
+````
+
+---
+
+## Hugging Face Hub Operations
+
+````python
+from huggingface_hub import (
+    hf_hub_download,
+    snapshot_download,
+    HfApi,
+    login
+)
+
+# Login (get token from huggingface.co/settings/tokens)
+login(token="hf_xxx...")
+
+# Download specific file
+path = hf_hub_download(
+    repo_id="meta-llama/Meta-Llama-3-8B",
+    filename="config.json"
+)
+
+# Download whole model
+local_dir = snapshot_download(
+    repo_id="meta-llama/Meta-Llama-3-8B",
+    local_dir="./llama-3-8b"
+)
+
+# Upload your model
+api = HfApi()
+api.create_repo("your-username/my-fine-tuned-model", private=True)
+api.upload_folder(
+    folder_path="./my-fine-tuned-model",
+    repo_id="your-username/my-fine-tuned-model"
+)
+````
+
+---
+
+## Datasets Library
+
+````python
+from datasets import load_dataset, Dataset, DatasetDict
+
+# Load any dataset from Hub
+dataset = load_dataset("tatsu-lab/alpaca")
+print(dataset["train"][0])
+
+# Load from your own files
+dataset = load_dataset("json", data_files="my_data.jsonl")
+dataset = load_dataset("csv", data_files="my_data.csv")
+
+# Process and filter
+filtered = dataset.filter(lambda x: len(x["output"]) > 100)
+mapped = dataset.map(lambda x: {"formatted": f"Q: {x['instruction']}\nA: {x['output']}"})
+
+# Split
+split = dataset["train"].train_test_split(test_size=0.1)
+
+# Push to Hub
+split.push_to_hub("your-username/my-dataset")
+````
+
+---
+
+# 06 — Unsloth
+
+## The Fastest Fine-Tuning Library
+
+Unsloth is a library that makes QLoRA fine-tuning 2-5x faster and 50-70% more memory efficient than vanilla HuggingFace + PEFT.
+
+How it achieves this:
+- Custom CUDA kernels (rewrites key operations in hand-optimized code)
+- Custom attention implementation
+- Memory-efficient gradient computation
+- Better Flash Attention integration
+
+---
+
+## Why Use Unsloth vs PEFT/TRL Directly
+
+| Metric | PEFT + TRL | Unsloth |
+|--------|-----------|---------|
+| Training speed | 1x | 2-5x |
+| VRAM usage | 1x | 0.5-0.7x |
+| Code complexity | Moderate | Simple |
+| Model support | All | Popular models |
+| Accuracy | Baseline | Same (no quality loss) |
+
+---
+
+## Complete Unsloth Fine-Tuning Example
+
+````python
+# pip install unsloth
+
+from unsloth import FastLanguageModel
+from trl import SFTTrainer
+from transformers import TrainingArguments
+from datasets import load_dataset
+import torch
+
+# 1. Load model with 4-bit quantization
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="unsloth/llama-3.1-8b-instruct-bnb-4bit",  # Pre-quantized for speed
+    max_seq_length=2048,
+    dtype=None,
+    load_in_4bit=True,
+)
+
+# 2. Configure LoRA
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                    "gate_proj", "up_proj", "down_proj"],
+    lora_alpha=16,
+    lora_dropout=0,
+    bias="none",
+    use_gradient_checkpointing="unsloth",
+    random_state=42,
+    use_rslora=False,    # Rank-stabilized LoRA (try True if unstable)
+    loftq_config=None,
+)
+
+# 3. Prepare dataset
+def format_example(example):
+    """Format as chat template"""
+    chat = [
+        {"role": "system", "content": "You are a compliance expert."},
+        {"role": "user", "content": example["instruction"]},
+        {"role": "assistant", "content": example["output"]}
+    ]
+    return {"text": tokenizer.apply_chat_template(chat, tokenize=False)}
+
+dataset = load_dataset("json", data_files="my_compliance_data.jsonl", split="train")
+dataset = dataset.map(format_example, batched=False)
+
+# 4. Train
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    dataset_text_field="text",
+    max_seq_length=2048,
+    dataset_num_proc=2,
+    packing=False,
+    args=TrainingArguments(
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=4,
+        warmup_steps=5,
+        num_train_epochs=3,
+        learning_rate=2e-4,
+        fp16=not torch.cuda.is_bf16_supported(),
+        bf16=torch.cuda.is_bf16_supported(),
+        logging_steps=1,
+        optim="adamw_8bit",        # Memory-efficient optimizer
+        weight_decay=0.01,
+        lr_scheduler_type="linear",
+        output_dir="./outputs",
+        save_strategy="epoch",
+    ),
+)
+
+trainer.train()
+
+# 5. Save adapter
+model.save_pretrained("compliance-lora-adapter")
+tokenizer.save_pretrained("compliance-lora-adapter")
+
+# 6. Optional: Save merged model for deployment
+model.save_pretrained_merged("compliance-merged-model", tokenizer, 
+                              save_method="merged_16bit")
+
+# 7. Optional: Save as GGUF for Ollama
+model.save_pretrained_gguf("compliance-model", tokenizer, quantization_method="q4_k_m")
+````
+
+---
+
+# 07 — Axolotl
+
+## The Flexible Training Framework
+
+Axolotl is a YAML-configured training framework that handles the complexity of LLM fine-tuning.
+
+Rather than writing Python training code, you describe your training run in a config file.
+
+---
+
+## Axolotl Config Example
+
+````yaml
+# compliance-finetune.yml
+
+base_model: meta-llama/Meta-Llama-3-8B-Instruct
+model_type: LlamaForCausalLM
+tokenizer_type: AutoTokenizer
+
+# Data
+datasets:
+  - path: my_compliance_data.jsonl
+    type: chat_template
+    chat_template: llama3
+
+dataset_prepared_path: ./prepared_data
+val_set_size: 0.05
+
+# LoRA
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_linear: true  # Target all linear layers
+
+# Quantization
+load_in_4bit: true
+bnb_4bit_use_double_quant: true
+bnb_4bit_quant_type: nf4
+
+# Training
+sequence_len: 2048
+sample_packing: true  # Packs multiple short sequences into one — more efficient
+
+micro_batch_size: 2
+gradient_accumulation_steps: 4
+num_epochs: 3
+learning_rate: 2e-4
+optimizer: adamw_bnb_8bit
+lr_scheduler: cosine
+warmup_steps: 10
+
+# Saving
+output_dir: ./outputs/compliance-model
+save_safetensors: true
+saves_per_epoch: 1
+logging_steps: 10
+
+# Evaluation
+eval_steps: 100
+eval_table_size: 5
+
+# wandb logging (optional)
+wandb_project: compliance-finetune
+wandb_run_name: llama3-compliance-v1
+```
+
+```bash
+# Run training
+accelerate launch -m axolotl.cli.train compliance-finetune.yml
+
+# Continue from checkpoint
+accelerate launch -m axolotl.cli.train compliance-finetune.yml \
+  --resume-from-checkpoint ./outputs/compliance-model/checkpoint-500
+````
+
+---
+
+## Axolotl vs Unsloth
+
+| Factor | Axolotl | Unsloth |
+|--------|---------|---------|
+| Configuration | YAML config | Python code |
+| Flexibility | Very high | Moderate |
+| Supported formats | Many | Common |
+| Speed | Good | Excellent |
+| Beginner friendly | Moderate | Very |
+| Multi-GPU | Excellent | Good |
+
+**Start with Unsloth for learning. Use Axolotl for complex production training.**
+
+---
+
+# 08 — PEFT & TRL Library
+
+## PEFT: Parameter-Efficient Fine-Tuning
+
+PEFT is Hugging Face's library implementing all adapter methods:
+
+````python
+from peft import (
+    LoraConfig,           # LoRA configuration
+    get_peft_model,       # Apply adapters to model
+    PeftModel,            # Load saved adapter
+    TaskType,             # Task types (CAUSAL_LM, SEQ_CLS, etc.)
+    prepare_model_for_kbit_training,  # Prepare for QLoRA
+)
+
+# Full LoRA setup
+config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    target_modules=["q_proj", "v_proj"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type=TaskType.CAUSAL_LM
+)
+
+model = get_peft_model(model, config)
+model.print_trainable_parameters()
+
+# Load a saved adapter later
+loaded_model = PeftModel.from_pretrained(base_model, "path/to/adapter")
+````
+
+---
+
+## TRL: Transformer Reinforcement Learning
+
+TRL implements the training algorithms:
+
+````python
+from trl import (
+    SFTTrainer,     # Supervised fine-tuning
+    DPOTrainer,     # Direct Preference Optimization
+    PPOTrainer,     # RLHF with PPO
+    RewardTrainer,  # Training reward models
+    ORPOTrainer,    # ORPO (SFT + DPO combined)
+)
+
+# SFT
+sft_trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    dataset_text_field="text",
+    args=training_args,
+)
+
+# DPO
+dpo_trainer = DPOTrainer(
+    model=model,
+    ref_model=ref_model,
+    tokenizer=tokenizer,
+    train_dataset=preference_dataset,  # needs "prompt", "chosen", "rejected"
+    args=dpo_args,
+)
+
+# ORPO (combines SFT + DPO, no ref model needed)
+orpo_trainer = ORPOTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=preference_dataset,
+    args=orpo_args,
+)
+````
+
+---
+
+## The Complete Tool Stack Mental Map
+
+````
+For LOCAL INFERENCE:
+  Mac (M1/M2/M3) → Ollama or MLX
+  Windows/Linux with GPU → Ollama
+  Production server → vLLM or llama.cpp server
+  Low-level control → llama.cpp directly
+
+For FINE-TUNING:
+  Beginner, quick results → Unsloth (easiest)
+  Complex/production training → Axolotl (most flexible)
+  Multi-GPU scale → Axolotl + DeepSpeed
+  API layers → PEFT (adapters) + TRL (training algorithms)
+
+For MODEL MANAGEMENT:
+  Download, share, discover → Hugging Face Hub
+  Dataset work → Hugging Face Datasets
+  Any model architecture → Hugging Face Transformers
+````
+
+---
+
+## 📝 Module 05 Summary
+
+| Tool | Role | When to Use |
+|------|------|-------------|
+| llama.cpp | C++ LLM inference engine | Low-level, embedded, max efficiency |
+| Ollama | User-friendly local model runner | Development, local chat, personal use |
+| vLLM | Production LLM server | High-throughput serving, real deployments |
+| MLX | Apple Silicon inference/training | M1/M2/M3 Mac users |
+| Hugging Face | Model/dataset hub + core libraries | Everything — it's the ecosystem |
+| Unsloth | Fast fine-tuning library | Quick, efficient QLoRA training |
+| Axolotl | Config-driven training framework | Production fine-tuning pipelines |
+| PEFT | Adapter library | LoRA and other adapter methods |
+| TRL | RL/alignment training | SFT, DPO, RLHF training loops |
+
+---
+
+## 🏋️ Module Exercise
+
+**Set up a complete local AI stack:**
+
+````bash
+# Step 1: Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Step 2: Pull a model
+ollama pull llama3.2:3b
+
+# Step 3: Create a custom model
+cat > compliance.Modelfile << 'EOF'
+FROM llama3.2:3b
+SYSTEM """You are an expert in EU financial regulations.
+Be precise, cite specific articles when possible.
+If uncertain, say so."""
+PARAMETER temperature 0.2
+EOF
+
+ollama create compliance-bot -f compliance.Modelfile
+
+# Step 4: Test it
+ollama run compliance-bot "What is GDPR?"
+
+# Step 5: Use it via Python
+python3 << 'EOF'
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+
+questions = [
+    "What is PSD2?",
+    "Explain GDPR article 17",
+    "What are Basel III capital requirements?"
+]
+
+for q in questions:
+    response = client.chat.completions.create(
+        model="compliance-bot",
+        messages=[{"role": "user", "content": q}]
+    )
+    print(f"Q: {q}")
+    print(f"A: {response.choices[0].message.content}\n")
+EOF
+```
+
+**Challenge:** Compare the custom compliance-bot vs vanilla llama3.2:3b on compliance questions. Does the system prompt make a measurable difference?
+
+---
+
+*Move to [Module 06 — RAG & Memory](/tutorials/llm-mastery/intermediate/05-rag-memory-access-control)*

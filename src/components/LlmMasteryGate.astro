@@ -1,0 +1,330 @@
+---
+// Renders gate wall if not enrolled. Renders slot if enrolled.
+// Enrollment check and form submission are entirely client-side.
+---
+
+<div id="llm-mastery-gate-root">
+  <!-- Gate wall — shown until enrollment confirmed -->
+  <div id="llm-mastery-gate" class="gate-wall">
+    <div class="gate-inner">
+      <div class="gate-badge">Free · Subscriber Access</div>
+      <h2 class="gate-title">LLM Mastery for Enterprise AI Engineering</h2>
+      <p class="gate-subtitle">
+        18 modules. 12 enterprise deliverables. 5 role tracks. One packet to take
+        any AI use case from concept to governed production.
+      </p>
+
+      <ul class="gate-pillars">
+        <li>
+          <span class="pillar-icon" aria-hidden="true">⬡</span>
+          <span>
+            <strong>Full curriculum, no paywall</strong>
+            Foundations through enterprise governance — free to every subscriber.
+          </span>
+        </li>
+        <li>
+          <span class="pillar-icon" aria-hidden="true">⬡</span>
+          <span>
+            <strong>Progress tracked in your browser</strong>
+            Completion state stays local — no account, no server, no cookies.
+          </span>
+        </li>
+        <li>
+          <span class="pillar-icon" aria-hidden="true">⬡</span>
+          <span>
+            <strong>Built for real teams</strong>
+            Role tracks for DEV · QA · BA · PM · Exec with enterprise artifacts
+            you can submit to security, legal, and risk reviewers.
+          </span>
+        </li>
+      </ul>
+
+      <form id="gate-form" class="gate-form" novalidate>
+        <label class="gate-label" for="gate-email">Enter your email to unlock</label>
+        <div class="gate-input-row">
+          <input
+            id="gate-email"
+            type="email"
+            class="gate-input"
+            placeholder="you@company.com"
+            autocomplete="email"
+            required
+            aria-required="true"
+          />
+          <button type="submit" class="gate-submit" id="gate-submit-btn">
+            <span class="btn-label">Unlock Course</span>
+            <span class="btn-loading" hidden>Enrolling…</span>
+          </button>
+        </div>
+        <p class="gate-error" id="gate-error" role="alert" hidden></p>
+        <p class="gate-privacy">No spam. Unsubscribe anytime. <a href="/privacy">Privacy policy</a>.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Content slot — hidden until enrolled -->
+  <div id="llm-mastery-content" hidden>
+    <slot />
+  </div>
+</div>
+
+<script>
+  import { isEnrolled, enroll } from '../utils/tutorial-tracker';
+
+  function showContent() {
+    const gate = document.getElementById('llm-mastery-gate');
+    const content = document.getElementById('llm-mastery-content');
+    if (gate) gate.hidden = true;
+    if (content) content.hidden = false;
+  }
+
+  function showGate() {
+    const gate = document.getElementById('llm-mastery-gate');
+    const content = document.getElementById('llm-mastery-content');
+    if (gate) gate.hidden = false;
+    if (content) content.hidden = true;
+  }
+
+  async function handleSubmit(e: Event) {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const emailInput = document.getElementById('gate-email') as HTMLInputElement;
+    const submitBtn = document.getElementById('gate-submit-btn') as HTMLButtonElement;
+    const errorEl = document.getElementById('gate-error') as HTMLElement;
+    const btnLabel = submitBtn.querySelector('.btn-label') as HTMLElement;
+    const btnLoading = submitBtn.querySelector('.btn-loading') as HTMLElement;
+
+    const email = emailInput.value.trim();
+    if (!email || !email.includes('@')) {
+      errorEl.textContent = 'Please enter a valid email address.';
+      errorEl.hidden = false;
+      emailInput.focus();
+      return;
+    }
+
+    errorEl.hidden = true;
+    submitBtn.disabled = true;
+    btnLabel.hidden = true;
+    btnLoading.hidden = false;
+
+    try {
+      const res = await fetch('/api/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Server error (${res.status})`);
+      }
+
+      // Enroll locally regardless of server response
+      enroll(email);
+      showContent();
+    } catch (err) {
+      // On any fetch error, still enroll locally so users aren't blocked
+      enroll(email);
+      showContent();
+    }
+  }
+
+  function init() {
+    if (isEnrolled()) {
+      showContent();
+      return;
+    }
+    showGate();
+    const form = document.getElementById('gate-form');
+    if (form) form.addEventListener('submit', handleSubmit);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+  #llm-mastery-gate-root {
+    width: 100%;
+  }
+
+  .gate-wall {
+    margin: var(--space-lg) 0;
+    padding: var(--space-lg);
+    background: linear-gradient(135deg, #0d0f14 0%, #111827 50%, #0a0c10 100%);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gate-wall::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px);
+    pointer-events: none;
+  }
+
+  .gate-inner {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .gate-badge {
+    display: inline-block;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #93c5fd;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.8rem;
+    border-radius: 999px;
+    margin-bottom: var(--space-sm);
+  }
+
+  .gate-title {
+    color: #f8fafc;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 var(--space-sm);
+    line-height: 1.15;
+  }
+
+  .gate-subtitle {
+    color: rgba(248, 250, 252, 0.65);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 var(--space-md);
+  }
+
+  .gate-pillars {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: left;
+  }
+
+  .gate-pillars li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+  }
+
+  .pillar-icon {
+    color: #60a5fa;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .gate-pillars strong {
+    display: block;
+    color: #f1f5f9;
+    font-size: 0.88rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .gate-pillars span > span {
+    color: rgba(248, 250, 252, 0.55);
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  .gate-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .gate-label {
+    color: rgba(248, 250, 252, 0.7);
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+
+  .gate-input-row {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 480px;
+    flex-wrap: wrap;
+  }
+
+  .gate-input {
+    flex: 1 1 220px;
+    padding: 0.7rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f8fafc;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .gate-input::placeholder { color: rgba(248, 250, 252, 0.3); }
+  .gate-input:focus { border-color: #3b82f6; background: rgba(59, 130, 246, 0.08); }
+
+  .gate-submit {
+    flex-shrink: 0;
+    padding: 0.7rem 1.5rem;
+    background: #2563eb;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .gate-submit:hover { background: #1d4ed8; transform: translateY(-1px); }
+  .gate-submit:disabled { opacity: 0.6; pointer-events: none; }
+
+  .gate-error {
+    color: #f87171;
+    font-size: 0.85rem;
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+
+  .gate-privacy {
+    color: rgba(248, 250, 252, 0.3);
+    font-size: 0.78rem;
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+
+  .gate-privacy a { color: rgba(96, 165, 250, 0.7); text-decoration: none; }
+  .gate-privacy a:hover { color: #60a5fa; }
+
+  @media (max-width: 480px) {
+    .gate-wall { padding: var(--space-md); }
+    .gate-input-row { flex-direction: column; }
+    .gate-submit { width: 100%; }
+  }
+</style>

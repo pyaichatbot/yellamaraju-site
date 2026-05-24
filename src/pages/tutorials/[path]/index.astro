@@ -2,7 +2,10 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import TutorialCard from '../../../components/TutorialCard.astro';
+import LlmsDownloadButton from '../../../components/LlmsDownloadButton.astro';
+import TutorialOptInTracker from '../../../components/TutorialOptInTracker.astro';
 import { TUTORIAL_LEVELS, TUTORIAL_PATHS, LEGACY_LEVELS, getTutorialPath, tutorialHref } from '../../../data/tutorial-paths';
+import { TRACKED_PATHS, getPathModules } from '../../../utils/tutorial-tracker';
 
 export async function getStaticPaths() {
   return [
@@ -31,6 +34,8 @@ const byLevel = Object.fromEntries(
 
 const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.length > 0);
 const isSingleTrack = pathInfo.id === 'ai-literacy';
+const isLlmMastery = pathInfo.id === 'llm-mastery';
+const isOptInTracked = pathInfo.id === 'langgraph' || pathInfo.id === 'llm-systems';
 const displayLevel = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack ? 'Single Track' : level.label;
 const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack ? `Governance and risk track · ${byLevel[level.key].length} tutorials · ~3 hours total` : `${level.subtitle} · ${byLevel[level.key].length} tutorials · ${level.time}`;
 ---
@@ -53,6 +58,36 @@ const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack
         <div><strong>Best for</strong><span>{pathInfo.audience}</span></div>
         <div><strong>Outcome</strong><span>{pathInfo.outcome}</span></div>
       </div>
+      {isLlmMastery && (
+        <section class="course-positioning" aria-label="LLM Mastery course positioning">
+          <div>
+            <strong>Free · Subscriber access</strong>
+            <span>Subscribe once to unlock all 18 modules, track completion, and export your enterprise readiness packet. Progress is stored privately in your browser — no account needed.</span>
+          </div>
+          <div>
+            <strong>12 enterprise deliverables</strong>
+            <span>Every module produces a real artifact: data cards, eval reports, deployment readiness reviews, governance packets — built for security, legal, and risk stakeholders.</span>
+          </div>
+          <div class="course-cta-group">
+            <a href="/tutorials/llm-mastery/beginner/00-course-overview" class="course-cta-primary">Start the Course →</a>
+            <a href="/tutorials/llm-mastery/progress" class="course-cta-secondary">My Progress</a>
+            <LlmsDownloadButton
+              href="/llm-mastery-llms.txt"
+              filename="llm-mastery-llms.txt"
+              label="Download llm-mastery-llms.txt"
+            />
+          </div>
+        </section>
+      )}
+      {isOptInTracked && (
+        <TutorialOptInTracker
+          pathId={pathInfo.id}
+          pathTitle={pathInfo.title}
+          moduleCount={getPathModules(pathInfo.id).length}
+          progressHref={`/tutorials/${pathInfo.id}/progress`}
+        />
+      )}
+
       <nav class="level-tabs" aria-label={`${pathInfo.title} levels`}>
         {availableLevels.map((level) => (
           <a href={`/tutorials/${pathInfo.id}/${level.key}`}>{displayLevel(level)} <span>{byLevel[level.key].length}</span></a>
@@ -147,6 +182,14 @@ const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack
   .path-outcomes div { border: 1px solid color-mix(in srgb, var(--path-accent) 24%, var(--color-border)); border-radius: 14px; padding: var(--space-md); background: color-mix(in srgb, var(--path-accent) 5%, var(--color-surface)); }
   .path-outcomes strong { display: block; color: var(--path-accent); font-family: var(--font-sans); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem; }
   .path-outcomes span { color: var(--color-text-secondary); font-size: 0.96rem; line-height: 1.5; }
+  .course-positioning { display: grid; grid-template-columns: 1fr 1fr auto; align-items: start; gap: var(--space-md); border: 1px solid color-mix(in srgb, var(--path-accent) 30%, var(--color-border)); border-radius: 14px; padding: var(--space-md); margin: 0 0 var(--space-md); background: color-mix(in srgb, var(--path-accent) 4%, var(--color-background)); }
+  .course-positioning strong { display: block; color: var(--color-text); font-size: 0.9rem; margin-bottom: 0.25rem; }
+  .course-positioning span { display: block; color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.5; }
+  .course-cta-group { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+  .course-cta-primary { display: inline-block; padding: 0.55rem 1.1rem; background: var(--path-accent); color: #fff; border-radius: 8px; font-size: 0.88rem; font-weight: 700; text-decoration: none; white-space: nowrap; transition: opacity 0.15s; }
+  .course-cta-primary:hover { opacity: 0.88; }
+  .course-cta-secondary { display: inline-block; padding: 0.45rem 0.9rem; border: 1px solid var(--path-accent); color: var(--path-accent); border-radius: 8px; font-size: 0.82rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background 0.15s; }
+  .course-cta-secondary:hover { background: color-mix(in srgb, var(--path-accent) 10%, transparent); }
   .level-tabs, .role-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: var(--space-sm); }
   .level-tabs a { border: 1px solid var(--color-border); border-radius: 999px; padding: 0.4rem 0.8rem; color: var(--color-text); background: var(--color-surface); text-decoration: none; font-family: var(--font-sans); font-size: 0.86rem; font-weight: 700; }
   .level-tabs a:hover { border-color: var(--path-accent); color: var(--path-accent); }
@@ -162,5 +205,5 @@ const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack
   .track-cta { font-size: 0.9rem; color: var(--path-accent); text-decoration: none; font-weight: 600; }
   .track-cta:hover { text-decoration: underline; }
   .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); }
-  @media (max-width: 760px) { .path-outcomes { grid-template-columns: 1fr; } .track-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { .path-outcomes, .course-positioning { grid-template-columns: 1fr; } .track-grid { grid-template-columns: 1fr; } }
 </style>
