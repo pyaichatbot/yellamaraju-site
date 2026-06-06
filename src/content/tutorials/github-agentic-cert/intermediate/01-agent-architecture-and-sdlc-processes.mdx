@@ -1,0 +1,110 @@
+---
+title: "Domain 1: Agent Architecture & SDLC Processes"
+description: "Integrating agents into the SDLC, separating planning from execution, and configuring observability and control for autonomous agents — Domain 1 (15–20%) of GH-600, with worked scenarios and practice questions."
+level: intermediate
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 1
+totalModules: 3
+roles: ["dev","pm","qa"]
+tags: ["Agent Architecture","SDLC","Observability","GH-600","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "30 min"
+prerequisites: ["GitHub as the Control Plane: Copilot Agents & MCP"]
+---
+
+**Domain 1 — Prepare agent architecture and SDLC processes — is 15–20% of the exam.** It is the "set it up right" domain: how an agent slots into the development lifecycle, how you keep its thinking separate from its doing, and how you make autonomous work observable and controllable.
+
+> **The exact skills measured in Domain 1:**
+> - **Integrate agents into the SDLC** — identify steps for agents to perform; identify and mitigate common anti-patterns; define inputs, outputs, and success criteria.
+> - **Define boundaries between planning, reasoning, and action** — configure planning distinct from execution; output a structured plan; validate plans; prevent action until checked and approved.
+> - **Configure observability and control for autonomous agents** — set the degree of autonomy and guardrails; produce inspectable artifacts in standard tooling; configure human intervention without slowing delivery.
+
+## Integrating agents into the SDLC
+
+The core skill is **decomposition**: turning a goal into the specific steps an agent should perform, in the right SDLC stage, with clear hand-offs.
+
+A reliable decomposition checklist:
+
+1. **Which stage?** Triage, implement, review, test, release, operate.
+2. **Which steps belong to the agent** vs. stay with a human or with CI?
+3. **What are the inputs?** Issue, repo scope, constraints, allowed tools.
+4. **What is the output?** A PR, a plan, a report, a green build.
+5. **What is the success criterion?** Measurable and stated *before* the run.
+
+> **Scenario — sizing the task.** "Add OAuth login" is too big for one agent run (recall the session limit and reviewability). Decompose: (a) agent drafts an implementation plan from the issue; human approves; (b) agent adds the provider config behind a flag → PR; (c) agent wires the callback + tests → PR; (d) agent updates docs → PR. Each step has inputs, an output PR, and a pass criterion. This decomposition reflex is tested directly.
+
+### Anti-patterns to mitigate
+
+| Anti-pattern | Mitigation the exam wants |
+| --- | --- |
+| Agent acts with no plan | Require structured plan + approval first |
+| No success criterion | Pre-state measurable outcomes |
+| Scope creep | Bound to repo/branch/path |
+| Metric gaming (edits the test) | Constrain *what* may change |
+| Opaque autonomy | Force inspectable artifacts |
+| Approval on everything | Right-size to risk |
+
+## Separating planning from execution
+
+This is the most testable idea in Domain 1. An agent should be architected so that **it produces a plan you can read and approve before it changes anything.**
+
+The pattern:
+
+1. Agent ingests the goal.
+2. Agent emits a **structured plan** — ordered steps, the files/areas touched, the success check. Structured means parseable and reviewable, not a wall of prose.
+3. The plan is **validated** — by a human, or by a rule (e.g. "plan must not modify test files for a bugfix task," "plan must not touch `infra/`").
+4. **Only after approval** does the agent execute.
+
+> **Why "structured":** a structured plan can be checked *automatically*. If the plan is JSON-like steps with declared targets, a rule can reject a plan that proposes touching protected paths — before a single line changes. Prose plans can't be gated that way. Expect a question that prefers structured, validatable plans over free-text ones.
+
+> **Scenario — preventing action until approved.** A finance repo agent must never alter ledger-calculation files without sign-off. Architecture: agent outputs a plan; a check inspects declared targets; if `ledger/` appears, execution is blocked pending a named approver. The agent still moves fast on everything *else*. That is "control without killing velocity."
+
+## Observability and control for autonomous agents
+
+Three sub-skills, three concrete moves:
+
+**1. Set the degree of autonomy (with guardrails).** Decide per task how far the agent may go before a human is needed — and encode it (branch scope, allowed tools, required approvals on sensitive steps). Autonomy is a deliberate setting, not a default.
+
+**2. Produce inspectable artifacts in standard tooling.** The agent's plan, diffs, logs, and PRs should live in the tools your team already reviews — GitHub PRs, checks, Actions logs — not a side channel. If a reviewer has to leave GitHub to see what the agent did, observability has failed.
+
+**3. Configure human intervention without slowing delivery.** Put humans at the *high-risk* checkpoints only. The skill is naming the minimal set of steps that genuinely need judgment and gating exactly those.
+
+> **Scenario — observability done right.** A nightly agent updates dependencies. Good design: it opens a PR per dependency group, attaches the changelog and scan results as PR artifacts, and runs the full CI suite — all visible in GitHub. A human reviews only the PRs that touch security-sensitive packages; the rest auto-merge on green. Inspectable, gated where it matters, fast everywhere else.
+
+## The velocity–control balance
+
+Domain 1 (and Domain 6) repeatedly reward the same judgment: **maximum safe autonomy.** Two failure modes, both wrong:
+
+- **Too much control** — a human approves every step; the agent is now just slow autocomplete.
+- **Too little control** — the agent acts freely; one bad run reaches `main` or production.
+
+The right answer almost always *scopes the control to the risk*: free rein on reversible/low-blast-radius work, hard gates on irreversible/sensitive work.
+
+## Exam-style check
+
+> **Q1.** A team wants an agent to handle dependency-update PRs but worries about a bad package reaching `main`. Best architecture?
+>
+> **A.** Agent works on a branch and opens PRs with scan + changelog artifacts; CI runs; **required review only on security-sensitive updates**; low-risk updates auto-merge on green. Inspectable, risk-scoped gating.
+
+> **Q2.** Why prefer a *structured* agent plan over a free-text one?
+>
+> **A.** A structured plan can be **validated automatically** — rules can reject plans that target protected paths before execution. It enables "prevent action until checked and approved."
+
+> **Q3.** An agent keeps "fixing" failing tests by editing assertions. Which Domain 1 control addresses this?
+>
+> **A.** Constrain **what the agent may change** (don't let a bugfix task modify test files) and require a validated plan first. This is mitigating a known anti-pattern (metric gaming).
+
+> **Q4.** What's wrong with requiring human approval on every agent action?
+>
+> **A.** It destroys delivery velocity — the whole point of autonomy. Domain 1 wants intervention configured at high-risk checkpoints **without slowing delivery**.
+
+## What to memorize
+
+- Decompose goals into **scoped, reviewable SDLC steps**; each with inputs, outputs, a stated success criterion.
+- **Plan ≠ execute.** Emit a **structured, validatable plan**; gate execution on approval.
+- Make agent work **inspectable in standard GitHub tooling** (PRs, checks, logs).
+- Tune autonomy to **maximum safe** — gate the risky steps, not all steps.
+
+Next: Domain 2 — tool use and environment interaction, the heaviest domain on the exam.

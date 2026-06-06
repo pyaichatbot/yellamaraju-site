@@ -1,0 +1,114 @@
+---
+title: "Domain 3: Memory, State & Execution"
+description: "Short-term vs. long-term vs. external memory, persisting agent state as durable artifacts, detecting and correcting context drift, and keeping state consistent across tools — Domain 3 (10–15%) of GH-600."
+level: intermediate
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 3
+totalModules: 3
+roles: ["dev","qa","pm"]
+tags: ["Memory","State","Context Drift","GH-600","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "28 min"
+prerequisites: ["Domain 2: Tool Use & Environment Interaction"]
+---
+
+**Domain 3 — Manage memory, state, and execution — is 10–15% of the exam.** Lighter by weight, but its ideas resurface in multi-agent coordination (Domain 5). It is about what an agent *remembers*, how it *resumes*, and how it avoids *drifting* from its original task over a long run.
+
+> **The exact skills measured in Domain 3:**
+> - **Implement agent memory strategies** — choose between short-term, long-term, and external memory; scope memory to task-relevant information; define expiration, pruning, and reset rules.
+> - **Persist agent state and manage context drift** — capture progress and decisions as durable artifacts; resume without repeating steps or diverging; detect and correct drift during extended execution.
+> - **Ensure continuity across tools and environments** — share state; prevent conflicting context; prevent stale context.
+
+## The three kinds of memory
+
+| Memory type | Lifespan | Holds | Example |
+| --- | --- | --- | --- |
+| **Short-term** | Current task / session | The working context of what it's doing now | The files and plan for the current PR |
+| **Long-term** | Across tasks | Durable knowledge and past decisions | "This repo uses pnpm; tests run via `make test`" |
+| **External** | Outside the agent | Authoritative source data | The issue tracker, the codebase, a knowledge base |
+
+**Choosing correctly is the tested skill.** Don't stuff long-lived facts into short-term context (they vanish at session end); don't bloat long-term memory with task-specific scratch (it pollutes future runs); pull authoritative, changing data from *external* sources rather than caching a stale copy.
+
+> **Scenario — picking the memory type.** An agent needs: the current diff (→ short-term, this task only), the team's coding conventions (→ long-term, every task), and the live list of open issues (→ external, always fetch fresh). Putting the live issue list in long-term memory guarantees staleness. Matching each fact to the right store is the exam answer.
+
+## Scope, expiration, pruning, reset
+
+Memory is not free, and stale memory is dangerous. Domain 3 wants explicit lifecycle rules:
+
+- **Scope to task-relevant information** — keep only what this task needs; irrelevant context degrades reasoning and inflates cost.
+- **Expiration** — facts that go stale get a TTL.
+- **Pruning** — trim accumulated context so it doesn't grow unbounded.
+- **Reset** — clear working memory between unrelated tasks so prior context can't bleed in.
+
+> **Why this matters:** a long agent run accumulates context. Without pruning and reset, early-but-now-irrelevant details (a rejected approach, an old error) keep influencing decisions. Defining *when memory is cleared* is as important as defining what it stores.
+
+## Persisting state and resuming work
+
+A key agentic property: **capture progress and decisions as durable artifacts** so work can resume without repeating or diverging.
+
+On GitHub, the durable artifacts are the ones you already have:
+
+- **Commits** — the concrete progress, step by step.
+- **The branch** — the current state of the work.
+- **PR description / comments** — decisions and rationale recorded inline.
+- **Checklists / issue updates** — what's done, what's next.
+
+> **Scenario — resume without repeating.** An agent's session hits the time limit mid-task (recall Domain 2). Because it committed progress and wrote its plan-state into the PR, the next session reads the branch + plan and continues from step 4 — instead of restarting and re-doing steps 1–3 (or, worse, redoing them *differently* and diverging). Durable artifacts are what make resumption safe.
+
+## Context drift
+
+**Drift** is when an agent gradually wanders from the original task over a long run — pursuing a tangent, re-deciding something already settled, or optimizing the wrong thing. Domain 3 tests *detecting and correcting* it.
+
+| Symptom | Detection | Correction |
+| --- | --- | --- |
+| Work no longer matches the goal | Compare current actions to the stated success criterion | Re-anchor to the original plan/goal |
+| Re-litigating settled decisions | Check against recorded decisions (durable artifacts) | Reload the decision record; don't re-decide |
+| Scope expanding silently | Watch for actions outside the defined scope | Enforce scope; prune off-task context |
+
+The defense against drift is mostly *Domain 1 done well*: a pre-stated success criterion and a recorded plan give you something to measure drift *against*. You can't detect drift from a goal you never wrote down.
+
+## Continuity across tools and environments
+
+When state moves across tools, sessions, or agents, three failures appear — and the exam names them:
+
+- **Share agent state** — make progress/decisions available to the next tool/session/agent that needs them.
+- **Prevent conflicting context** — two sources disagree (e.g. two agents hold different views of "current state"). Establish one source of truth.
+- **Prevent stale context** — an agent acts on out-of-date information. Refresh from the authoritative external source rather than trusting a cached copy.
+
+> **Scenario — conflicting context across agents.** Two agents work the same feature; each holds its own idea of the latest schema. One adds a column the other's code doesn't expect → contradictory changes. Fix: a single shared, authoritative state (the repo/branch as source of truth) instead of each agent's private copy. This is the bridge into Domain 5's conflict handling.
+
+> **Scenario — stale context.** An agent caches the list of feature flags at session start, then acts an hour later on flags that have since changed. The correct design **re-reads** the authoritative source for volatile data instead of trusting the snapshot.
+
+## Exam-style check
+
+> **Q1.** Where should an agent keep the team's "always run `make lint`" convention?
+>
+> **A.** **Long-term memory** — it applies across tasks. Short-term would lose it each session.
+
+> **Q2.** An agent's session ends mid-task. What lets the next session continue without redoing work?
+>
+> **A.** **Durable artifacts** — commits, the branch, and recorded plan/decisions in the PR. It resumes from recorded state.
+
+> **Q3.** Over a long run, an agent starts refactoring unrelated modules. What is this, and the fix?
+>
+> **A.** **Context drift.** Detect by comparing actions to the stated success criterion/scope; correct by **re-anchoring** to the original plan and pruning off-task context.
+
+> **Q4.** Two collaborating agents hold different versions of "current state" and produce conflicting changes. Root cause?
+>
+> **A.** Lack of a single authoritative shared state — **conflicting context**. Establish one source of truth instead of per-agent private copies.
+
+> **Q5.** Which data should come from an **external** source each time rather than long-term memory?
+>
+> **A.** Volatile, authoritative data — open issues, current flags, live config. Caching it long-term causes **stale context**.
+
+## What to memorize
+
+- **Short-term** (this task) · **long-term** (across tasks) · **external** (authoritative, fetch fresh). Match each fact to the right store.
+- Define memory **scope, expiration, pruning, reset** — stale memory is a hazard.
+- Persist progress/decisions as **durable artifacts** (commits, branch, PR) → resume without repeating or diverging.
+- **Drift** = wandering from the goal; detect against the stated success criterion, correct by re-anchoring.
+- Across tools/agents: **share state, one source of truth, refresh volatile data** to avoid conflicting and stale context.
+
+That completes the intermediate track. The advanced track covers evaluation (Domain 4), multi-agent coordination (Domain 5), guardrails (Domain 6), and the exam-day playbook.

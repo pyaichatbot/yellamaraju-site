@@ -1,0 +1,124 @@
+---
+title: "Agentic AI in the SDLC"
+description: "What separates an agent from an assistant, the plan-reason-act loop, and where autonomous agents fit into a real software development lifecycle — the mental model GH-600 tests in every domain."
+level: beginner
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 2
+totalModules: 3
+roles: ["dev","qa","pm"]
+tags: ["Agentic AI","SDLC","GH-600","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "25 min"
+prerequisites: ["GH-600 Course Overview & Exam Map"]
+---
+
+Before any domain makes sense, you need one clean mental model: what an *agent* is, how it differs from an *assistant*, and why putting it inside an SDLC changes everything about safety and accountability. GH-600 tests this model indirectly in every question.
+
+## Assistant vs. agent
+
+An **assistant** responds. You ask, it answers, you act. The human is in the loop on every step. Copilot autocomplete and chat are assistants — they suggest, you decide.
+
+An **agent** acts. Given a goal, it plans, takes actions in the world (edits files, runs commands, opens PRs), observes the result, and decides what to do next — *with reduced human involvement per step*. The GitHub Copilot coding agent is an agent: you hand it an issue, it works in its own environment and comes back with a pull request.
+
+| | Assistant | Agent |
+| --- | --- | --- |
+| Trigger | Each request | One goal |
+| Steps per human touch | One | Many |
+| Takes real actions | No (you do) | Yes (it does) |
+| Main risk | Bad suggestion you can ignore | Unsupervised action with real blast radius |
+| Exam framing | Productivity | Accountability + control |
+
+> **Why the exam cares about this distinction:** the moment something *acts autonomously*, the questions shift from "is the output good" to "who approved it, what could it break, and where is the audit trail." That shift is the spine of GH-600.
+
+## The plan–reason–act loop
+
+Every agent runs some version of this loop:
+
+1. **Plan** — decompose the goal into steps.
+2. **Reason** — decide which step, which tool, with what inputs.
+3. **Act** — execute (call a tool, edit code, run a test).
+4. **Observe** — read the result.
+5. **Repeat or stop** — against a success criterion.
+
+GH-600 Domain 1 explicitly tests one design decision here: **keep planning distinct from execution.** An agent should be able to produce a *structured plan you can inspect and approve before it touches anything*. Mixing "decide" and "do" into one opaque step is the anti-pattern the exam wants you to recognize and prevent.
+
+> **Scenario.** You ask an agent to "fix the failing test." A bad design lets it immediately rewrite the test to pass — making the suite green and the bug invisible. A good design makes it output a plan first ("diagnose root cause → reproduce → fix source, not test → re-run"), which a human or a rule can validate before execution. Same model, same prompt — the *architecture* is what prevents the harmful action.
+
+![Plan Before Execution](/images/gh-600-cert-illustrations/02-plan-before-execution.png)
+
+## Where agents fit in the SDLC
+
+The SDLC is the exam's home turf. Map agent work to the stages you already know:
+
+| SDLC stage | Agentic task example | Control that matters |
+| --- | --- | --- |
+| Plan / triage | Turn an issue into a structured implementation plan | Plan is inspectable before code starts |
+| Implement | Make changes on a branch | Branch scope, no direct push to `main` |
+| Review | Summarize a diff, suggest fixes, run scans | Human still owns merge decision |
+| Test / CI | Run tests, linters, security scans in CI | Agent invoked inside a workflow, sandboxed |
+| Release | Prepare release notes, dependency bumps | Irreversible steps require explicit approval |
+| Operate | Respond to alerts, open remediation PRs | Escalation path when confidence is low |
+
+The recurring theme: **the agent does the work, but GitHub's existing controls — branches, required reviews, protected branches, CI gates — stay in force.** You are not inventing new governance. You are pointing the agent *through* the controls you already trust.
+
+## Inputs, outputs, success criteria
+
+Domain 1 lists this as a discrete skill: *define inputs, outputs, and success criteria for agents.* Treat every agent task like a function signature:
+
+- **Inputs** — the issue, the repo scope, the constraints, the allowed tools.
+- **Outputs** — a PR, a plan, a report, a passing build.
+- **Success criteria** — measurable and pre-stated. "Tests pass and no new high-severity scan findings" beats "looks done."
+
+If you cannot state the success criterion before the agent runs, you cannot evaluate it afterward (that gap is exactly what Domain 4 punishes).
+
+## Common anti-patterns to recognize
+
+The exam asks you to *identify and mitigate common anti-patterns*. The high-frequency ones:
+
+| Anti-pattern | Why it is dangerous | Mitigation |
+| --- | --- | --- |
+| Action without a plan | No checkpoint, no inspectability | Require a structured plan first |
+| Goal with no success criterion | Cannot evaluate or stop | Pre-state measurable outcomes |
+| Unbounded scope | Agent edits anything, anywhere | Scope to a repo / branch / path |
+| "Reward hacking" the metric | Rewrites the test instead of the bug | Constrain *what* it may change |
+| Silent autonomy | No artifacts, no audit trail | Force inspectable outputs in standard tooling |
+| Over-approval | A human gate on every trivial step | Right-size approvals to real risk |
+
+Note the last row — the exam rewards *velocity with control*, not control for its own sake. Blocking everything is as wrong as blocking nothing.
+
+## Degrees of autonomy
+
+You will see "autonomy level" again in Domain 6, but plant the seed now. Autonomy is a dial, not a switch:
+
+- **Suggest** — agent proposes, human does everything.
+- **Act-with-approval** — agent acts, but irreversible/sensitive steps need a human yes.
+- **Act-and-report** — agent acts within a safe scope, produces artifacts, human reviews after.
+- **Autonomous** — agent acts within hard guardrails, human only on exceptions.
+
+The right level is **per action, scored by risk** — not per agent. Reading a file is low risk; force-pushing to `main` or rotating a secret is not. Right-sizing that dial *without* killing delivery speed is the judgment GH-600 keeps testing.
+
+## Exam-style check
+
+> **Q1.** An agent is asked to resolve a failing CI check and immediately edits the assertion so the test passes. Which design principle was violated?
+>
+> **A.** Separation of planning from execution / preventing action until a plan is checked. The agent acted before producing an inspectable plan, enabling reward-hacking of the success signal. *Fix: require a validated plan, and constrain which files the agent may modify.*
+
+> **Q2.** Which is the *better* control for an agent that opens pull requests on a protected repo?
+>
+> **A.** Let the agent work on a branch and open a PR that still goes through existing required reviews and checks — rather than granting it direct merge rights. Reuse the SDLC controls you already trust.
+
+> **Q3.** True or false: the safest configuration requires human approval on every agent action.
+>
+> **A.** False. The exam rewards right-sized approvals. Gating trivial, reversible, low-risk actions destroys the velocity that justifies the agent — reserve human checkpoints for high blast-radius or irreversible steps.
+
+## What to memorize
+
+- Assistant responds; agent acts — and *acting* is what triggers accountability questions.
+- Keep **planning separate from execution**; make plans inspectable and approvable.
+- Reuse existing GitHub SDLC controls; don't invent parallel governance.
+- Every agent task = inputs + outputs + a pre-stated, measurable success criterion.
+- Autonomy is per-action and risk-scored; right-size approvals, don't maximize them.
+
+Next: how GitHub itself becomes the control plane — the Copilot coding agent, custom agents, and MCP.

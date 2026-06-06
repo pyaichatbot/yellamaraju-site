@@ -1,0 +1,117 @@
+---
+title: "Domain 5: Multi-Agent Coordination"
+description: "Orchestration patterns, agent isolation and conflict resolution, observability across agents, detecting degraded multi-agent behavior, and managing the agent lifecycle — Domain 5 (15–20%) of GH-600."
+level: advanced
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 2
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["Multi-Agent","Orchestration","Coordination","GH-600","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "32 min"
+prerequisites: ["Domain 4: Evaluation, Error Analysis & Tuning"]
+---
+
+**Domain 5 — Orchestrate multi-agent coordination — is 15–20% of the exam.** Once more than one agent is in play, you inherit every single-agent concern *plus* coordination: conflicts, hand-offs, cross-agent observability, partial failures, and lifecycle. This domain builds directly on Domain 3 (shared state) and Domain 2 (safe execution).
+
+> **The exact skills measured in Domain 5:**
+> - **Operate and manage multi-agent workflows** — apply an orchestration pattern; configure isolation for parallel execution; detect and resolve conflicts (overlapping code changes, duplicated effort, contradictory outputs).
+> - **Configure observability for multi-agent behavior** — produce review/audit-suitable artifacts; document decisions, hand-offs, and outcomes; perform post-hoc analysis.
+> - **Detect and respond to multi-agent failures** — identify failed/partial/stalled executions; respond to degraded behavior or coordination; implement recovery (rollback, human-in-the-loop).
+> - **Manage the agent lifecycle within workflows** — add agents; update/reconfigure/replace without disrupting active work; retire agents while preserving auditability and continuity.
+
+## Orchestration patterns
+
+The first skill is **apply an orchestration pattern** — choose how multiple agents relate. Know the common shapes:
+
+| Pattern | Shape | Good for |
+| --- | --- | --- |
+| **Sequential / pipeline** | Agent A → B → C, each consumes the prior's output | Staged work (plan → implement → review) |
+| **Parallel / fan-out** | Agents work independent slices at once | Independent files/modules; speed |
+| **Orchestrator–worker** | A coordinator assigns and gathers sub-tasks | Decompose-then-delegate, then aggregate |
+| **Review / critique** | One agent produces, another evaluates | Built-in checking (a generator + a reviewer) |
+
+> **Match pattern to dependency structure.** Independent work → parallel (fast). Work where step N needs step N−1's result → sequential (safe). Forcing parallelism onto dependent tasks is exactly what creates the conflicts the next section is about.
+
+## Isolation and conflict resolution
+
+Parallel agents need **isolation** so they don't trample each other. On GitHub, the natural isolation unit is the **branch** (and scoped repos/paths): each agent works its own branch, so parallel work doesn't collide mid-flight.
+
+But isolation doesn't eliminate conflict — it *contains* it until merge. Domain 5 names three conflict types:
+
+| Conflict | Cause | Resolution |
+| --- | --- | --- |
+| **Overlapping code changes** | Two agents edit the same code | Isolate on branches; resolve at merge; partition work to avoid overlap |
+| **Duplicated effort** | Two agents do the same task | Coordinator/clear task ownership; dedupe before merge |
+| **Contradictory outputs** | Agents make incompatible decisions | Shared source of truth (Domain 3); a reconciling/critique step |
+
+> **Scenario — overlapping changes.** Two agents both need to touch `auth.py`. Run in parallel on separate branches and you get a merge conflict — recoverable, contained. The deeper fix is **partitioning**: give the shared file to one agent, or sequence the two tasks. Isolation makes parallelism *safe to attempt*; partitioning makes it *not need* resolution.
+
+> **Scenario — contradictory outputs.** Agent A assumes prices are integers (cents); Agent B assumes floats (dollars). Their PRs each pass in isolation but break together. Root cause traces to Domain 3 — no single source of truth for the contract. Resolution: a shared spec/interface both consume, or a reconciling agent/human at integration.
+
+## Observability across agents
+
+A single agent's audit trail is a PR. With many agents, you must also see the *coordination*. Domain 5 wants artifacts suitable for **review and audit**, plus documented **decisions, hand-offs, and outcomes**, enabling **post-hoc analysis**.
+
+Concretely: each agent's work stays inspectable (its PR/branch/logs), *and* the hand-offs between them are recorded — who passed what to whom, what was decided at each boundary. When a multi-agent run goes wrong, you reconstruct it from these artifacts.
+
+> **Why hand-offs are the weak point:** most single-agent failures are visible in one PR. Most *multi-agent* failures live in the seams — a bad assumption passed from A to B. If hand-offs aren't documented, post-hoc analysis is impossible. Record the boundaries.
+
+## Detecting and responding to multi-agent failure
+
+New failure modes appear with coordination:
+
+| Failure | Signal | Response |
+| --- | --- | --- |
+| **Failed execution** | An agent errored out | Rollback its work; retry or escalate |
+| **Partial execution** | Some agents finished, others didn't | Reconcile partial state; don't merge half a feature |
+| **Stalled execution** | An agent is stuck/waiting | Detect via timeouts/heartbeats; escalate |
+| **Degraded coordination** | Agents producing conflicting/low-quality work together | Pause, reconcile, bring a human in |
+
+**Recovery patterns** are explicitly tested: **rollback** and **human-in-the-loop**. When coordination degrades, the safe move is to halt, roll back to a consistent state, and escalate — not to let agents keep diverging.
+
+> **Scenario — partial completion.** Three agents build a feature across three branches. Two open clean PRs; the third stalls and never finishes. Merging the two leaves the feature half-built and possibly broken. Correct response: detect the stall, **don't merge partial work**, escalate the stalled slice (retry or human), reconcile, then integrate as a whole.
+
+## Managing the agent lifecycle
+
+Multi-agent systems are long-lived; agents come and go. Domain 5 wants this done **without disrupting active workflows** and **while preserving auditability**:
+
+- **Add** an agent to an existing workflow.
+- **Update / reconfigure / replace** an agent without breaking work in flight.
+- **Retire** an agent while keeping its history auditable and the workflow continuous.
+
+> **Scenario — hot-swapping an agent.** You replace the review agent with a better-tuned version while PRs are open. Do it without invalidating in-flight reviews, and keep the retired agent's past actions in the audit trail — continuity *and* accountability. "Rip it out and lose the history" is the wrong answer.
+
+## Exam-style check
+
+> **Q1.** Five agents will each implement an independent, non-overlapping module. Which orchestration pattern?
+>
+> **A.** **Parallel / fan-out** — independent work, run concurrently for speed, each isolated on its own branch.
+
+> **Q2.** Two agents produced PRs that individually pass but break when combined because they assumed different data formats. Root cause and fix?
+>
+> **A.** **Contradictory outputs** from no shared source of truth. Fix with a shared spec/interface both consume, plus a reconciling step at integration (ties to Domain 3).
+
+> **Q3.** In a multi-agent run, where do failures most often hide, and what makes them analyzable?
+>
+> **A.** In the **hand-offs/seams** between agents. Documenting decisions, hand-offs, and outcomes makes **post-hoc analysis** possible.
+
+> **Q4.** Two of three agents finish; one stalls. Correct response?
+>
+> **A.** Detect the stall, **don't merge partial work**, escalate the stalled task (retry or human-in-the-loop), reconcile, then integrate the whole.
+
+> **Q5.** How do you replace an agent mid-flight correctly?
+>
+> **A.** Reconfigure/replace **without disrupting active workflows** and **preserve the retired agent's audit history** — continuity plus accountability.
+
+## What to memorize
+
+- Pick the **orchestration pattern** by dependency structure: parallel (independent) vs. sequential (dependent); orchestrator–worker and review patterns for coordination.
+- **Isolate** parallel agents on branches; **partition** to avoid conflicts; resolve overlapping/duplicated/contradictory outputs.
+- Cross-agent observability = inspectable per-agent work **+ documented hand-offs** for post-hoc analysis.
+- Handle **failed/partial/stalled** runs; recover via **rollback + human-in-the-loop**; never merge partial features.
+- Manage **lifecycle** (add/replace/retire) **without disruption** and **preserving auditability**.
+
+Next: Domain 6 — guardrails and accountability.

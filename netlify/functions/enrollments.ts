@@ -5,7 +5,7 @@ import { getStore } from '@netlify/blobs';
 // GET /api/enrollments?secret=YOUR_SECRET&path=llm-mastery
 // Returns: { count, enrollments: [{email, enrolledAt, pathId}] }
 
-const SUPPORTED_PATHS = ['llm-mastery', 'langgraph', 'llm-systems', 'system-design'];
+const SUPPORTED_PATHS = ['llm-mastery', 'langgraph', 'llm-systems', 'system-design', 'github-agentic-cert'];
 
 function json(statusCode: number, body: Record<string, unknown>) {
   return {

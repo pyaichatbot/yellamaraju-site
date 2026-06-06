@@ -1,0 +1,139 @@
+---
+title: "Domain 6: Guardrails & Accountability"
+description: "Classifying actions by risk to assign autonomy levels, human-in-the-loop for high-judgment actions, blocking policy-violating actions, least-privilege scoping, and authorization for irreversible changes — Domain 6 (10–15%) of GH-600."
+level: advanced
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 3
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["Guardrails","Accountability","Responsible AI","Least Privilege","GH-600","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "30 min"
+prerequisites: ["Domain 5: Multi-Agent Coordination"]
+---
+
+**Domain 6 — Implement guardrails and accountability — is 10–15% of the exam.** Small by weight, but it carries the philosophy the whole exam is built on: **maximum safe velocity.** Every other domain's "secure answer" is really a Domain 6 instinct. Master this and you sharpen your answers everywhere.
+
+> **The exact skills measured in Domain 6:**
+> - **Define autonomy levels** — classify actions by operational, security, and compliance risk to right-size human interventions; assign autonomy levels that maximize delivery speed while staying compliant with security and Responsible AI standards.
+> - **Implement guardrails and human-in-the-loop workflows** — identify actions needing human judgment; block actions violating security/compliance/Responsible AI policy; scope permissions and execution contexts to least privilege; require explicit authorization for irreversible or compliance-sensitive changes; preserve velocity by minimizing approvals that don't materially reduce risk.
+
+## The core principle: maximize safe velocity
+
+Read the objective language carefully — it appears twice: *maximize delivery speed while remaining compliant* and *preserve execution velocity by minimizing approvals that do not materially reduce risk.*
+
+GH-600 is **not** asking you to lock everything down. It is asking you to put friction **exactly** where risk is, and **nowhere else**. Two equal-and-opposite wrong answers:
+
+- **Over-gating** — approval on every action. Compliant but slow; defeats the agent's purpose.
+- **Under-gating** — no checks on risky actions. Fast but unsafe; one bad run does real damage.
+
+The right answer is almost always the option that **gates the high-risk action and lets the low-risk ones flow.**
+
+![Right-Sized Autonomy](/images/gh-600-cert-illustrations/07-right-sized-autonomy.png)
+
+## Classifying actions by risk
+
+You cannot right-size autonomy without first classifying the action. Three risk lenses from the objective:
+
+| Lens | Question |
+| --- | --- |
+| **Operational** | If this goes wrong, what breaks? How big is the blast radius? Reversible? |
+| **Security** | Does it touch secrets, permissions, auth, or production access? |
+| **Compliance** | Does it touch regulated data or controlled processes; is an audit trail required? |
+
+Run any agent action through these and you get its risk tier:
+
+| Risk tier | Example actions | Right-sized control |
+| --- | --- | --- |
+| **Low** | Read a file, add a label, format code, open a draft PR | Autonomous; review after via artifacts |
+| **Medium** | Merge to a feature branch, modify non-critical code | Required review/CI; auto-proceed on green |
+| **High / irreversible** | Push to `main`, deploy, rotate a secret, delete data, change permissions | **Explicit human authorization**, controlled path |
+
+> **Scenario — right-sizing.** An agent's task list: (1) reformat code, (2) update a dependency, (3) deploy to production. Correct guardrail design: 1 runs autonomously; 2 opens a PR with scans and merges on green review; 3 **requires explicit human authorization** through a controlled release path. Same agent, three different gates, each matched to risk. Gating all three equally — or none — is the wrong answer.
+
+![Autonomy Spectrum](/images/gh-600-cert-illustrations/03-autonomy-spectrum.png)
+
+## Human-in-the-loop where judgment is needed
+
+The skill is **identify the subset of actions that require human judgment** — not "add a human everywhere." Human-in-the-loop belongs where:
+
+- The action is **irreversible** (deploy, delete, rotate).
+- It is **compliance-sensitive** (regulated data, audited change).
+- The agent's **confidence is low** or it hit ambiguity (escalation from Domain 2).
+- It crosses a **policy boundary** that requires accountable sign-off.
+
+Everywhere else, let the agent run and review via artifacts. The exam phrasing to internalize: *minimize approvals that do not materially reduce risk.*
+
+## Blocking policy-violating actions
+
+Some actions shouldn't be *approved* — they should be **blocked outright**. Domain 6 wants guardrails that **prevent** actions violating security, compliance, or Responsible AI policy, regardless of approval.
+
+| Mechanism (GitHub) | Blocks |
+| --- | --- |
+| Branch protection / rulesets | Unauthorized merges to protected branches |
+| Required reviews/checks | Unreviewed/failing changes reaching `main` |
+| Scoped permissions / least privilege | Actions outside the agent's granted scope |
+| Plan validation (Domain 1) | Plans that target forbidden paths/actions |
+| Allow lists (Domain 2) | Use of disallowed tools/MCP servers |
+
+> **Block vs. approve — a key distinction.** "Requires approval" means a human *can* say yes. "Blocked by policy" means it cannot happen at all (e.g. an agent may never exfiltrate secrets or disable a security control). High-judgment-but-permitted → human-in-the-loop. Never-permitted → hard block. The exam tests that you don't turn a hard policy into a mere approval prompt.
+
+![Block vs. Approve](/images/gh-600-cert-illustrations/08-block-vs-approve.png)
+
+## Least privilege and scoped execution
+
+Straight from the objective: *scope permissions and execution contexts to enforce least-privilege access.* This is the same instinct as Domain 2's tool permissions, applied to the whole execution context:
+
+- The agent gets the **minimum** permissions for the task — no standing broad tokens.
+- Its **execution context** is bounded — scoped repo, branch, environment.
+- Capabilities it doesn't need, it doesn't have.
+
+Least privilege is the cheapest guardrail: it shrinks blast radius *before* anything goes wrong, with no per-action approval cost.
+
+## Authorization for irreversible changes
+
+*Require explicit authorization or controlled paths for irreversible or compliance-sensitive changes.* Irreversible/sensitive actions must go through a deliberate gate:
+
+- **Explicit authorization** — a named human approves, on the record.
+- **Controlled path** — the change can only happen through a defined, audited route (a release pipeline with sign-off), never ad hoc.
+
+> **Scenario — irreversible action.** An agent determines a database migration is needed. It must not run it autonomously. The compliant design routes the migration through a controlled path requiring explicit human authorization, with the decision recorded. Reversible prep (writing the migration, opening the PR) is autonomous; *executing* it is gated.
+
+## Accountability and the audit trail
+
+"Accountability" is in the domain name for a reason. Every agent action must be **attributable and recorded** — which agent, what it did, under what authorization. GitHub gives this for free: commits, PRs, reviews, Actions logs, the audit log. The guardrail design isn't complete until you can answer *"who/what did this, and who authorized it?"* for any action.
+
+## Exam-style check
+
+> **Q1.** An agent's tasks are: format code, bump a dependency, and rotate a production secret. How should autonomy be assigned?
+>
+> **A.** Format → autonomous; dependency bump → PR + review/CI, auto on green; secret rotation → **explicit human authorization via a controlled path**. Right-size per risk.
+
+> **Q2.** Policy says agents may never disable a security check. Is that an approval gate or a block?
+>
+> **A.** A **hard block** — it must be impossible, not merely approvable. Don't downgrade a policy prohibition to an approval prompt.
+
+> **Q3.** What's wrong with requiring human approval on every agent action "to be safe"?
+>
+> **A.** It adds approvals that **don't materially reduce risk** and destroys velocity. Domain 6 wants friction only where real risk is.
+
+> **Q4.** Cheapest guardrail to shrink an agent's blast radius before anything happens?
+>
+> **A.** **Least-privilege scoping** of permissions and execution context — no standing broad access, bounded repo/branch/environment.
+
+> **Q5.** An agent needs to run an irreversible data migration. Compliant design?
+>
+> **A.** Autonomous to *prepare* (write/PR the migration); **explicit human authorization through a controlled, audited path** to *execute*.
+
+## What to memorize
+
+- The whole exam's spine: **maximize safe velocity** — gate risk, free everything else.
+- **Classify** actions by **operational / security / compliance** risk, then assign autonomy.
+- **Human-in-the-loop** for irreversible, compliance-sensitive, low-confidence, or policy-boundary actions only.
+- **Block** policy-violating actions outright; don't reduce a prohibition to an approval.
+- **Least-privilege** scope = cheap, pre-emptive blast-radius control.
+- **Irreversible/sensitive → explicit authorization + controlled path**, all attributable in the audit trail.
+
+Last module: the exam-day first-attempt playbook.

@@ -27,7 +27,7 @@ const { module: mod, totalModules, title, description, estimatedTime, roles, pre
 const pathInfo = getTutorialPath(pathId);
 const levelInfo = getTutorialLevel(level);
 const isSingleTrack = pathId === 'ai-literacy';
-const isGated = pathId === 'llm-mastery' || pathId === 'system-design';
+const isGated = pathId === 'llm-mastery' || pathId === 'system-design' || pathId === 'github-agentic-cert';
 const isOptInTracked = pathId === 'langgraph' || pathId === 'llm-systems';
 
 const GATE_CONFIGS: Record<string, { title: string; subtitle: string; pillars: { heading: string; body: string }[] }> = {
@@ -46,6 +46,15 @@ const GATE_CONFIGS: Record<string, { title: string; subtitle: string; pillars: {
     pillars: [
       { heading: 'Foundations to distributed systems', body: '— storage, APIs, reliability, and global AI infrastructure.' },
       { heading: 'Interview-ready walkthroughs', body: '— LLM serving, RAG, multi-agent, safety, and compliance scenarios.' },
+      { heading: 'Browser-local progress', body: '— track completion privately, no account needed.' },
+    ],
+  },
+  'github-agentic-cert': {
+    title: 'GitHub Agentic AI Developer (GH-600) Exam Prep',
+    subtitle: 'Free subscriber access. Unlock all 10 modules — one per exam domain plus an exam-day playbook — built to get you through GH-600 on the first attempt.',
+    pillars: [
+      { heading: 'Mapped to the official skills measured', body: '— every module tracks a real GH-600 domain and its weighting.' },
+      { heading: 'Honest, GitHub-grounded content', body: '— Copilot coding agent, MCP, custom agents, and guardrails as they actually work.' },
       { heading: 'Browser-local progress', body: '— track completion privately, no account needed.' },
     ],
   },
@@ -183,11 +192,19 @@ const relatedBlogs = [...explicitRelatedBlogs, ...tagRelatedBlogs].slice(0, 3);
 
     <section class="learner-guide" aria-label="How to use this tutorial">
       <h2>How to Use This Lesson</h2>
-      <ul>
-        <li>Start with the user problem, then map the pattern to architecture and failure modes.</li>
-        <li>If a code or design example is included, change one assumption and reason through the impact.</li>
-        <li>Use role callouts, checklists, and Q&A sections as implementation or interview prep notes.</li>
-      </ul>
+      {pathId === 'github-agentic-cert' ? (
+        <ul>
+          <li>Read the "skills measured" callout first — it names the exact exam objectives this module covers.</li>
+          <li>Work each scenario before reading its resolution; the exam tests judgment, not recall.</li>
+          <li>Use the exam-style questions and the "what to memorize" list as your last-mile review.</li>
+        </ul>
+      ) : (
+        <ul>
+          <li>Start with the user problem, then map the pattern to architecture and failure modes.</li>
+          <li>If a code or design example is included, change one assumption and reason through the impact.</li>
+          <li>Use role callouts, checklists, and Q&A sections as implementation or interview prep notes.</li>
+        </ul>
+      )}
       {prerequisites.length > 0 && (
         <p class="learner-prereqs">Prerequisites: {prerequisites.join(', ')}</p>
       )}

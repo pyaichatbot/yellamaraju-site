@@ -1,0 +1,107 @@
+---
+title: "GitHub as the Control Plane: Copilot Agents & MCP"
+description: "The concrete GitHub machinery GH-600 assumes you know: the Copilot coding agent, custom instructions and custom agents, MCP servers, and how branch protections keep autonomous work safe."
+level: beginner
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 3
+totalModules: 3
+roles: ["dev","qa","pm"]
+tags: ["GitHub Copilot","MCP","Coding Agent","GH-600","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "30 min"
+prerequisites: ["Agentic AI in the SDLC"]
+---
+
+GH-600 calls GitHub the *system of record and control plane*. That is not marketing — it is the literal answer to many exam questions. When an agent acts, GitHub is where the work happens, where the evidence lives, and where the guardrails are enforced. This module gives you the concrete machinery so the domain modules have something to stand on.
+
+> **Honesty note.** These are fast-moving products in a beta exam. Every claim here is from GitHub's documentation as written. Specific defaults (session limits, which MCP servers are enabled by default, exact menu labels) can change — verify current numbers in GitHub Docs before exam day. The *concepts* are what GH-600 tests, and those are stable.
+
+## The GitHub Copilot coding agent
+
+This is the flagship agent the exam orbits. The model to hold:
+
+- **You assign it work** from multiple entry points: the agents panel on GitHub.com, a GitHub Issue, VS Code, or by mentioning `@copilot` in a pull request comment.
+- **It runs in its own ephemeral environment**, powered by GitHub Actions. There it can explore the repo, make changes, and run tests and linters.
+- **It works on a branch and opens a pull request** — typically a draft — so its output enters your normal review flow instead of landing on `main`.
+- **Its work is inspectable**: commits, logs, and the session are viewable. That inspectability *is* the audit trail Domains 4 and 6 keep asking about.
+- **A session has a hard time limit** (documented at 59 minutes). Long jobs must be broken into smaller tasks — a real design constraint, not trivia.
+
+> **Scenario.** A teammate says "let the agent do the whole migration in one shot." Wrong instinct on two counts: the session time cap will truncate it, and a single giant PR is unreviewable. The agentic-correct move is to decompose into scoped tasks, each producing a reviewable PR. The exam rewards this decomposition reflex.
+
+### Customizing the agent's environment
+
+You shape the agent's ephemeral environment with **`copilot-setup-steps.yml`** — install dependencies, set up tools, adjust settings (for example, a shorter `timeout-minutes`). This matters for Domain 2 ("environment-specific constraints") and Domain 1 (defining a safe execution context).
+
+## Custom instructions and custom agents
+
+The exam audience profile explicitly names *custom instructions, custom agents, tools, and Copilot setup steps*. Know the difference:
+
+| Mechanism | What it is | Use it for |
+| --- | --- | --- |
+| Custom instructions | Repo/org guidance the agent always reads (e.g. `.github/copilot-instructions.md`) | Coding standards, "always run tests," conventions |
+| Custom agents | A configured agent with a defined role, toolset, and scope | A reviewer agent, a docs agent, a triage agent |
+| Tools | Capabilities the agent can call (built-in or via MCP) | Reading issues, running scans, hitting an API |
+| Setup steps | Environment bootstrap (`copilot-setup-steps.yml`) | Dependencies, runtimes, timeouts |
+
+The exam likes to test whether you reach for the *right* lever. "Make the agent always follow our commit-message convention" → custom instructions. "Give the agent access to our internal ticketing system" → a tool / MCP server. "Stand up a dedicated security-review agent" → a custom agent.
+
+## MCP: the tool-integration standard
+
+**Model Context Protocol (MCP)** is how agents get access to data sources and tools beyond their built-ins. This is core to Domain 2, so anchor it now:
+
+- An **MCP server** exposes tools/resources the agent can use. You **add an MCP server as a tool** to an agent.
+- GitHub offers a **remote MCP server** you can configure for hosted access (versus running a server locally).
+- **MCP registries** let an organization curate which servers are available.
+- **MCP allow lists** restrict *which* servers/tools an agent may use — the least-privilege control for tool access.
+
+> **Why allow lists are an exam favorite.** Tools are power. An agent with an unrestricted tool surface is an unrestricted blast radius. The allow list is how you grant exactly the tools a task needs and nothing more. Expect questions where the "secure" answer is *scope the allowed servers/tools*, not *give broad access and hope*.
+
+Repository-level MCP settings can apply to both the coding agent and Copilot code review, and some servers (e.g. GitHub and Playwright) ship enabled by default — confirm the current default set in docs, since defaults evolve.
+
+## Guardrails that already exist in GitHub
+
+Here is the unlock: most agent guardrails are GitHub features you already know, pointed at a non-human actor.
+
+| GitHub control | How it guards the agent |
+| --- | --- |
+| Branch protection / rulesets | Stop the agent merging to protected branches without review |
+| Required reviews & checks | Keep a human and CI between agent work and `main` |
+| Bypass actors | A ruleset can block an incompatible agent; you explicitly add Copilot as a *bypass actor* when you intend to allow it |
+| Repository / branch scope | Confine the agent to one repo or branch |
+| Actions permissions | Bound what the ephemeral environment can do |
+| Audit log, PRs, commits | The inspectable record of every agent action |
+
+> **Scenario — the bypass-actor trap.** An agent's PRs keep getting blocked by a ruleset that restricts commit authors. The naive "fix" is to weaken the ruleset for everyone. The correct, scoped fix is to add Copilot as a *bypass actor* for that specific rule — preserving the protection for humans while unblocking the intended agent. The exam loves this "scope the exception, don't remove the rule" pattern.
+
+## The whole picture in one paragraph
+
+You assign an agent a scoped task. It spins up an ephemeral GitHub Actions environment, optionally bootstrapped by your setup steps, guided by custom instructions, equipped with an allow-listed set of tools (built-in plus MCP servers). It works on a branch, runs tests and scans, and opens a draft PR. Branch protections and required reviews keep its output gated. Every commit, log, and session entry is an audit artifact. That single loop is the substrate for all six domains.
+
+## Exam-style check
+
+> **Q1.** You need an agent to use your company's internal incident API. Which mechanism?
+>
+> **A.** Add it as a **tool via an MCP server**, and put that server on the agent's **allow list**. Custom instructions describe behavior; they do not grant capabilities.
+
+> **Q2.** The coding agent's run was cut off before finishing a large refactor. Most likely cause and best fix?
+>
+> **A.** It hit the session time limit. Fix by **decomposing** into smaller scoped tasks, each producing its own reviewable PR — not by trying to extend one giant run.
+
+> **Q3.** An organization wants only three approved MCP servers available to agents. Which control?
+>
+> **A.** Configure an **MCP registry / allow list** of approved servers. This is least-privilege for the tool surface.
+
+> **Q4.** Copilot's PRs are blocked by a branch ruleset. What is the *scoped* fix?
+>
+> **A.** Add Copilot as a **bypass actor** for that rule, leaving the rule intact for everyone else — rather than disabling the protection.
+
+## What to memorize
+
+- The coding agent runs in an **ephemeral GitHub Actions environment**, works on a **branch**, opens a **draft PR**, and is **session-time-limited** — decompose big work.
+- **Custom instructions = behavior**, **tools/MCP = capability**, **custom agents = roles**, **setup steps = environment**.
+- **MCP** integrates external tools; **registries + allow lists** are the least-privilege controls.
+- Agent guardrails are mostly **existing GitHub controls** (branch protection, required reviews, scope, audit log) — plus the **bypass-actor** pattern to scope exceptions.
+
+That completes the foundation. The intermediate track now takes Domains 1, 2, and 3 one at a time.

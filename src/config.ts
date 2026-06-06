@@ -20,7 +20,7 @@ export const NAV_ITEMS = [
   { label: 'Tutorials', href: '/tutorials' },
   { label: 'Topics', href: '/topics' },
   {
-    label: 'Build',
+    label: 'Resources',
     href: '#',
     children: [
       {
@@ -36,7 +36,7 @@ export const NAV_ITEMS = [
     ],
   },
   {
-    label: 'Labs',
+    label: 'Experiments',
     href: '#',
     children: [
       {

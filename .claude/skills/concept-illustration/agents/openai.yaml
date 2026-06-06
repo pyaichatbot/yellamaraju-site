@@ -1,0 +1,6 @@
+interface:
+  display_name: "Concept Illustration"
+  short_description: "Design and generate sketch-style illustrations explaining complex concepts, workflows, and structures with a recurring minimalist character"
+  default_prompt: "Use the concept-illustration skill to design and generate sketch-style illustrations for this content. Start with a shot list if placement needs analysis, or generate images directly if that's what's requested."
+policy:
+  allow_implicit_invocation: true

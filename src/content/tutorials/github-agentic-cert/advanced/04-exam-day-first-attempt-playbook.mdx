@@ -1,0 +1,161 @@
+---
+title: "Exam-Day First-Attempt Playbook"
+description: "A two-week study plan, a question-reading strategy, the decision heuristics that resolve most GH-600 questions, a full mixed practice set with explanations, and exam-day logistics — everything to pass GH-600 on the first attempt."
+level: advanced
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 4
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["Exam Strategy","Practice Questions","GH-600","Certification","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "40 min"
+prerequisites: ["Domain 6: Guardrails & Accountability"]
+---
+
+You know the six domains. This module turns knowledge into a *pass*. It is strategy: how to study the last stretch, how to read GH-600's scenario questions, the heuristics that resolve the hard ones, a mixed practice set, and the logistics so nothing surprises you on the day.
+
+> **Critical reminder before you schedule your exam:** This path teaches the *reasoning*. But GH-600 judges whether you can *apply* it under pressure. If you have not yet done the hands-on work — assigned a real task to the Copilot coding agent, configured an MCP server, and set up a branch ruleset with bypass actors — do that before you sit the exam. Reading alone will leak points on Domains 2 (tool and environment judgment) and 6 (risk-based autonomy decisions). A week of hands-on practice is worth more than a month of reading.
+
+> **Reality check on this practice set.** These questions are *written by me* in the style and spirit of the published objectives to drill the right reflexes. They are **not** real exam items, and I have not seen the live exam. Use them to practice *reasoning*, not to memorize answers. The authoritative scope is always `aka.ms/GH600-StudyGuide`.
+
+## A focused two-week plan
+
+| Days | Focus | Outcome |
+| --- | --- | --- |
+| 1–2 | Beginner track + memorize the domain/weight table | Mental model + triage map locked |
+| 3–4 | Domain 2 (heaviest) — tools, MCP, CI, error handling | Strongest domain |
+| 5 | Domain 1 — architecture, plan/execute split | — |
+| 6 | Domain 4 — evaluation + root-cause taxonomy | The point-leak domain closed |
+| 7 | Domain 5 — multi-agent | — |
+| 8 | Domain 3 + Domain 6 | Lighter domains + the velocity philosophy |
+| 9 | **Hands-on**: assign the Copilot coding agent a real task; configure an MCP server; set a branch ruleset + bypass actor | Concepts become muscle memory |
+| 10 | Run the **exam sandbox** (`aka.ms/examdemo`) | Zero UI surprises |
+| 11–12 | This module's practice set; re-read any weak domain | Calibrate |
+| 13 | Light review of the memorize lists only | Don't cram new material |
+| 14 | Rest. Logistics check. | Walk in fresh |
+
+**Hands-on is non-negotiable.** This is an *applied* exam. Reading about `copilot-setup-steps.yml`, MCP allow lists, and bypass actors is not the same as having configured them once. One afternoon of doing it is worth three of reading.
+
+## How to read a GH-600 question
+
+These are scenario questions, not definitions. A reliable procedure:
+
+1. **Find the real ask.** Strip the story to: what decision is being made? (assign autonomy? pick a tool? diagnose a failure?)
+2. **Name the domain.** Which of the six is this? That primes the right framework.
+3. **Spot the risk / blast radius.** Almost every question hides a "what could go wrong." The safe-but-not-paralyzed option usually wins.
+4. **Eliminate the extremes.** Cross out "approve everything" and "no controls at all" — both are usually wrong.
+5. **Prefer the scoped option.** The answer that grants the *minimum*, gates the *risky* step, and reuses existing GitHub controls is the favorite.
+
+## Decision heuristics that resolve most questions
+
+When two options look plausible, these tie-breakers settle it:
+
+| Situation | Pick the option that… |
+| --- | --- |
+| Permissions/tools | grants **least privilege** for the task |
+| Autonomy level | **gates the high-risk action**, frees the low-risk |
+| Plan vs. action | **separates planning from execution**; validates the plan first |
+| Transient failure | **retries** with backoff |
+| Persistent/ambiguous failure | **escalates** to a human |
+| Partial multi-agent completion | **does not merge** partial work; reconciles |
+| Policy prohibition | **blocks** outright (not "approve") |
+| Irreversible change | requires **explicit authorization + controlled path** |
+| Stale/volatile data | **fetches fresh** from the authoritative source |
+| Blocked by a ruleset | **scopes the exception** (bypass actor), keeps the rule |
+| Too many approvals | **removes approvals that don't reduce risk** |
+| Observability | makes work **inspectable in standard GitHub tooling** |
+
+If you internalize one thing: **least privilege + gate the risk + reuse GitHub's controls.** That single instinct is the correct answer to a large fraction of the exam.
+
+## Mixed practice set
+
+Cover the answers; decide; then check the reasoning.
+
+> **1.** A team wants an agent to fix bugs but fears it will "fix" failing tests by editing assertions. Best mitigation?
+> **Answer:** Constrain *what* it may change (forbid modifying test files on bugfix tasks) and require a validated plan before execution. *(Domain 1 — anti-pattern: metric gaming.)*
+
+> **2.** An agent needs to read tickets from an internal system. Which mechanism, and how do you contain it?
+> **Answer:** Add the system as a tool via an **MCP server**, on the agent's **allow list**, with read-only permission. *(Domain 2 — capability via MCP + least privilege.)*
+
+> **3.** An agent calls a tool that times out once. Then what?
+> **Answer:** **Retry** with backoff — transient failure. *(Domain 2.)*
+
+> **4.** The same tool call fails five times with "permission denied." Then what?
+> **Answer:** **Escalate** — persistent/auth failure, not retryable. *(Domain 2.)*
+
+> **5.** An agent's session ends mid-task. What enables a clean resume?
+> **Answer:** Durable artifacts — committed progress + recorded plan/decisions in the PR — so the next session continues, not restarts. *(Domain 3.)*
+
+> **6.** Where does the team's "always run integration tests" rule belong?
+> **Answer:** Long-term memory / custom instructions — it applies across tasks. *(Domain 3.)*
+
+> **7.** An agent's PR fails to build: it used an API absent from the repo's library version, never reading the manifest. Root cause?
+> **Answer:** Context/environment issue. Fix: ensure it reads the manifest; correct setup. *(Domain 4.)*
+
+> **8.** An agent makes a scanner stop flagging an issue by suppressing the rule. What's the design flaw?
+> **Answer:** Gameable success signal misaligned with intent. Define it as "vulnerability removed, no new findings, tests pass." *(Domain 4.)*
+
+> **9.** Five independent modules, five agents. Orchestration?
+> **Answer:** Parallel/fan-out, each isolated on its own branch. *(Domain 5.)*
+
+> **10.** Two agents' PRs pass alone but conflict together (different data-format assumptions). Root cause and fix?
+> **Answer:** Contradictory outputs from no shared source of truth; add a shared spec/interface + reconciling step. *(Domains 5 + 3.)*
+
+> **11.** Two of three agents finish; one stalls. Action?
+> **Answer:** Don't merge partial work; escalate the stalled task (retry/human), reconcile, then integrate. *(Domain 5.)*
+
+> **12.** Agent tasks: format code, bump a dependency, rotate a production secret. Autonomy design?
+> **Answer:** Format autonomous; dependency via PR + green review; secret rotation requires explicit human authorization through a controlled path. *(Domain 6.)*
+
+> **13.** Policy: agents may never disable a security control. Approval gate or block?
+> **Answer:** Hard block — must be impossible, not approvable. *(Domain 6.)*
+
+> **14.** Copilot's PRs are blocked by a commit-author ruleset. Scoped fix?
+> **Answer:** Add Copilot as a bypass actor for that rule; leave the rule intact for humans. *(Domain 6 / control plane.)*
+
+> **15.** A reviewer must leave GitHub to see what an agent did. What's wrong?
+> **Answer:** Observability failure — artifacts must be inspectable in standard GitHub tooling (PRs, checks, logs). *(Domain 1.)*
+
+> **16.** "To be safe," a team requires human approval on every agent action. Critique?
+> **Answer:** Over-gating — adds approvals that don't reduce risk and kills velocity. Gate only high-risk/irreversible steps. *(Domain 6.)*
+
+> **17.** You want only three approved MCP servers org-wide, with one agent limited to two of them.
+> **Answer:** MCP registry (org menu of three) + allow list (that agent → two). *(Domain 2.)*
+
+> **18.** An agent should review every PR automatically. Safe execution?
+> **Answer:** Invoke in a CI workflow, scoped to the repo, read diff + write PR comments only — inside the pipeline's permission boundary. *(Domain 2.)*
+
+> **19.** Over a long run, an agent drifts into refactoring unrelated code. Detect and correct?
+> **Answer:** Compare actions to the stated success criterion/scope (detect drift); re-anchor to the original plan, prune off-task context. *(Domain 3.)*
+
+> **20.** A migration must run. What's autonomous, what's gated?
+> **Answer:** Writing/PR-ing the migration: autonomous. Executing it: explicit authorization + controlled, audited path. *(Domain 6.)*
+
+Score yourself by domain. Any domain where you missed more than one — re-read that module's "what to memorize."
+
+## Exam-day logistics
+
+- **Time:** 120 minutes. With ~40–60 questions that's roughly 2 minutes each. Don't sink 8 minutes into one scenario — flag and move on.
+- **Flag and return.** First pass: answer what's clear, flag the rest. Second pass: the flagged ones, now with momentum. Don't leave blanks — there's no penalty for guessing.
+- **Read the *last* sentence first** on long scenarios — it's usually the actual question. Then read the scenario knowing what you're solving for.
+- **Watch for "BEST" / "MOST secure" / "without slowing delivery."** These signal the velocity-vs-control trade-off; the extreme option is a trap.
+- **Beta scoring:** you won't get your result immediately — expect it ~8 weeks after the beta closes. Don't let the silence rattle you.
+- **Setup:** for online proctoring, test your system ahead, clear your space, have ID ready. Register with a **personal** Microsoft account, not a work/school one, so your records survive a job change.
+- **Retake:** fail and you can retake 24 hours later. It is recoverable — but you came here to pass once.
+
+## Final pre-exam checklist
+
+- [ ] I can recite all six domains and their weights.
+- [ ] Domain 2 (tools/MCP/CI/error handling) feels strongest.
+- [ ] I can classify any failure: reasoning / tool misuse / context-environment.
+- [ ] For any action I can state autonomy level, blast radius, and human checkpoint.
+- [ ] Retry-vs-escalate and approve-vs-block are automatic.
+- [ ] I've configured an MCP server, a ruleset + bypass actor, and assigned the coding agent a task by hand.
+- [ ] I've run the exam sandbox and know the UI.
+- [ ] Logistics sorted: ID, environment, personal MSA account.
+
+If those are all checked, you're ready. The exam rewards the same instinct this whole path has drilled: **least privilege, gate the real risk, reuse GitHub's controls, keep the evidence.** Carry that in, and trust your preparation.
+
+Good luck — go pass it on the first attempt.

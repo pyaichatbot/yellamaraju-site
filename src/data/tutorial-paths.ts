@@ -1,4 +1,4 @@
-export type TutorialPathId = 'genai' | 'llm-systems' | 'langgraph' | 'system-design' | 'ai-literacy' | 'llm-mastery';
+export type TutorialPathId = 'genai' | 'llm-systems' | 'langgraph' | 'system-design' | 'ai-literacy' | 'llm-mastery' | 'github-agentic-cert';
 export type TutorialLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export const TUTORIAL_LEVELS: Array<{
@@ -96,6 +96,18 @@ export const TUTORIAL_PATHS: Array<{
     order: 6,
     recommendedLevel: 'beginner',
     tags: ['Enterprise AI', 'LLM Engineering', 'Governance', 'Evaluation', 'Production AI'],
+  },
+  {
+    id: 'github-agentic-cert',
+    title: 'GitHub Agentic AI Developer (GH-600) Exam Prep',
+    shortTitle: 'GH-600 Cert',
+    description: 'A first-attempt prep path for the GitHub Certified: Agentic AI Developer exam (GH-600). Every module maps to the official skills measured: SDLC integration, tool use and MCP, memory and state, evaluation, multi-agent coordination, and guardrails.',
+    audience: 'Developers, DevOps, platform, and AI engineers operating Copilot coding agents, MCP servers, and custom agents inside GitHub.',
+    outcome: 'Walk into the GH-600 exam knowing each domain cold — with the GitHub control-plane mental model, worked scenarios, and an exam-day playbook to pass on the first attempt.',
+    accent: 'var(--tut-advanced)',
+    order: 7,
+    recommendedLevel: 'beginner',
+    tags: ['Certification', 'GitHub Copilot', 'Agentic AI', 'MCP', 'Exam Prep'],
   },
 ];
 

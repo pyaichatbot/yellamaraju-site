@@ -115,6 +115,16 @@ Purpose: consolidated tutorial content for LLM-assisted reading, search, and off
 - Module 3: Real-World Skills and Capstone (llm-mastery / advanced / DEV, QA, BA, PM, EXEC) - /tutorials/llm-mastery/advanced/03-real-world-skills-capstone
 - Module 4: Enterprise Governance and Operations (llm-mastery / advanced / DEV, QA, BA, PM, EXEC) - /tutorials/llm-mastery/advanced/04-enterprise-governance-operations
 - Module 5: Assessment Guide and Certification Standard (llm-mastery / advanced / DEV, QA, BA, PM, EXEC) - /tutorials/llm-mastery/advanced/05-assessment-guide-certification
+- Module 1: GH-600 Course Overview & Exam Map (github-agentic-cert / beginner / DEV, QA, PM) - /tutorials/github-agentic-cert/beginner/00-course-overview
+- Module 2: Agentic AI in the SDLC (github-agentic-cert / beginner / DEV, QA, PM) - /tutorials/github-agentic-cert/beginner/01-agentic-ai-in-the-sdlc
+- Module 3: GitHub as the Control Plane: Copilot Agents & MCP (github-agentic-cert / beginner / DEV, QA, PM) - /tutorials/github-agentic-cert/beginner/02-github-as-control-plane
+- Module 1: Domain 1: Agent Architecture & SDLC Processes (github-agentic-cert / intermediate / DEV, PM, QA) - /tutorials/github-agentic-cert/intermediate/01-agent-architecture-and-sdlc-processes
+- Module 2: Domain 2: Tool Use & Environment Interaction (github-agentic-cert / intermediate / DEV, QA, PM) - /tutorials/github-agentic-cert/intermediate/02-tool-use-and-environment-interaction
+- Module 3: Domain 3: Memory, State & Execution (github-agentic-cert / intermediate / DEV, QA, PM) - /tutorials/github-agentic-cert/intermediate/03-memory-state-and-execution
+- Module 1: Domain 4: Evaluation, Error Analysis & Tuning (github-agentic-cert / advanced / DEV, QA, PM) - /tutorials/github-agentic-cert/advanced/01-evaluation-error-analysis-and-tuning
+- Module 2: Domain 5: Multi-Agent Coordination (github-agentic-cert / advanced / DEV, QA, PM) - /tutorials/github-agentic-cert/advanced/02-multi-agent-coordination
+- Module 3: Domain 6: Guardrails & Accountability (github-agentic-cert / advanced / DEV, QA, PM) - /tutorials/github-agentic-cert/advanced/03-guardrails-and-accountability
+- Module 4: Exam-Day First-Attempt Playbook (github-agentic-cert / advanced / DEV, QA, PM) - /tutorials/github-agentic-cert/advanced/04-exam-day-first-attempt-playbook
 
 ---
 
@@ -24679,3 +24689,1139 @@ Failing answer examples:
 - Changes thresholds after seeing results.
 - Has no safety/privacy cases.
 - Says "model looks good" without approval criteria.
+
+---
+
+# GH-600 Course Overview & Exam Map
+URL: /tutorials/github-agentic-cert/beginner/00-course-overview
+Source: github-agentic-cert/beginner/00-course-overview.mdx
+Description: What the GitHub Certified: Agentic AI Developer (GH-600) exam actually tests, how it is scored, and how this 10-module path gets you to a first-attempt pass.
+Date: 2026-06-06
+Tags: Certification, GH-600, GitHub Copilot, Agentic AI, Exam Prep
+
+My job in this path is narrow and honest: get you through **Exam GH-600 — Developing in Agentic AI Systems** on the first attempt, without filler and without hand-waving. Everything here maps to the official *skills measured*. Where a detail is a product feature that changes between GitHub releases, I will say so and point you at the source instead of inventing a number.
+
+> **One framing to carry through every module:** GH-600 is not "do you know what an LLM is." It is *"can you operate, supervise, and govern autonomous agents inside a real SDLC, with GitHub as the system of record and control plane."* Every question is really asking: who is accountable, what is the blast radius, and where is the evidence?
+
+## What this certification is
+
+| Fact | Detail |
+| --- | --- |
+| Credential | GitHub Certified: Agentic AI Developer (beta) |
+| Exam code | GH-600 |
+| Level | Intermediate |
+| Maintained by | GitHub (delivered through Microsoft / Pearson VUE) |
+| Duration | 120 minutes |
+| Passing score | 700 out of 1000 (scaled — not a raw percentage) |
+| Delivery | Proctored, online or test center |
+| Languages | English (request +30 min if English is not your first language) |
+| Retake | 24 hours after a first failed attempt; longer waits after that |
+
+A note on the *beta*: during the beta window you do **not** get your score immediately. Results are released roughly eight weeks after the beta period closes. Plan emotionally for that delay — you will walk out not knowing, and that is normal.
+
+> **Two links, one exam — clear this up now.** The Microsoft Learn page (`learn.microsoft.com/.../agentic-ai-developer/`) and the GitHub learning page both describe the *same* credential. Microsoft delivers the exam; GitHub owns the content. There is no separate "Microsoft Agentic AI Developer" exam hiding behind that URL — it is GH-600.
+
+## The six domains and their weight
+
+The exam is built from six domains. The weighting tells you exactly where to spend study time. Memorize this table — it is your triage map.
+
+| # | Domain | Weight | This path's module |
+| --- | --- | --- | --- |
+| 1 | Prepare agent architecture and SDLC processes | 15–20% | Intermediate · M1 |
+| 2 | Implement tool use and environment interaction | **20–25%** | Intermediate · M2 |
+| 3 | Manage memory, state, and execution | 10–15% | Intermediate · M3 |
+| 4 | Perform evaluation, error analysis, and tuning | 15–20% | Advanced · M1 |
+| 5 | Orchestrate multi-agent coordination | 15–20% | Advanced · M2 |
+| 6 | Implement guardrails and accountability | 10–15% | Advanced · M3 |
+
+**Domain 2 is the single heaviest area.** Tool use, MCP servers, permissions, and execution environments can be a quarter of your score. If you are short on time, this is where the marginal hour pays best. Domains 3 and 6 are the lightest — do not skip them, but do not over-invest either.
+
+## How to read the weightings strategically
+
+A scaled exam with a 700 cut score means you do not need every question. Rough math on a ~50-question exam: you can miss a meaningful slice and still pass, but the margin disappears if you tank an entire heavy domain. So the goal is **no zeros** — never walk in blind on Domain 2 or 4.
+
+> **Scenario — where people fail.** A strong developer who uses Copilot daily often walks in confident and fails Domain 6 (guardrails) and Domain 4 (evaluation). Why? Day-to-day coding rarely forces you to *classify an action by compliance risk* or *write a root-cause taxonomy for an agent failure*. The exam does. The "obvious" domains are not where points leak — the governance and evaluation domains are.
+
+## What you need before you start
+
+You should already be comfortable with:
+
+- The software development lifecycle in GitHub: branches, pull requests, reviews, required checks, Actions.
+- GitHub Copilot as a coding tool — chat, the coding agent, custom instructions.
+- Basic security and code-review hygiene: least privilege, secrets, who can merge what.
+
+If any of those are shaky, the next two beginner modules fix the agentic mental model and the GitHub-as-control-plane model before we go domain by domain.
+
+## How this path is structured
+
+- **Beginner (3 modules)** — the mental model. What "agentic" means inside an SDLC, and how GitHub becomes the control plane (Copilot coding agent, custom agents, MCP).
+- **Intermediate (3 modules)** — Domains 1, 2, 3 in depth, one module each.
+- **Advanced (4 modules)** — Domains 4, 5, 6 in depth, then an **exam-day first-attempt playbook** with practice questions and a time strategy.
+
+Each domain module follows the same rhythm: the exact sub-skills the exam lists, the concept taught plainly, a worked scenario, the traps that lose points, and exam-style questions with *why* the answer is right.
+
+## Official resources (use these, not memory dumps)
+
+- **Study guide:** `aka.ms/GH600-StudyGuide` — the authoritative skills-measured list. If this path and the study guide ever disagree, the study guide wins.
+- **Exam sandbox:** `aka.ms/examdemo` — practice the *interface* and question types before exam day so the UI is never a surprise.
+- **Official training:** the Microsoft Learn modules *Foundations of Agentic AI in GitHub*, *Designing Agent Architecture and SDLC Integration*, and *Tooling, MCP, and Agent Execution Environments*.
+- **Product truth:** GitHub Docs for Copilot coding agent and MCP. Product features move; when a question hinges on a current default, the docs are ground truth.
+
+> **Honesty clause.** This is a beta exam built on fast-moving products. I have written every technical claim from the official study guide and GitHub's own documentation. Where a feature default could change (session limits, which MCP servers are on by default, exact UI labels), I flag it. Treat any specific number as "verify against current docs before exam day."
+
+## Required artifact for this path
+
+By the end, you should be able to do three things from memory:
+
+1. Recite the six domains and their weights.
+2. For any agent action, state its autonomy level, blast radius, and required human checkpoint.
+3. Trace any agent failure to a root-cause class and name the fix.
+
+If you can do those three, you are ready. Start with the next module: what "agentic AI in the SDLC" actually means.
+
+---
+
+# Agentic AI in the SDLC
+URL: /tutorials/github-agentic-cert/beginner/01-agentic-ai-in-the-sdlc
+Source: github-agentic-cert/beginner/01-agentic-ai-in-the-sdlc.mdx
+Description: What separates an agent from an assistant, the plan-reason-act loop, and where autonomous agents fit into a real software development lifecycle — the mental model GH-600 tests in every domain.
+Date: 2026-06-06
+Tags: Agentic AI, SDLC, GH-600, Exam Prep
+
+Before any domain makes sense, you need one clean mental model: what an *agent* is, how it differs from an *assistant*, and why putting it inside an SDLC changes everything about safety and accountability. GH-600 tests this model indirectly in every question.
+
+## Assistant vs. agent
+
+An **assistant** responds. You ask, it answers, you act. The human is in the loop on every step. Copilot autocomplete and chat are assistants — they suggest, you decide.
+
+An **agent** acts. Given a goal, it plans, takes actions in the world (edits files, runs commands, opens PRs), observes the result, and decides what to do next — *with reduced human involvement per step*. The GitHub Copilot coding agent is an agent: you hand it an issue, it works in its own environment and comes back with a pull request.
+
+| | Assistant | Agent |
+| --- | --- | --- |
+| Trigger | Each request | One goal |
+| Steps per human touch | One | Many |
+| Takes real actions | No (you do) | Yes (it does) |
+| Main risk | Bad suggestion you can ignore | Unsupervised action with real blast radius |
+| Exam framing | Productivity | Accountability + control |
+
+> **Why the exam cares about this distinction:** the moment something *acts autonomously*, the questions shift from "is the output good" to "who approved it, what could it break, and where is the audit trail." That shift is the spine of GH-600.
+
+## The plan–reason–act loop
+
+Every agent runs some version of this loop:
+
+1. **Plan** — decompose the goal into steps.
+2. **Reason** — decide which step, which tool, with what inputs.
+3. **Act** — execute (call a tool, edit code, run a test).
+4. **Observe** — read the result.
+5. **Repeat or stop** — against a success criterion.
+
+GH-600 Domain 1 explicitly tests one design decision here: **keep planning distinct from execution.** An agent should be able to produce a *structured plan you can inspect and approve before it touches anything*. Mixing "decide" and "do" into one opaque step is the anti-pattern the exam wants you to recognize and prevent.
+
+> **Scenario.** You ask an agent to "fix the failing test." A bad design lets it immediately rewrite the test to pass — making the suite green and the bug invisible. A good design makes it output a plan first ("diagnose root cause → reproduce → fix source, not test → re-run"), which a human or a rule can validate before execution. Same model, same prompt — the *architecture* is what prevents the harmful action.
+
+## Where agents fit in the SDLC
+
+The SDLC is the exam's home turf. Map agent work to the stages you already know:
+
+| SDLC stage | Agentic task example | Control that matters |
+| --- | --- | --- |
+| Plan / triage | Turn an issue into a structured implementation plan | Plan is inspectable before code starts |
+| Implement | Make changes on a branch | Branch scope, no direct push to `main` |
+| Review | Summarize a diff, suggest fixes, run scans | Human still owns merge decision |
+| Test / CI | Run tests, linters, security scans in CI | Agent invoked inside a workflow, sandboxed |
+| Release | Prepare release notes, dependency bumps | Irreversible steps require explicit approval |
+| Operate | Respond to alerts, open remediation PRs | Escalation path when confidence is low |
+
+The recurring theme: **the agent does the work, but GitHub's existing controls — branches, required reviews, protected branches, CI gates — stay in force.** You are not inventing new governance. You are pointing the agent *through* the controls you already trust.
+
+## Inputs, outputs, success criteria
+
+Domain 1 lists this as a discrete skill: *define inputs, outputs, and success criteria for agents.* Treat every agent task like a function signature:
+
+- **Inputs** — the issue, the repo scope, the constraints, the allowed tools.
+- **Outputs** — a PR, a plan, a report, a passing build.
+- **Success criteria** — measurable and pre-stated. "Tests pass and no new high-severity scan findings" beats "looks done."
+
+If you cannot state the success criterion before the agent runs, you cannot evaluate it afterward (that gap is exactly what Domain 4 punishes).
+
+## Common anti-patterns to recognize
+
+The exam asks you to *identify and mitigate common anti-patterns*. The high-frequency ones:
+
+| Anti-pattern | Why it is dangerous | Mitigation |
+| --- | --- | --- |
+| Action without a plan | No checkpoint, no inspectability | Require a structured plan first |
+| Goal with no success criterion | Cannot evaluate or stop | Pre-state measurable outcomes |
+| Unbounded scope | Agent edits anything, anywhere | Scope to a repo / branch / path |
+| "Reward hacking" the metric | Rewrites the test instead of the bug | Constrain *what* it may change |
+| Silent autonomy | No artifacts, no audit trail | Force inspectable outputs in standard tooling |
+| Over-approval | A human gate on every trivial step | Right-size approvals to real risk |
+
+Note the last row — the exam rewards *velocity with control*, not control for its own sake. Blocking everything is as wrong as blocking nothing.
+
+## Degrees of autonomy
+
+You will see "autonomy level" again in Domain 6, but plant the seed now. Autonomy is a dial, not a switch:
+
+- **Suggest** — agent proposes, human does everything.
+- **Act-with-approval** — agent acts, but irreversible/sensitive steps need a human yes.
+- **Act-and-report** — agent acts within a safe scope, produces artifacts, human reviews after.
+- **Autonomous** — agent acts within hard guardrails, human only on exceptions.
+
+The right level is **per action, scored by risk** — not per agent. Reading a file is low risk; force-pushing to `main` or rotating a secret is not. Right-sizing that dial *without* killing delivery speed is the judgment GH-600 keeps testing.
+
+## Exam-style check
+
+> **Q1.** An agent is asked to resolve a failing CI check and immediately edits the assertion so the test passes. Which design principle was violated?
+>
+> **A.** Separation of planning from execution / preventing action until a plan is checked. The agent acted before producing an inspectable plan, enabling reward-hacking of the success signal. *Fix: require a validated plan, and constrain which files the agent may modify.*
+
+> **Q2.** Which is the *better* control for an agent that opens pull requests on a protected repo?
+>
+> **A.** Let the agent work on a branch and open a PR that still goes through existing required reviews and checks — rather than granting it direct merge rights. Reuse the SDLC controls you already trust.
+
+> **Q3.** True or false: the safest configuration requires human approval on every agent action.
+>
+> **A.** False. The exam rewards right-sized approvals. Gating trivial, reversible, low-risk actions destroys the velocity that justifies the agent — reserve human checkpoints for high blast-radius or irreversible steps.
+
+## What to memorize
+
+- Assistant responds; agent acts — and *acting* is what triggers accountability questions.
+- Keep **planning separate from execution**; make plans inspectable and approvable.
+- Reuse existing GitHub SDLC controls; don't invent parallel governance.
+- Every agent task = inputs + outputs + a pre-stated, measurable success criterion.
+- Autonomy is per-action and risk-scored; right-size approvals, don't maximize them.
+
+Next: how GitHub itself becomes the control plane — the Copilot coding agent, custom agents, and MCP.
+
+---
+
+# GitHub as the Control Plane: Copilot Agents & MCP
+URL: /tutorials/github-agentic-cert/beginner/02-github-as-control-plane
+Source: github-agentic-cert/beginner/02-github-as-control-plane.mdx
+Description: The concrete GitHub machinery GH-600 assumes you know: the Copilot coding agent, custom instructions and custom agents, MCP servers, and how branch protections keep autonomous work safe.
+Date: 2026-06-06
+Tags: GitHub Copilot, MCP, Coding Agent, GH-600, Exam Prep
+
+GH-600 calls GitHub the *system of record and control plane*. That is not marketing — it is the literal answer to many exam questions. When an agent acts, GitHub is where the work happens, where the evidence lives, and where the guardrails are enforced. This module gives you the concrete machinery so the domain modules have something to stand on.
+
+> **Honesty note.** These are fast-moving products in a beta exam. Every claim here is from GitHub's documentation as written. Specific defaults (session limits, which MCP servers are enabled by default, exact menu labels) can change — verify current numbers in GitHub Docs before exam day. The *concepts* are what GH-600 tests, and those are stable.
+
+## The GitHub Copilot coding agent
+
+This is the flagship agent the exam orbits. The model to hold:
+
+- **You assign it work** from multiple entry points: the agents panel on GitHub.com, a GitHub Issue, VS Code, or by mentioning `@copilot` in a pull request comment.
+- **It runs in its own ephemeral environment**, powered by GitHub Actions. There it can explore the repo, make changes, and run tests and linters.
+- **It works on a branch and opens a pull request** — typically a draft — so its output enters your normal review flow instead of landing on `main`.
+- **Its work is inspectable**: commits, logs, and the session are viewable. That inspectability *is* the audit trail Domains 4 and 6 keep asking about.
+- **A session has a hard time limit** (documented at 59 minutes). Long jobs must be broken into smaller tasks — a real design constraint, not trivia.
+
+> **Scenario.** A teammate says "let the agent do the whole migration in one shot." Wrong instinct on two counts: the session time cap will truncate it, and a single giant PR is unreviewable. The agentic-correct move is to decompose into scoped tasks, each producing a reviewable PR. The exam rewards this decomposition reflex.
+
+### Customizing the agent's environment
+
+You shape the agent's ephemeral environment with **`copilot-setup-steps.yml`** — install dependencies, set up tools, adjust settings (for example, a shorter `timeout-minutes`). This matters for Domain 2 ("environment-specific constraints") and Domain 1 (defining a safe execution context).
+
+## Custom instructions and custom agents
+
+The exam audience profile explicitly names *custom instructions, custom agents, tools, and Copilot setup steps*. Know the difference:
+
+| Mechanism | What it is | Use it for |
+| --- | --- | --- |
+| Custom instructions | Repo/org guidance the agent always reads (e.g. `.github/copilot-instructions.md`) | Coding standards, "always run tests," conventions |
+| Custom agents | A configured agent with a defined role, toolset, and scope | A reviewer agent, a docs agent, a triage agent |
+| Tools | Capabilities the agent can call (built-in or via MCP) | Reading issues, running scans, hitting an API |
+| Setup steps | Environment bootstrap (`copilot-setup-steps.yml`) | Dependencies, runtimes, timeouts |
+
+The exam likes to test whether you reach for the *right* lever. "Make the agent always follow our commit-message convention" → custom instructions. "Give the agent access to our internal ticketing system" → a tool / MCP server. "Stand up a dedicated security-review agent" → a custom agent.
+
+## MCP: the tool-integration standard
+
+**Model Context Protocol (MCP)** is how agents get access to data sources and tools beyond their built-ins. This is core to Domain 2, so anchor it now:
+
+- An **MCP server** exposes tools/resources the agent can use. You **add an MCP server as a tool** to an agent.
+- GitHub offers a **remote MCP server** you can configure for hosted access (versus running a server locally).
+- **MCP registries** let an organization curate which servers are available.
+- **MCP allow lists** restrict *which* servers/tools an agent may use — the least-privilege control for tool access.
+
+> **Why allow lists are an exam favorite.** Tools are power. An agent with an unrestricted tool surface is an unrestricted blast radius. The allow list is how you grant exactly the tools a task needs and nothing more. Expect questions where the "secure" answer is *scope the allowed servers/tools*, not *give broad access and hope*.
+
+Repository-level MCP settings can apply to both the coding agent and Copilot code review, and some servers (e.g. GitHub and Playwright) ship enabled by default — confirm the current default set in docs, since defaults evolve.
+
+## Guardrails that already exist in GitHub
+
+Here is the unlock: most agent guardrails are GitHub features you already know, pointed at a non-human actor.
+
+| GitHub control | How it guards the agent |
+| --- | --- |
+| Branch protection / rulesets | Stop the agent merging to protected branches without review |
+| Required reviews & checks | Keep a human and CI between agent work and `main` |
+| Bypass actors | A ruleset can block an incompatible agent; you explicitly add Copilot as a *bypass actor* when you intend to allow it |
+| Repository / branch scope | Confine the agent to one repo or branch |
+| Actions permissions | Bound what the ephemeral environment can do |
+| Audit log, PRs, commits | The inspectable record of every agent action |
+
+> **Scenario — the bypass-actor trap.** An agent's PRs keep getting blocked by a ruleset that restricts commit authors. The naive "fix" is to weaken the ruleset for everyone. The correct, scoped fix is to add Copilot as a *bypass actor* for that specific rule — preserving the protection for humans while unblocking the intended agent. The exam loves this "scope the exception, don't remove the rule" pattern.
+
+## The whole picture in one paragraph
+
+You assign an agent a scoped task. It spins up an ephemeral GitHub Actions environment, optionally bootstrapped by your setup steps, guided by custom instructions, equipped with an allow-listed set of tools (built-in plus MCP servers). It works on a branch, runs tests and scans, and opens a draft PR. Branch protections and required reviews keep its output gated. Every commit, log, and session entry is an audit artifact. That single loop is the substrate for all six domains.
+
+## Exam-style check
+
+> **Q1.** You need an agent to use your company's internal incident API. Which mechanism?
+>
+> **A.** Add it as a **tool via an MCP server**, and put that server on the agent's **allow list**. Custom instructions describe behavior; they do not grant capabilities.
+
+> **Q2.** The coding agent's run was cut off before finishing a large refactor. Most likely cause and best fix?
+>
+> **A.** It hit the session time limit. Fix by **decomposing** into smaller scoped tasks, each producing its own reviewable PR — not by trying to extend one giant run.
+
+> **Q3.** An organization wants only three approved MCP servers available to agents. Which control?
+>
+> **A.** Configure an **MCP registry / allow list** of approved servers. This is least-privilege for the tool surface.
+
+> **Q4.** Copilot's PRs are blocked by a branch ruleset. What is the *scoped* fix?
+>
+> **A.** Add Copilot as a **bypass actor** for that rule, leaving the rule intact for everyone else — rather than disabling the protection.
+
+## What to memorize
+
+- The coding agent runs in an **ephemeral GitHub Actions environment**, works on a **branch**, opens a **draft PR**, and is **session-time-limited** — decompose big work.
+- **Custom instructions = behavior**, **tools/MCP = capability**, **custom agents = roles**, **setup steps = environment**.
+- **MCP** integrates external tools; **registries + allow lists** are the least-privilege controls.
+- Agent guardrails are mostly **existing GitHub controls** (branch protection, required reviews, scope, audit log) — plus the **bypass-actor** pattern to scope exceptions.
+
+That completes the foundation. The intermediate track now takes Domains 1, 2, and 3 one at a time.
+
+---
+
+# Domain 1: Agent Architecture & SDLC Processes
+URL: /tutorials/github-agentic-cert/intermediate/01-agent-architecture-and-sdlc-processes
+Source: github-agentic-cert/intermediate/01-agent-architecture-and-sdlc-processes.mdx
+Description: Integrating agents into the SDLC, separating planning from execution, and configuring observability and control for autonomous agents — Domain 1 (15–20%) of GH-600, with worked scenarios and practice questions.
+Date: 2026-06-06
+Tags: Agent Architecture, SDLC, Observability, GH-600, Exam Prep
+
+**Domain 1 — Prepare agent architecture and SDLC processes — is 15–20% of the exam.** It is the "set it up right" domain: how an agent slots into the development lifecycle, how you keep its thinking separate from its doing, and how you make autonomous work observable and controllable.
+
+> **The exact skills measured in Domain 1:**
+> - **Integrate agents into the SDLC** — identify steps for agents to perform; identify and mitigate common anti-patterns; define inputs, outputs, and success criteria.
+> - **Define boundaries between planning, reasoning, and action** — configure planning distinct from execution; output a structured plan; validate plans; prevent action until checked and approved.
+> - **Configure observability and control for autonomous agents** — set the degree of autonomy and guardrails; produce inspectable artifacts in standard tooling; configure human intervention without slowing delivery.
+
+## Integrating agents into the SDLC
+
+The core skill is **decomposition**: turning a goal into the specific steps an agent should perform, in the right SDLC stage, with clear hand-offs.
+
+A reliable decomposition checklist:
+
+1. **Which stage?** Triage, implement, review, test, release, operate.
+2. **Which steps belong to the agent** vs. stay with a human or with CI?
+3. **What are the inputs?** Issue, repo scope, constraints, allowed tools.
+4. **What is the output?** A PR, a plan, a report, a green build.
+5. **What is the success criterion?** Measurable and stated *before* the run.
+
+> **Scenario — sizing the task.** "Add OAuth login" is too big for one agent run (recall the session limit and reviewability). Decompose: (a) agent drafts an implementation plan from the issue; human approves; (b) agent adds the provider config behind a flag → PR; (c) agent wires the callback + tests → PR; (d) agent updates docs → PR. Each step has inputs, an output PR, and a pass criterion. This decomposition reflex is tested directly.
+
+### Anti-patterns to mitigate
+
+| Anti-pattern | Mitigation the exam wants |
+| --- | --- |
+| Agent acts with no plan | Require structured plan + approval first |
+| No success criterion | Pre-state measurable outcomes |
+| Scope creep | Bound to repo/branch/path |
+| Metric gaming (edits the test) | Constrain *what* may change |
+| Opaque autonomy | Force inspectable artifacts |
+| Approval on everything | Right-size to risk |
+
+## Separating planning from execution
+
+This is the most testable idea in Domain 1. An agent should be architected so that **it produces a plan you can read and approve before it changes anything.**
+
+The pattern:
+
+1. Agent ingests the goal.
+2. Agent emits a **structured plan** — ordered steps, the files/areas touched, the success check. Structured means parseable and reviewable, not a wall of prose.
+3. The plan is **validated** — by a human, or by a rule (e.g. "plan must not modify test files for a bugfix task," "plan must not touch `infra/`").
+4. **Only after approval** does the agent execute.
+
+> **Why "structured":** a structured plan can be checked *automatically*. If the plan is JSON-like steps with declared targets, a rule can reject a plan that proposes touching protected paths — before a single line changes. Prose plans can't be gated that way. Expect a question that prefers structured, validatable plans over free-text ones.
+
+> **Scenario — preventing action until approved.** A finance repo agent must never alter ledger-calculation files without sign-off. Architecture: agent outputs a plan; a check inspects declared targets; if `ledger/` appears, execution is blocked pending a named approver. The agent still moves fast on everything *else*. That is "control without killing velocity."
+
+## Observability and control for autonomous agents
+
+Three sub-skills, three concrete moves:
+
+**1. Set the degree of autonomy (with guardrails).** Decide per task how far the agent may go before a human is needed — and encode it (branch scope, allowed tools, required approvals on sensitive steps). Autonomy is a deliberate setting, not a default.
+
+**2. Produce inspectable artifacts in standard tooling.** The agent's plan, diffs, logs, and PRs should live in the tools your team already reviews — GitHub PRs, checks, Actions logs — not a side channel. If a reviewer has to leave GitHub to see what the agent did, observability has failed.
+
+**3. Configure human intervention without slowing delivery.** Put humans at the *high-risk* checkpoints only. The skill is naming the minimal set of steps that genuinely need judgment and gating exactly those.
+
+> **Scenario — observability done right.** A nightly agent updates dependencies. Good design: it opens a PR per dependency group, attaches the changelog and scan results as PR artifacts, and runs the full CI suite — all visible in GitHub. A human reviews only the PRs that touch security-sensitive packages; the rest auto-merge on green. Inspectable, gated where it matters, fast everywhere else.
+
+## The velocity–control balance
+
+Domain 1 (and Domain 6) repeatedly reward the same judgment: **maximum safe autonomy.** Two failure modes, both wrong:
+
+- **Too much control** — a human approves every step; the agent is now just slow autocomplete.
+- **Too little control** — the agent acts freely; one bad run reaches `main` or production.
+
+The right answer almost always *scopes the control to the risk*: free rein on reversible/low-blast-radius work, hard gates on irreversible/sensitive work.
+
+## Exam-style check
+
+> **Q1.** A team wants an agent to handle dependency-update PRs but worries about a bad package reaching `main`. Best architecture?
+>
+> **A.** Agent works on a branch and opens PRs with scan + changelog artifacts; CI runs; **required review only on security-sensitive updates**; low-risk updates auto-merge on green. Inspectable, risk-scoped gating.
+
+> **Q2.** Why prefer a *structured* agent plan over a free-text one?
+>
+> **A.** A structured plan can be **validated automatically** — rules can reject plans that target protected paths before execution. It enables "prevent action until checked and approved."
+
+> **Q3.** An agent keeps "fixing" failing tests by editing assertions. Which Domain 1 control addresses this?
+>
+> **A.** Constrain **what the agent may change** (don't let a bugfix task modify test files) and require a validated plan first. This is mitigating a known anti-pattern (metric gaming).
+
+> **Q4.** What's wrong with requiring human approval on every agent action?
+>
+> **A.** It destroys delivery velocity — the whole point of autonomy. Domain 1 wants intervention configured at high-risk checkpoints **without slowing delivery**.
+
+## What to memorize
+
+- Decompose goals into **scoped, reviewable SDLC steps**; each with inputs, outputs, a stated success criterion.
+- **Plan ≠ execute.** Emit a **structured, validatable plan**; gate execution on approval.
+- Make agent work **inspectable in standard GitHub tooling** (PRs, checks, logs).
+- Tune autonomy to **maximum safe** — gate the risky steps, not all steps.
+
+Next: Domain 2 — tool use and environment interaction, the heaviest domain on the exam.
+
+---
+
+# Domain 2: Tool Use & Environment Interaction
+URL: /tutorials/github-agentic-cert/intermediate/02-tool-use-and-environment-interaction
+Source: github-agentic-cert/intermediate/02-tool-use-and-environment-interaction.mdx
+Description: Selecting and configuring agent tools, MCP servers and allow lists, integrating agents into dev environments and CI, and safe execution with error handling, retries, rollbacks, and escalation — the heaviest GH-600 domain (20–25%).
+Date: 2026-06-06
+Tags: MCP, Tools, CI, Error Handling, GH-600, Exam Prep
+
+**Domain 2 — Implement tool use and environment interaction — is 20–25% of the exam: the single heaviest domain.** If you master one area cold, make it this one. It covers what tools an agent gets, how MCP wires them in, how the agent runs inside repos and CI, and how it fails safely.
+
+> **The exact skills measured in Domain 2:**
+> - **Select and configure agent tools** — identify required tools; configure tools; configure tool permissions.
+> - **Configure MCP servers** — add an MCP server as a tool; configure a GitHub remote MCP server; configure MCP registries; configure MCP allow lists.
+> - **Integrate agents within development environments** — evaluate execution context; scope to a specific repository; invoke in a CI workflow; use branch-based scope; enable autonomous actions (branches, PRs); handle environment-specific constraints.
+> - **Operate agents with safe execution paths and robust error handling** — error handling; retries; rollbacks; escalation paths; traceability and accountability.
+
+## Selecting and configuring tools
+
+Start from the task, not the catalog. **Identify the required tools** — the minimum capability set to accomplish the goal — then grant exactly those.
+
+| Step | Question |
+| --- | --- |
+| Identify | What capabilities does *this* task actually need? (read issues? run tests? call an API?) |
+| Configure | Wire each tool to the agent (built-in or via MCP) |
+| Permission | Scope each tool: read vs. write, which repos, which resources |
+
+**Tool permissions are least-privilege in action.** A triage agent that only reads issues and writes labels does not need write access to code. The exam consistently rewards "grant the minimum," and consistently punishes "give broad access for convenience."
+
+> **Scenario.** A documentation agent needs to read the codebase and open doc PRs. Correct toolset: read repo, write to a docs branch, open PR. It does **not** need: production API tokens, secret access, or merge rights. If an answer option hands it more than the task needs, it's the wrong (insecure) option.
+
+## MCP servers in depth
+
+MCP is how non-built-in tools reach the agent. Four configuration skills, each a likely question:
+
+| Skill | What it means | The point |
+| --- | --- | --- |
+| Add an MCP server as a tool | Register a server so the agent can call its tools | This is *how* you extend capability |
+| Configure a GitHub remote MCP server | Use GitHub's hosted MCP endpoint vs. a local server | Hosted = no local process to manage |
+| Configure MCP registries | Curate which servers an org/repo may use | Central governance of the tool surface |
+| Configure MCP allow lists | Restrict which servers/tools an agent may use | Least-privilege for tools |
+
+> **Remote vs. local MCP.** A *remote* (hosted) MCP server is reachable without running a process in the agent's environment — useful for the cloud coding agent. A *local* server runs alongside the agent. The exam may ask which suits a hosted/ephemeral agent: lean remote when the agent has no persistent local host.
+
+> **Registries vs. allow lists.** Registry = the *menu* of servers available in the org. Allow list = which items off that menu *this* agent may actually use. Both narrow the surface; they operate at different levels. An org curates a registry; a repo/agent applies an allow list.
+
+> **Scenario — the over-broad MCP trap.** An agent is given an MCP server that exposes shell, filesystem, and network tools, to accomplish a task that only needs to read a Jira ticket. The secure design restricts the allow list to the ticket-read tool, or uses a narrower server. Power you don't need is blast radius you can't justify.
+
+## Integrating agents into dev environments
+
+This cluster is about *where and how tightly* the agent runs:
+
+- **Evaluate the execution context** — what environment is the agent in, what can it reach, what are the constraints? Decide before you let it act.
+- **Scope to a specific repository** — confine the agent to one repo.
+- **Use branch-based scope** — confine changes to a branch; never let it touch protected branches directly.
+- **Invoke in a CI workflow** — run the agent as part of CI (e.g. an Actions workflow) so it operates inside your pipeline's controls.
+- **Enable autonomous actions** — let it create branches and open PRs on its own, within scope.
+- **Handle environment-specific constraints** — runtimes, dependencies, timeouts; this is where `copilot-setup-steps.yml` earns its keep.
+
+> **Scenario — CI-invoked agent.** On every PR, an agent reviews the diff for missing tests and comments. It is invoked *inside* a CI workflow, scoped to that repo, with read on the diff and write on PR comments only. It runs in the pipeline's permission boundary — not with a human's broad token. That containment is the design the exam rewards.
+
+## Safe execution and error handling
+
+Agents fail. Domain 2 tests whether you *engineer for failure*. Memorize these five and what each is for:
+
+| Mechanism | Purpose | Example |
+| --- | --- | --- |
+| **Error handling** | Catch and respond to failures gracefully | Tool call fails → don't crash the run; record and decide |
+| **Retries** | Recover from *transient* failures | Network blip calling an MCP tool → retry with backoff |
+| **Rollbacks** | Undo partial/bad changes | Revert the agent's branch/commits when a step fails midway |
+| **Escalation paths** | Hand off when the agent can't safely proceed | Low confidence or repeated failure → flag a human |
+| **Traceability & accountability** | Record who/what did what | Logs, commits, PR trail tying every action to the agent |
+
+> **Retry vs. escalate — a classic exam fork.** Retry a *transient* failure (timeout, rate limit). Escalate a *persistent or ambiguous* failure (auth denied, conflicting requirements, repeated identical error). Retrying a permission error forever is a wrong answer; escalating a one-off network blip is wasteful. Match the response to the failure *type*.
+
+> **Scenario — rollback + escalation together.** An agent's multi-step change passes step 1, fails step 2. Safe path: roll back step 1's commits (don't leave the branch half-mutated), record the failure with full trace, and escalate to a human with the context. Clean state + audit trail + human hand-off.
+
+## Putting Domain 2 together
+
+A well-architected agent task: minimum tools, each permission-scoped; external capability via allow-listed MCP servers (remote when hosted); scoped to a repo and branch; invoked inside CI; bootstrapped for its environment; and wrapped in error handling, type-matched retries, rollbacks, escalation, and a full trace. That sentence is half of Domain 2's points.
+
+## Exam-style check
+
+> **Q1.** A triage agent needs to label issues. What tool permissions?
+>
+> **A.** Read issues + write labels. **Not** code write or merge rights. Least privilege to the task.
+
+> **Q2.** An agent calling an MCP tool fails once with a network timeout. Correct response?
+>
+> **A.** **Retry** with backoff — it's a transient failure. Reserve escalation for persistent/ambiguous failures.
+
+> **Q3.** You want to centrally control which MCP servers any agent in the org can use, then further limit a specific agent to two of them. Which controls?
+>
+> **A.** An org **MCP registry** for the available set, plus an **allow list** to limit the specific agent. Different levels, both narrowing the surface.
+
+> **Q4.** An agent should review every pull request automatically. How do you run it safely?
+>
+> **A.** Invoke it **inside a CI workflow**, **scoped to the repo**, with read on the diff and write only on PR comments — inside the pipeline's permission boundary.
+
+> **Q5.** An agent's step 2 fails after step 1 changed files. Safest handling?
+>
+> **A.** **Roll back** step 1, **record the trace**, and **escalate** to a human. Don't leave a half-applied change; preserve accountability.
+
+## What to memorize
+
+- This is the **heaviest domain** — know it cold.
+- **Identify required tools, then permission-scope each.** Least privilege wins.
+- **MCP**: add servers as tools; **remote** for hosted agents; **registries** (org menu) + **allow lists** (per-agent subset) for governance.
+- Run agents **scoped to repo + branch, invoked in CI**, bootstrapped via setup steps.
+- Engineer failure: **error handling, retries (transient), rollbacks, escalation (persistent), traceability.**
+
+Next: Domain 3 — memory, state, and execution.
+
+---
+
+# Domain 3: Memory, State & Execution
+URL: /tutorials/github-agentic-cert/intermediate/03-memory-state-and-execution
+Source: github-agentic-cert/intermediate/03-memory-state-and-execution.mdx
+Description: Short-term vs. long-term vs. external memory, persisting agent state as durable artifacts, detecting and correcting context drift, and keeping state consistent across tools — Domain 3 (10–15%) of GH-600.
+Date: 2026-06-06
+Tags: Memory, State, Context Drift, GH-600, Exam Prep
+
+**Domain 3 — Manage memory, state, and execution — is 10–15% of the exam.** Lighter by weight, but its ideas resurface in multi-agent coordination (Domain 5). It is about what an agent *remembers*, how it *resumes*, and how it avoids *drifting* from its original task over a long run.
+
+> **The exact skills measured in Domain 3:**
+> - **Implement agent memory strategies** — choose between short-term, long-term, and external memory; scope memory to task-relevant information; define expiration, pruning, and reset rules.
+> - **Persist agent state and manage context drift** — capture progress and decisions as durable artifacts; resume without repeating steps or diverging; detect and correct drift during extended execution.
+> - **Ensure continuity across tools and environments** — share state; prevent conflicting context; prevent stale context.
+
+## The three kinds of memory
+
+| Memory type | Lifespan | Holds | Example |
+| --- | --- | --- | --- |
+| **Short-term** | Current task / session | The working context of what it's doing now | The files and plan for the current PR |
+| **Long-term** | Across tasks | Durable knowledge and past decisions | "This repo uses pnpm; tests run via `make test`" |
+| **External** | Outside the agent | Authoritative source data | The issue tracker, the codebase, a knowledge base |
+
+**Choosing correctly is the tested skill.** Don't stuff long-lived facts into short-term context (they vanish at session end); don't bloat long-term memory with task-specific scratch (it pollutes future runs); pull authoritative, changing data from *external* sources rather than caching a stale copy.
+
+> **Scenario — picking the memory type.** An agent needs: the current diff (→ short-term, this task only), the team's coding conventions (→ long-term, every task), and the live list of open issues (→ external, always fetch fresh). Putting the live issue list in long-term memory guarantees staleness. Matching each fact to the right store is the exam answer.
+
+## Scope, expiration, pruning, reset
+
+Memory is not free, and stale memory is dangerous. Domain 3 wants explicit lifecycle rules:
+
+- **Scope to task-relevant information** — keep only what this task needs; irrelevant context degrades reasoning and inflates cost.
+- **Expiration** — facts that go stale get a TTL.
+- **Pruning** — trim accumulated context so it doesn't grow unbounded.
+- **Reset** — clear working memory between unrelated tasks so prior context can't bleed in.
+
+> **Why this matters:** a long agent run accumulates context. Without pruning and reset, early-but-now-irrelevant details (a rejected approach, an old error) keep influencing decisions. Defining *when memory is cleared* is as important as defining what it stores.
+
+## Persisting state and resuming work
+
+A key agentic property: **capture progress and decisions as durable artifacts** so work can resume without repeating or diverging.
+
+On GitHub, the durable artifacts are the ones you already have:
+
+- **Commits** — the concrete progress, step by step.
+- **The branch** — the current state of the work.
+- **PR description / comments** — decisions and rationale recorded inline.
+- **Checklists / issue updates** — what's done, what's next.
+
+> **Scenario — resume without repeating.** An agent's session hits the time limit mid-task (recall Domain 2). Because it committed progress and wrote its plan-state into the PR, the next session reads the branch + plan and continues from step 4 — instead of restarting and re-doing steps 1–3 (or, worse, redoing them *differently* and diverging). Durable artifacts are what make resumption safe.
+
+## Context drift
+
+**Drift** is when an agent gradually wanders from the original task over a long run — pursuing a tangent, re-deciding something already settled, or optimizing the wrong thing. Domain 3 tests *detecting and correcting* it.
+
+| Symptom | Detection | Correction |
+| --- | --- | --- |
+| Work no longer matches the goal | Compare current actions to the stated success criterion | Re-anchor to the original plan/goal |
+| Re-litigating settled decisions | Check against recorded decisions (durable artifacts) | Reload the decision record; don't re-decide |
+| Scope expanding silently | Watch for actions outside the defined scope | Enforce scope; prune off-task context |
+
+The defense against drift is mostly *Domain 1 done well*: a pre-stated success criterion and a recorded plan give you something to measure drift *against*. You can't detect drift from a goal you never wrote down.
+
+## Continuity across tools and environments
+
+When state moves across tools, sessions, or agents, three failures appear — and the exam names them:
+
+- **Share agent state** — make progress/decisions available to the next tool/session/agent that needs them.
+- **Prevent conflicting context** — two sources disagree (e.g. two agents hold different views of "current state"). Establish one source of truth.
+- **Prevent stale context** — an agent acts on out-of-date information. Refresh from the authoritative external source rather than trusting a cached copy.
+
+> **Scenario — conflicting context across agents.** Two agents work the same feature; each holds its own idea of the latest schema. One adds a column the other's code doesn't expect → contradictory changes. Fix: a single shared, authoritative state (the repo/branch as source of truth) instead of each agent's private copy. This is the bridge into Domain 5's conflict handling.
+
+> **Scenario — stale context.** An agent caches the list of feature flags at session start, then acts an hour later on flags that have since changed. The correct design **re-reads** the authoritative source for volatile data instead of trusting the snapshot.
+
+## Exam-style check
+
+> **Q1.** Where should an agent keep the team's "always run `make lint`" convention?
+>
+> **A.** **Long-term memory** — it applies across tasks. Short-term would lose it each session.
+
+> **Q2.** An agent's session ends mid-task. What lets the next session continue without redoing work?
+>
+> **A.** **Durable artifacts** — commits, the branch, and recorded plan/decisions in the PR. It resumes from recorded state.
+
+> **Q3.** Over a long run, an agent starts refactoring unrelated modules. What is this, and the fix?
+>
+> **A.** **Context drift.** Detect by comparing actions to the stated success criterion/scope; correct by **re-anchoring** to the original plan and pruning off-task context.
+
+> **Q4.** Two collaborating agents hold different versions of "current state" and produce conflicting changes. Root cause?
+>
+> **A.** Lack of a single authoritative shared state — **conflicting context**. Establish one source of truth instead of per-agent private copies.
+
+> **Q5.** Which data should come from an **external** source each time rather than long-term memory?
+>
+> **A.** Volatile, authoritative data — open issues, current flags, live config. Caching it long-term causes **stale context**.
+
+## What to memorize
+
+- **Short-term** (this task) · **long-term** (across tasks) · **external** (authoritative, fetch fresh). Match each fact to the right store.
+- Define memory **scope, expiration, pruning, reset** — stale memory is a hazard.
+- Persist progress/decisions as **durable artifacts** (commits, branch, PR) → resume without repeating or diverging.
+- **Drift** = wandering from the goal; detect against the stated success criterion, correct by re-anchoring.
+- Across tools/agents: **share state, one source of truth, refresh volatile data** to avoid conflicting and stale context.
+
+That completes the intermediate track. The advanced track covers evaluation (Domain 4), multi-agent coordination (Domain 5), guardrails (Domain 6), and the exam-day playbook.
+
+---
+
+# Domain 4: Evaluation, Error Analysis & Tuning
+URL: /tutorials/github-agentic-cert/advanced/01-evaluation-error-analysis-and-tuning
+Source: github-agentic-cert/advanced/01-evaluation-error-analysis-and-tuning.mdx
+Description: Defining success criteria and evaluation signals, root-causing agent failures from logs and traces, and tuning instructions, memory, and tool access based on results — Domain 4 (15–20%) of GH-600.
+Date: 2026-06-06
+Tags: Evaluation, Error Analysis, Tuning, GH-600, Exam Prep
+
+**Domain 4 — Perform evaluation, error analysis, and tuning — is 15–20% of the exam.** This is where strong everyday developers most often leak points, because daily coding rarely forces you to *formally* evaluate an agent, taxonomize its failures, and tune it deliberately. Slow down here.
+
+> **The exact skills measured in Domain 4:**
+> - **Define success criteria and evaluation signals** — specify expected outcomes and operational constraints; identify qualitative and quantitative signals; align criteria with development intent; generate signals using automated scanning tools.
+> - **Analyze agent failures and identify root causes** — use logs, plans, traces, outputs, and workflow artifacts; classify root causes (reasoning errors, tool misuse, context/environment issues).
+> - **Tune agent behavior based on results** — revise instructions, workflows, or constraints; refine memory usage; refine tool usage and access.
+
+## Defining success criteria and evaluation signals
+
+You cannot evaluate what you did not define. Domain 4 starts where Domain 1 ended: a **pre-stated, measurable success criterion**.
+
+Two kinds of signal, and you need both:
+
+| Signal type | Examples | Reads on |
+| --- | --- | --- |
+| **Quantitative** | Tests pass/fail, scan findings count, coverage delta, build status, latency | Did it objectively work? |
+| **Qualitative** | Code readability, did it follow conventions, is the approach sound | Did it work *well*? |
+
+**Align criteria with development intent.** The agent should be judged against what the team actually wanted — not a proxy it can game. "Tests pass" is gameable (edit the test); "fixes the root cause without weakening tests" is aligned with intent.
+
+**Generate signals with automated scanning tools.** This is GitHub-flavored: code scanning, secret scanning, dependency review, CI results. These produce objective evaluation signals *automatically* on every agent PR — exactly the artifacts Domain 4 wants you to use.
+
+> **Scenario — aligned vs. gameable criteria.** Goal: "resolve the security finding." Gameable signal: "the scanner no longer flags line 42" — an agent could suppress the rule. Aligned signal: "the vulnerable pattern is removed, no new findings introduced, tests still pass." Write criteria the agent cannot satisfy by cheating.
+
+## Root-cause analysis of failures
+
+When an agent fails, Domain 4 wants a *disciplined* diagnosis using the evidence GitHub already captures.
+
+**The evidence sources** (memorize this list — it's lifted from the skills measured):
+
+- **Logs** — what happened, step by step (Actions/session logs).
+- **Plans** — what the agent intended (recall structured plans from Domain 1).
+- **Traces** — the sequence of tool calls and decisions.
+- **Outputs** — the diff, the PR, the result.
+- **Workflow artifacts** — CI results, scan reports.
+
+**The root-cause taxonomy** (also straight from the objectives — expect to classify a failure into one):
+
+| Root-cause class | What it looks like | Typical fix (→ tuning) |
+| --- | --- | --- |
+| **Reasoning error** | Flawed plan, wrong logic, bad decomposition | Revise instructions / require validated plans |
+| **Tool misuse** | Wrong tool, wrong inputs, missing permission, ignored a tool | Refine tool usage / access |
+| **Context or environment issue** | Stale/missing context, wrong runtime, env constraint | Refine memory; fix setup/environment |
+
+> **Scenario — classify the failure.** An agent opens a PR that fails to compile because it called an API that doesn't exist in the project's library version. Logs show it never read the dependency manifest. Root cause: **context/environment** (it acted without the env's actual constraints), arguably with a **tool-misuse** edge (didn't use available read tools). Fix: ensure it reads the manifest (memory/context) and/or adjust setup. The exam wants you to *name the class*, then pick the matching fix.
+
+> **The diagnostic reflex:** start from the *output* (what went wrong), walk the *trace* (what it did), check the *plan* (what it intended), and read the *logs* (what the environment reported). The gap between plan and trace usually reveals the class.
+
+## Tuning based on results
+
+Diagnosis is worthless without the corrective action. Domain 4 names three tuning levers — match the lever to the root cause:
+
+| Lever | Use when | Example |
+| --- | --- | --- |
+| **Revise instructions / workflows / constraints** | Reasoning errors, repeated bad patterns | Add "diagnose root cause before editing"; forbid touching test files on bugfix tasks |
+| **Refine memory usage** | Context issues — stale, missing, or bloated context | Add the convention to long-term memory; fetch volatile data fresh |
+| **Refine tool usage and access** | Tool misuse — wrong/missing/over-broad tools | Add the needed tool; remove an unnecessary one; tighten permissions |
+
+> **Scenario — close the loop.** An agent keeps ignoring the team's error-handling convention (reasoning/instruction gap). You add the convention to custom instructions (**revise instructions**), confirm it's in long-term memory (**refine memory**), and re-run. Next failure is a different class → different lever. Tuning is iterative: diagnose → adjust the *matching* lever → re-evaluate.
+
+## The full evaluation loop
+
+Domains 1, 3, and 4 form one cycle the exam keeps probing:
+
+1. **Define** success criteria + signals up front (Domain 1/4).
+2. **Run** the agent, capturing artifacts (Domain 2/3).
+3. **Evaluate** against the criteria using quantitative + qualitative + scan signals.
+4. **Diagnose** failures → classify the root cause.
+5. **Tune** the matching lever (instructions / memory / tools).
+6. **Re-evaluate.**
+
+If you can narrate this loop, you can answer most of Domain 4.
+
+## Exam-style check
+
+> **Q1.** An agent makes the security scanner stop flagging an issue by suppressing the rule. What went wrong with the *evaluation design*?
+>
+> **A.** The success signal was **gameable / misaligned with intent**. Define criteria as "vulnerability removed, no new findings, tests pass" — not "scanner no longer flags it."
+
+> **Q2.** An agent's PR fails because it used a function from a library version the repo doesn't have. Which root-cause class?
+>
+> **A.** **Context/environment issue** — it acted without the environment's real constraints. Fix by ensuring it reads the manifest (memory/context) and correct setup.
+
+> **Q3.** Which evidence best reveals *what the agent intended* vs. *what it actually did*?
+>
+> **A.** Compare the **plan** (intended) against the **trace** (actual tool calls/decisions). The divergence localizes the failure.
+
+> **Q4.** An agent repeatedly chooses the wrong tool for a task. Which tuning lever?
+>
+> **A.** **Refine tool usage and access** — adjust which tools it has and how it's instructed to use them.
+
+> **Q5.** Name two automated sources of *quantitative* evaluation signal on a GitHub agent PR.
+>
+> **A.** CI test results and code/secret/dependency **scanning** findings (also build status, coverage delta).
+
+## What to memorize
+
+- Pre-state **measurable success criteria**; use **quantitative + qualitative** signals; **align with intent** so they can't be gamed; lean on **automated scans**.
+- Diagnose from **logs, plans, traces, outputs, workflow artifacts**.
+- Classify root cause: **reasoning error · tool misuse · context/environment issue.**
+- Tune the **matching lever**: instructions/workflows · memory · tool usage/access.
+- It's a **loop**: define → run → evaluate → diagnose → tune → re-evaluate.
+
+Next: Domain 5 — orchestrating multiple agents.
+
+---
+
+# Domain 5: Multi-Agent Coordination
+URL: /tutorials/github-agentic-cert/advanced/02-multi-agent-coordination
+Source: github-agentic-cert/advanced/02-multi-agent-coordination.mdx
+Description: Orchestration patterns, agent isolation and conflict resolution, observability across agents, detecting degraded multi-agent behavior, and managing the agent lifecycle — Domain 5 (15–20%) of GH-600.
+Date: 2026-06-06
+Tags: Multi-Agent, Orchestration, Coordination, GH-600, Exam Prep
+
+**Domain 5 — Orchestrate multi-agent coordination — is 15–20% of the exam.** Once more than one agent is in play, you inherit every single-agent concern *plus* coordination: conflicts, hand-offs, cross-agent observability, partial failures, and lifecycle. This domain builds directly on Domain 3 (shared state) and Domain 2 (safe execution).
+
+> **The exact skills measured in Domain 5:**
+> - **Operate and manage multi-agent workflows** — apply an orchestration pattern; configure isolation for parallel execution; detect and resolve conflicts (overlapping code changes, duplicated effort, contradictory outputs).
+> - **Configure observability for multi-agent behavior** — produce review/audit-suitable artifacts; document decisions, hand-offs, and outcomes; perform post-hoc analysis.
+> - **Detect and respond to multi-agent failures** — identify failed/partial/stalled executions; respond to degraded behavior or coordination; implement recovery (rollback, human-in-the-loop).
+> - **Manage the agent lifecycle within workflows** — add agents; update/reconfigure/replace without disrupting active work; retire agents while preserving auditability and continuity.
+
+## Orchestration patterns
+
+The first skill is **apply an orchestration pattern** — choose how multiple agents relate. Know the common shapes:
+
+| Pattern | Shape | Good for |
+| --- | --- | --- |
+| **Sequential / pipeline** | Agent A → B → C, each consumes the prior's output | Staged work (plan → implement → review) |
+| **Parallel / fan-out** | Agents work independent slices at once | Independent files/modules; speed |
+| **Orchestrator–worker** | A coordinator assigns and gathers sub-tasks | Decompose-then-delegate, then aggregate |
+| **Review / critique** | One agent produces, another evaluates | Built-in checking (a generator + a reviewer) |
+
+> **Match pattern to dependency structure.** Independent work → parallel (fast). Work where step N needs step N−1's result → sequential (safe). Forcing parallelism onto dependent tasks is exactly what creates the conflicts the next section is about.
+
+## Isolation and conflict resolution
+
+Parallel agents need **isolation** so they don't trample each other. On GitHub, the natural isolation unit is the **branch** (and scoped repos/paths): each agent works its own branch, so parallel work doesn't collide mid-flight.
+
+But isolation doesn't eliminate conflict — it *contains* it until merge. Domain 5 names three conflict types:
+
+| Conflict | Cause | Resolution |
+| --- | --- | --- |
+| **Overlapping code changes** | Two agents edit the same code | Isolate on branches; resolve at merge; partition work to avoid overlap |
+| **Duplicated effort** | Two agents do the same task | Coordinator/clear task ownership; dedupe before merge |
+| **Contradictory outputs** | Agents make incompatible decisions | Shared source of truth (Domain 3); a reconciling/critique step |
+
+> **Scenario — overlapping changes.** Two agents both need to touch `auth.py`. Run in parallel on separate branches and you get a merge conflict — recoverable, contained. The deeper fix is **partitioning**: give the shared file to one agent, or sequence the two tasks. Isolation makes parallelism *safe to attempt*; partitioning makes it *not need* resolution.
+
+> **Scenario — contradictory outputs.** Agent A assumes prices are integers (cents); Agent B assumes floats (dollars). Their PRs each pass in isolation but break together. Root cause traces to Domain 3 — no single source of truth for the contract. Resolution: a shared spec/interface both consume, or a reconciling agent/human at integration.
+
+## Observability across agents
+
+A single agent's audit trail is a PR. With many agents, you must also see the *coordination*. Domain 5 wants artifacts suitable for **review and audit**, plus documented **decisions, hand-offs, and outcomes**, enabling **post-hoc analysis**.
+
+Concretely: each agent's work stays inspectable (its PR/branch/logs), *and* the hand-offs between them are recorded — who passed what to whom, what was decided at each boundary. When a multi-agent run goes wrong, you reconstruct it from these artifacts.
+
+> **Why hand-offs are the weak point:** most single-agent failures are visible in one PR. Most *multi-agent* failures live in the seams — a bad assumption passed from A to B. If hand-offs aren't documented, post-hoc analysis is impossible. Record the boundaries.
+
+## Detecting and responding to multi-agent failure
+
+New failure modes appear with coordination:
+
+| Failure | Signal | Response |
+| --- | --- | --- |
+| **Failed execution** | An agent errored out | Rollback its work; retry or escalate |
+| **Partial execution** | Some agents finished, others didn't | Reconcile partial state; don't merge half a feature |
+| **Stalled execution** | An agent is stuck/waiting | Detect via timeouts/heartbeats; escalate |
+| **Degraded coordination** | Agents producing conflicting/low-quality work together | Pause, reconcile, bring a human in |
+
+**Recovery patterns** are explicitly tested: **rollback** and **human-in-the-loop**. When coordination degrades, the safe move is to halt, roll back to a consistent state, and escalate — not to let agents keep diverging.
+
+> **Scenario — partial completion.** Three agents build a feature across three branches. Two open clean PRs; the third stalls and never finishes. Merging the two leaves the feature half-built and possibly broken. Correct response: detect the stall, **don't merge partial work**, escalate the stalled slice (retry or human), reconcile, then integrate as a whole.
+
+## Managing the agent lifecycle
+
+Multi-agent systems are long-lived; agents come and go. Domain 5 wants this done **without disrupting active workflows** and **while preserving auditability**:
+
+- **Add** an agent to an existing workflow.
+- **Update / reconfigure / replace** an agent without breaking work in flight.
+- **Retire** an agent while keeping its history auditable and the workflow continuous.
+
+> **Scenario — hot-swapping an agent.** You replace the review agent with a better-tuned version while PRs are open. Do it without invalidating in-flight reviews, and keep the retired agent's past actions in the audit trail — continuity *and* accountability. "Rip it out and lose the history" is the wrong answer.
+
+## Exam-style check
+
+> **Q1.** Five agents will each implement an independent, non-overlapping module. Which orchestration pattern?
+>
+> **A.** **Parallel / fan-out** — independent work, run concurrently for speed, each isolated on its own branch.
+
+> **Q2.** Two agents produced PRs that individually pass but break when combined because they assumed different data formats. Root cause and fix?
+>
+> **A.** **Contradictory outputs** from no shared source of truth. Fix with a shared spec/interface both consume, plus a reconciling step at integration (ties to Domain 3).
+
+> **Q3.** In a multi-agent run, where do failures most often hide, and what makes them analyzable?
+>
+> **A.** In the **hand-offs/seams** between agents. Documenting decisions, hand-offs, and outcomes makes **post-hoc analysis** possible.
+
+> **Q4.** Two of three agents finish; one stalls. Correct response?
+>
+> **A.** Detect the stall, **don't merge partial work**, escalate the stalled task (retry or human-in-the-loop), reconcile, then integrate the whole.
+
+> **Q5.** How do you replace an agent mid-flight correctly?
+>
+> **A.** Reconfigure/replace **without disrupting active workflows** and **preserve the retired agent's audit history** — continuity plus accountability.
+
+## What to memorize
+
+- Pick the **orchestration pattern** by dependency structure: parallel (independent) vs. sequential (dependent); orchestrator–worker and review patterns for coordination.
+- **Isolate** parallel agents on branches; **partition** to avoid conflicts; resolve overlapping/duplicated/contradictory outputs.
+- Cross-agent observability = inspectable per-agent work **+ documented hand-offs** for post-hoc analysis.
+- Handle **failed/partial/stalled** runs; recover via **rollback + human-in-the-loop**; never merge partial features.
+- Manage **lifecycle** (add/replace/retire) **without disruption** and **preserving auditability**.
+
+Next: Domain 6 — guardrails and accountability.
+
+---
+
+# Domain 6: Guardrails & Accountability
+URL: /tutorials/github-agentic-cert/advanced/03-guardrails-and-accountability
+Source: github-agentic-cert/advanced/03-guardrails-and-accountability.mdx
+Description: Classifying actions by risk to assign autonomy levels, human-in-the-loop for high-judgment actions, blocking policy-violating actions, least-privilege scoping, and authorization for irreversible changes — Domain 6 (10–15%) of GH-600.
+Date: 2026-06-06
+Tags: Guardrails, Accountability, Responsible AI, Least Privilege, GH-600, Exam Prep
+
+**Domain 6 — Implement guardrails and accountability — is 10–15% of the exam.** Small by weight, but it carries the philosophy the whole exam is built on: **maximum safe velocity.** Every other domain's "secure answer" is really a Domain 6 instinct. Master this and you sharpen your answers everywhere.
+
+> **The exact skills measured in Domain 6:**
+> - **Define autonomy levels** — classify actions by operational, security, and compliance risk to right-size human interventions; assign autonomy levels that maximize delivery speed while staying compliant with security and Responsible AI standards.
+> - **Implement guardrails and human-in-the-loop workflows** — identify actions needing human judgment; block actions violating security/compliance/Responsible AI policy; scope permissions and execution contexts to least privilege; require explicit authorization for irreversible or compliance-sensitive changes; preserve velocity by minimizing approvals that don't materially reduce risk.
+
+## The core principle: maximize safe velocity
+
+Read the objective language carefully — it appears twice: *maximize delivery speed while remaining compliant* and *preserve execution velocity by minimizing approvals that do not materially reduce risk.*
+
+GH-600 is **not** asking you to lock everything down. It is asking you to put friction **exactly** where risk is, and **nowhere else**. Two equal-and-opposite wrong answers:
+
+- **Over-gating** — approval on every action. Compliant but slow; defeats the agent's purpose.
+- **Under-gating** — no checks on risky actions. Fast but unsafe; one bad run does real damage.
+
+The right answer is almost always the option that **gates the high-risk action and lets the low-risk ones flow.**
+
+## Classifying actions by risk
+
+You cannot right-size autonomy without first classifying the action. Three risk lenses from the objective:
+
+| Lens | Question |
+| --- | --- |
+| **Operational** | If this goes wrong, what breaks? How big is the blast radius? Reversible? |
+| **Security** | Does it touch secrets, permissions, auth, or production access? |
+| **Compliance** | Does it touch regulated data or controlled processes; is an audit trail required? |
+
+Run any agent action through these and you get its risk tier:
+
+| Risk tier | Example actions | Right-sized control |
+| --- | --- | --- |
+| **Low** | Read a file, add a label, format code, open a draft PR | Autonomous; review after via artifacts |
+| **Medium** | Merge to a feature branch, modify non-critical code | Required review/CI; auto-proceed on green |
+| **High / irreversible** | Push to `main`, deploy, rotate a secret, delete data, change permissions | **Explicit human authorization**, controlled path |
+
+> **Scenario — right-sizing.** An agent's task list: (1) reformat code, (2) update a dependency, (3) deploy to production. Correct guardrail design: 1 runs autonomously; 2 opens a PR with scans and merges on green review; 3 **requires explicit human authorization** through a controlled release path. Same agent, three different gates, each matched to risk. Gating all three equally — or none — is the wrong answer.
+
+## Human-in-the-loop where judgment is needed
+
+The skill is **identify the subset of actions that require human judgment** — not "add a human everywhere." Human-in-the-loop belongs where:
+
+- The action is **irreversible** (deploy, delete, rotate).
+- It is **compliance-sensitive** (regulated data, audited change).
+- The agent's **confidence is low** or it hit ambiguity (escalation from Domain 2).
+- It crosses a **policy boundary** that requires accountable sign-off.
+
+Everywhere else, let the agent run and review via artifacts. The exam phrasing to internalize: *minimize approvals that do not materially reduce risk.*
+
+## Blocking policy-violating actions
+
+Some actions shouldn't be *approved* — they should be **blocked outright**. Domain 6 wants guardrails that **prevent** actions violating security, compliance, or Responsible AI policy, regardless of approval.
+
+| Mechanism (GitHub) | Blocks |
+| --- | --- |
+| Branch protection / rulesets | Unauthorized merges to protected branches |
+| Required reviews/checks | Unreviewed/failing changes reaching `main` |
+| Scoped permissions / least privilege | Actions outside the agent's granted scope |
+| Plan validation (Domain 1) | Plans that target forbidden paths/actions |
+| Allow lists (Domain 2) | Use of disallowed tools/MCP servers |
+
+> **Block vs. approve — a key distinction.** "Requires approval" means a human *can* say yes. "Blocked by policy" means it cannot happen at all (e.g. an agent may never exfiltrate secrets or disable a security control). High-judgment-but-permitted → human-in-the-loop. Never-permitted → hard block. The exam tests that you don't turn a hard policy into a mere approval prompt.
+
+## Least privilege and scoped execution
+
+Straight from the objective: *scope permissions and execution contexts to enforce least-privilege access.* This is the same instinct as Domain 2's tool permissions, applied to the whole execution context:
+
+- The agent gets the **minimum** permissions for the task — no standing broad tokens.
+- Its **execution context** is bounded — scoped repo, branch, environment.
+- Capabilities it doesn't need, it doesn't have.
+
+Least privilege is the cheapest guardrail: it shrinks blast radius *before* anything goes wrong, with no per-action approval cost.
+
+## Authorization for irreversible changes
+
+*Require explicit authorization or controlled paths for irreversible or compliance-sensitive changes.* Irreversible/sensitive actions must go through a deliberate gate:
+
+- **Explicit authorization** — a named human approves, on the record.
+- **Controlled path** — the change can only happen through a defined, audited route (a release pipeline with sign-off), never ad hoc.
+
+> **Scenario — irreversible action.** An agent determines a database migration is needed. It must not run it autonomously. The compliant design routes the migration through a controlled path requiring explicit human authorization, with the decision recorded. Reversible prep (writing the migration, opening the PR) is autonomous; *executing* it is gated.
+
+## Accountability and the audit trail
+
+"Accountability" is in the domain name for a reason. Every agent action must be **attributable and recorded** — which agent, what it did, under what authorization. GitHub gives this for free: commits, PRs, reviews, Actions logs, the audit log. The guardrail design isn't complete until you can answer *"who/what did this, and who authorized it?"* for any action.
+
+## Exam-style check
+
+> **Q1.** An agent's tasks are: format code, bump a dependency, and rotate a production secret. How should autonomy be assigned?
+>
+> **A.** Format → autonomous; dependency bump → PR + review/CI, auto on green; secret rotation → **explicit human authorization via a controlled path**. Right-size per risk.
+
+> **Q2.** Policy says agents may never disable a security check. Is that an approval gate or a block?
+>
+> **A.** A **hard block** — it must be impossible, not merely approvable. Don't downgrade a policy prohibition to an approval prompt.
+
+> **Q3.** What's wrong with requiring human approval on every agent action "to be safe"?
+>
+> **A.** It adds approvals that **don't materially reduce risk** and destroys velocity. Domain 6 wants friction only where real risk is.
+
+> **Q4.** Cheapest guardrail to shrink an agent's blast radius before anything happens?
+>
+> **A.** **Least-privilege scoping** of permissions and execution context — no standing broad access, bounded repo/branch/environment.
+
+> **Q5.** An agent needs to run an irreversible data migration. Compliant design?
+>
+> **A.** Autonomous to *prepare* (write/PR the migration); **explicit human authorization through a controlled, audited path** to *execute*.
+
+## What to memorize
+
+- The whole exam's spine: **maximize safe velocity** — gate risk, free everything else.
+- **Classify** actions by **operational / security / compliance** risk, then assign autonomy.
+- **Human-in-the-loop** for irreversible, compliance-sensitive, low-confidence, or policy-boundary actions only.
+- **Block** policy-violating actions outright; don't reduce a prohibition to an approval.
+- **Least-privilege** scope = cheap, pre-emptive blast-radius control.
+- **Irreversible/sensitive → explicit authorization + controlled path**, all attributable in the audit trail.
+
+Last module: the exam-day first-attempt playbook.
+
+---
+
+# Exam-Day First-Attempt Playbook
+URL: /tutorials/github-agentic-cert/advanced/04-exam-day-first-attempt-playbook
+Source: github-agentic-cert/advanced/04-exam-day-first-attempt-playbook.mdx
+Description: A two-week study plan, a question-reading strategy, the decision heuristics that resolve most GH-600 questions, a full mixed practice set with explanations, and exam-day logistics — everything to pass GH-600 on the first attempt.
+Date: 2026-06-06
+Tags: Exam Strategy, Practice Questions, GH-600, Certification, Exam Prep
+
+You know the six domains. This module turns knowledge into a *pass*. It is strategy: how to study the last stretch, how to read GH-600's scenario questions, the heuristics that resolve the hard ones, a mixed practice set, and the logistics so nothing surprises you on the day.
+
+> **Reality check on this practice set.** These questions are *written by me* in the style and spirit of the published objectives to drill the right reflexes. They are **not** real exam items, and I have not seen the live exam. Use them to practice *reasoning*, not to memorize answers. The authoritative scope is always `aka.ms/GH600-StudyGuide`.
+
+## A focused two-week plan
+
+| Days | Focus | Outcome |
+| --- | --- | --- |
+| 1–2 | Beginner track + memorize the domain/weight table | Mental model + triage map locked |
+| 3–4 | Domain 2 (heaviest) — tools, MCP, CI, error handling | Strongest domain |
+| 5 | Domain 1 — architecture, plan/execute split | — |
+| 6 | Domain 4 — evaluation + root-cause taxonomy | The point-leak domain closed |
+| 7 | Domain 5 — multi-agent | — |
+| 8 | Domain 3 + Domain 6 | Lighter domains + the velocity philosophy |
+| 9 | **Hands-on**: assign the Copilot coding agent a real task; configure an MCP server; set a branch ruleset + bypass actor | Concepts become muscle memory |
+| 10 | Run the **exam sandbox** (`aka.ms/examdemo`) | Zero UI surprises |
+| 11–12 | This module's practice set; re-read any weak domain | Calibrate |
+| 13 | Light review of the memorize lists only | Don't cram new material |
+| 14 | Rest. Logistics check. | Walk in fresh |
+
+**Hands-on is non-negotiable.** This is an *applied* exam. Reading about `copilot-setup-steps.yml`, MCP allow lists, and bypass actors is not the same as having configured them once. One afternoon of doing it is worth three of reading.
+
+## How to read a GH-600 question
+
+These are scenario questions, not definitions. A reliable procedure:
+
+1. **Find the real ask.** Strip the story to: what decision is being made? (assign autonomy? pick a tool? diagnose a failure?)
+2. **Name the domain.** Which of the six is this? That primes the right framework.
+3. **Spot the risk / blast radius.** Almost every question hides a "what could go wrong." The safe-but-not-paralyzed option usually wins.
+4. **Eliminate the extremes.** Cross out "approve everything" and "no controls at all" — both are usually wrong.
+5. **Prefer the scoped option.** The answer that grants the *minimum*, gates the *risky* step, and reuses existing GitHub controls is the favorite.
+
+## Decision heuristics that resolve most questions
+
+When two options look plausible, these tie-breakers settle it:
+
+| Situation | Pick the option that… |
+| --- | --- |
+| Permissions/tools | grants **least privilege** for the task |
+| Autonomy level | **gates the high-risk action**, frees the low-risk |
+| Plan vs. action | **separates planning from execution**; validates the plan first |
+| Transient failure | **retries** with backoff |
+| Persistent/ambiguous failure | **escalates** to a human |
+| Partial multi-agent completion | **does not merge** partial work; reconciles |
+| Policy prohibition | **blocks** outright (not "approve") |
+| Irreversible change | requires **explicit authorization + controlled path** |
+| Stale/volatile data | **fetches fresh** from the authoritative source |
+| Blocked by a ruleset | **scopes the exception** (bypass actor), keeps the rule |
+| Too many approvals | **removes approvals that don't reduce risk** |
+| Observability | makes work **inspectable in standard GitHub tooling** |
+
+If you internalize one thing: **least privilege + gate the risk + reuse GitHub's controls.** That single instinct is the correct answer to a large fraction of the exam.
+
+## Mixed practice set
+
+Cover the answers; decide; then check the reasoning.
+
+> **1.** A team wants an agent to fix bugs but fears it will "fix" failing tests by editing assertions. Best mitigation?
+> **Answer:** Constrain *what* it may change (forbid modifying test files on bugfix tasks) and require a validated plan before execution. *(Domain 1 — anti-pattern: metric gaming.)*
+
+> **2.** An agent needs to read tickets from an internal system. Which mechanism, and how do you contain it?
+> **Answer:** Add the system as a tool via an **MCP server**, on the agent's **allow list**, with read-only permission. *(Domain 2 — capability via MCP + least privilege.)*
+
+> **3.** An agent calls a tool that times out once. Then what?
+> **Answer:** **Retry** with backoff — transient failure. *(Domain 2.)*
+
+> **4.** The same tool call fails five times with "permission denied." Then what?
+> **Answer:** **Escalate** — persistent/auth failure, not retryable. *(Domain 2.)*
+
+> **5.** An agent's session ends mid-task. What enables a clean resume?
+> **Answer:** Durable artifacts — committed progress + recorded plan/decisions in the PR — so the next session continues, not restarts. *(Domain 3.)*
+
+> **6.** Where does the team's "always run integration tests" rule belong?
+> **Answer:** Long-term memory / custom instructions — it applies across tasks. *(Domain 3.)*
+
+> **7.** An agent's PR fails to build: it used an API absent from the repo's library version, never reading the manifest. Root cause?
+> **Answer:** Context/environment issue. Fix: ensure it reads the manifest; correct setup. *(Domain 4.)*
+
+> **8.** An agent makes a scanner stop flagging an issue by suppressing the rule. What's the design flaw?
+> **Answer:** Gameable success signal misaligned with intent. Define it as "vulnerability removed, no new findings, tests pass." *(Domain 4.)*
+
+> **9.** Five independent modules, five agents. Orchestration?
+> **Answer:** Parallel/fan-out, each isolated on its own branch. *(Domain 5.)*
+
+> **10.** Two agents' PRs pass alone but conflict together (different data-format assumptions). Root cause and fix?
+> **Answer:** Contradictory outputs from no shared source of truth; add a shared spec/interface + reconciling step. *(Domains 5 + 3.)*
+
+> **11.** Two of three agents finish; one stalls. Action?
+> **Answer:** Don't merge partial work; escalate the stalled task (retry/human), reconcile, then integrate. *(Domain 5.)*
+
+> **12.** Agent tasks: format code, bump a dependency, rotate a production secret. Autonomy design?
+> **Answer:** Format autonomous; dependency via PR + green review; secret rotation requires explicit human authorization through a controlled path. *(Domain 6.)*
+
+> **13.** Policy: agents may never disable a security control. Approval gate or block?
+> **Answer:** Hard block — must be impossible, not approvable. *(Domain 6.)*
+
+> **14.** Copilot's PRs are blocked by a commit-author ruleset. Scoped fix?
+> **Answer:** Add Copilot as a bypass actor for that rule; leave the rule intact for humans. *(Domain 6 / control plane.)*
+
+> **15.** A reviewer must leave GitHub to see what an agent did. What's wrong?
+> **Answer:** Observability failure — artifacts must be inspectable in standard GitHub tooling (PRs, checks, logs). *(Domain 1.)*
+
+> **16.** "To be safe," a team requires human approval on every agent action. Critique?
+> **Answer:** Over-gating — adds approvals that don't reduce risk and kills velocity. Gate only high-risk/irreversible steps. *(Domain 6.)*
+
+> **17.** You want only three approved MCP servers org-wide, with one agent limited to two of them.
+> **Answer:** MCP registry (org menu of three) + allow list (that agent → two). *(Domain 2.)*
+
+> **18.** An agent should review every PR automatically. Safe execution?
+> **Answer:** Invoke in a CI workflow, scoped to the repo, read diff + write PR comments only — inside the pipeline's permission boundary. *(Domain 2.)*
+
+> **19.** Over a long run, an agent drifts into refactoring unrelated code. Detect and correct?
+> **Answer:** Compare actions to the stated success criterion/scope (detect drift); re-anchor to the original plan, prune off-task context. *(Domain 3.)*
+
+> **20.** A migration must run. What's autonomous, what's gated?
+> **Answer:** Writing/PR-ing the migration: autonomous. Executing it: explicit authorization + controlled, audited path. *(Domain 6.)*
+
+Score yourself by domain. Any domain where you missed more than one — re-read that module's "what to memorize."
+
+## Exam-day logistics
+
+- **Time:** 120 minutes. With ~40–60 questions that's roughly 2 minutes each. Don't sink 8 minutes into one scenario — flag and move on.
+- **Flag and return.** First pass: answer what's clear, flag the rest. Second pass: the flagged ones, now with momentum. Don't leave blanks — there's no penalty for guessing.
+- **Read the *last* sentence first** on long scenarios — it's usually the actual question. Then read the scenario knowing what you're solving for.
+- **Watch for "BEST" / "MOST secure" / "without slowing delivery."** These signal the velocity-vs-control trade-off; the extreme option is a trap.
+- **Beta scoring:** you won't get your result immediately — expect it ~8 weeks after the beta closes. Don't let the silence rattle you.
+- **Setup:** for online proctoring, test your system ahead, clear your space, have ID ready. Register with a **personal** Microsoft account, not a work/school one, so your records survive a job change.
+- **Retake:** fail and you can retake 24 hours later. It is recoverable — but you came here to pass once.
+
+## Final pre-exam checklist
+
+- [ ] I can recite all six domains and their weights.
+- [ ] Domain 2 (tools/MCP/CI/error handling) feels strongest.
+- [ ] I can classify any failure: reasoning / tool misuse / context-environment.
+- [ ] For any action I can state autonomy level, blast radius, and human checkpoint.
+- [ ] Retry-vs-escalate and approve-vs-block are automatic.
+- [ ] I've configured an MCP server, a ruleset + bypass actor, and assigned the coding agent a task by hand.
+- [ ] I've run the exam sandbox and know the UI.
+- [ ] Logistics sorted: ID, environment, personal MSA account.
+
+If those are all checked, you're ready. The exam rewards the same instinct this whole path has drilled: **least privilege, gate the real risk, reuse GitHub's controls, keep the evidence.** Carry that in, and trust your preparation.
+
+Good luck — go pass it on the first attempt.

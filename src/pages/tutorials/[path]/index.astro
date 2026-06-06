@@ -34,7 +34,7 @@ const byLevel = Object.fromEntries(
 
 const availableLevels = TUTORIAL_LEVELS.filter((level) => byLevel[level.key]?.length > 0);
 const isSingleTrack = pathInfo.id === 'ai-literacy';
-const isGated = pathInfo.id === 'llm-mastery' || pathInfo.id === 'system-design';
+const isGated = pathInfo.id === 'llm-mastery' || pathInfo.id === 'system-design' || pathInfo.id === 'github-agentic-cert';
 const isOptInTracked = pathInfo.id === 'langgraph' || pathInfo.id === 'llm-systems';
 
 const GATED_CONFIGS: Record<string, { firstModuleHref: string; llmsHref?: string; deliverablesCopy: string }> = {
@@ -46,6 +46,10 @@ const GATED_CONFIGS: Record<string, { firstModuleHref: string; llmsHref?: string
   'system-design': {
     firstModuleHref: '/tutorials/system-design/beginner/01-system-design-foundations-for-ai-builders',
     deliverablesCopy: 'Real interview scenarios for AI/ML and FDE roles — LLM inference, RAG, multi-agent systems, safety, compliance, and global distributed infrastructure.',
+  },
+  'github-agentic-cert': {
+    firstModuleHref: '/tutorials/github-agentic-cert/beginner/00-course-overview',
+    deliverablesCopy: 'One module per official GH-600 domain — SDLC integration, tool use and MCP, memory and state, evaluation, multi-agent coordination, and guardrails — plus an exam-day first-attempt playbook.',
   },
 };
 const gatedConfig = GATED_CONFIGS[pathInfo.id];
@@ -74,15 +78,15 @@ const displaySubtitle = (level: typeof TUTORIAL_LEVELS[number]) => isSingleTrack
       {isGated && gatedConfig && (
         <section class="course-positioning" aria-label={`${pathInfo.title} course positioning`}>
           <div>
-            <strong>Free · Subscriber access</strong>
-            <span>Subscribe once to unlock all {getPathModules(pathInfo.id).length} modules, track completion, and export your progress. Stored privately in your browser — no account needed.</span>
+            <strong>Free — just your email</strong>
+            <span>Share your email once to track progress across all {getPathModules(pathInfo.id).length} modules. Everything stays in your browser — no account, no password.</span>
           </div>
           <div>
             <strong>{pathInfo.id === 'llm-mastery' ? '12 enterprise deliverables' : 'Interview-ready scenarios'}</strong>
             <span>{gatedConfig.deliverablesCopy}</span>
           </div>
           <div class="course-cta-group">
-            <a href={gatedConfig.firstModuleHref} class="course-cta-primary">Start the Course →</a>
+            <a href={gatedConfig.firstModuleHref} class="course-cta-primary">Start {pathInfo.title} →</a>
             <a href={`/tutorials/${pathInfo.id}/progress`} class="course-cta-secondary">My Progress</a>
             {gatedConfig.llmsHref && (
               <LlmsDownloadButton

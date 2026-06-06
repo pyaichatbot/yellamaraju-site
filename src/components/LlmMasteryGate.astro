@@ -22,7 +22,7 @@ const contentId = `gate-content-${pathId}`;
 <div id={gateId} data-path-id={pathId}>
   <div id={wallId} class="gate-wall">
     <div class="gate-inner">
-      <div class="gate-badge">Free · Subscriber Access</div>
+      <div class="gate-badge">Free · email to track progress</div>
       <h2 class="gate-title">{title}</h2>
       <p class="gate-subtitle">{subtitle}</p>
 
@@ -39,7 +39,7 @@ const contentId = `gate-content-${pathId}`;
       </ul>
 
       <form class="gate-form" data-gate-form novalidate>
-        <label class="gate-label" for={`gate-email-${pathId}`}>Enter your email to unlock</label>
+        <label class="gate-label" for={`gate-email-${pathId}`}>Drop your email to get started</label>
         <div class="gate-input-row">
           <input
             id={`gate-email-${pathId}`}
@@ -51,12 +51,12 @@ const contentId = `gate-content-${pathId}`;
             aria-required="true"
           />
           <button type="submit" class="gate-submit" data-gate-submit>
-            <span class="btn-label">Unlock Course</span>
-            <span class="btn-loading" hidden>Enrolling…</span>
+            <span class="btn-label">Start learning</span>
+            <span class="btn-loading" hidden>Getting ready…</span>
           </button>
         </div>
         <p class="gate-error" data-gate-error role="alert" hidden></p>
-        <p class="gate-privacy">No spam. Unsubscribe anytime. <a href="/privacy">Privacy policy</a>.</p>
+        <p class="gate-privacy">Just course updates. Unsubscribe anytime. <a href="/privacy">Privacy policy</a>.</p>
       </form>
     </div>
   </div>

@@ -1,0 +1,109 @@
+---
+title: "GH-600 Course Overview & Exam Map"
+description: "What the GitHub Certified: Agentic AI Developer (GH-600) exam actually tests, how it is scored, and how this 10-module path gets you to a first-attempt pass."
+level: beginner
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 1
+totalModules: 3
+roles: ["dev","qa","pm"]
+tags: ["Certification","GH-600","GitHub Copilot","Agentic AI","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "20 min"
+prerequisites: []
+---
+
+My job in this path is narrow and honest: get you through **Exam GH-600 — Developing in Agentic AI Systems** on the first attempt, without filler and without hand-waving. Everything here maps to the official *skills measured*. Where a detail is a product feature that changes between GitHub releases, I will say so and point you at the source instead of inventing a number.
+
+> **One framing to carry through every module:** GH-600 is not "do you know what an LLM is." It is *"can you operate, supervise, and govern autonomous agents inside a real SDLC, with GitHub as the system of record and control plane."* Every question is really asking: who is accountable, what is the blast radius, and where is the evidence?
+
+## What this certification is
+
+| Fact | Detail |
+| --- | --- |
+| Credential | GitHub Certified: Agentic AI Developer (beta) |
+| Exam code | GH-600 |
+| Level | Intermediate |
+| Maintained by | GitHub (delivered through Microsoft / Pearson VUE) |
+| Duration | 120 minutes |
+| Passing score | 700 out of 1000 (scaled — not a raw percentage) |
+| Delivery | Proctored, online or test center |
+| Languages | English (request +30 min if English is not your first language) |
+| Retake | 24 hours after a first failed attempt; longer waits after that |
+
+A note on the *beta*: during the beta window you do **not** get your score immediately. Results are released roughly eight weeks after the beta period closes. Plan emotionally for that delay — you will walk out not knowing, and that is normal.
+
+> **Two links, one exam — clear this up now.** The Microsoft Learn page (`learn.microsoft.com/.../agentic-ai-developer/`) and the GitHub learning page both describe the *same* credential. Microsoft delivers the exam; GitHub owns the content. There is no separate "Microsoft Agentic AI Developer" exam hiding behind that URL — it is GH-600.
+
+## The six domains and their weight
+
+The exam is built from six domains. The weighting tells you exactly where to spend study time. Memorize this table — it is your triage map.
+
+| # | Domain | Weight | This path's module |
+| --- | --- | --- | --- |
+| 1 | Prepare agent architecture and SDLC processes | 15–20% | Intermediate · M1 |
+| 2 | Implement tool use and environment interaction | **20–25%** | Intermediate · M2 |
+| 3 | Manage memory, state, and execution | 10–15% | Intermediate · M3 |
+| 4 | Perform evaluation, error analysis, and tuning | 15–20% | Advanced · M1 |
+| 5 | Orchestrate multi-agent coordination | 15–20% | Advanced · M2 |
+| 6 | Implement guardrails and accountability | 10–15% | Advanced · M3 |
+
+**Domain 2 is the single heaviest area.** Tool use, MCP servers, permissions, and execution environments can be a quarter of your score. If you are short on time, this is where the marginal hour pays best. Domains 3 and 6 are the lightest — do not skip them, but do not over-invest either.
+
+![Exam Focus Triage](/images/gh-600-cert-illustrations/01-exam-focus-triage.png)
+
+## How to read the weightings strategically
+
+A scaled exam with a 700 cut score means you do not need every question. Rough math on a ~50-question exam: you can miss a meaningful slice and still pass, but the margin disappears if you tank an entire heavy domain. So the goal is **no zeros** — never walk in blind on Domain 2 or 4.
+
+> **Scenario — where people fail.** A strong developer who uses Copilot daily often walks in confident and fails Domain 6 (guardrails) and Domain 4 (evaluation). Why? Day-to-day coding rarely forces you to *classify an action by compliance risk* or *write a root-cause taxonomy for an agent failure*. The exam does. The "obvious" domains are not where points leak — the governance and evaluation domains are.
+
+## What you need before you start
+
+You should already be comfortable with:
+
+- The software development lifecycle in GitHub: branches, pull requests, reviews, required checks, Actions.
+- GitHub Copilot as a coding tool — chat, the coding agent, custom instructions.
+- Basic security and code-review hygiene: least privilege, secrets, who can merge what.
+
+If any of those are shaky, the next two beginner modules fix the agentic mental model and the GitHub-as-control-plane model before we go domain by domain.
+
+## How this path is structured
+
+- **Beginner (3 modules)** — the mental model. What "agentic" means inside an SDLC, and how GitHub becomes the control plane (Copilot coding agent, custom agents, MCP).
+- **Intermediate (3 modules)** — Domains 1, 2, 3 in depth, one module each.
+- **Advanced (4 modules)** — Domains 4, 5, 6 in depth, then an **exam-day first-attempt playbook** with practice questions and a time strategy.
+
+Each domain module follows the same rhythm: the exact sub-skills the exam lists, the concept taught plainly, a worked scenario, the traps that lose points, and exam-style questions with *why* the answer is right.
+
+## Hands-on work is non-negotiable
+
+Reading this path alone will not pass the exam. GH-600 is an *applied* credential testing whether you can *operate* agents in a real SDLC, not whether you can define concepts.
+
+Before exam day, you must do all three:
+
+1. **Assign the GitHub Copilot coding agent a real task** in a real repo — configure custom instructions, set it loose on a multi-step issue, review its PR, watch it fail and recover. Feel how it reasons.
+2. **Configure an MCP server** (GitHub's or a community one) as a tool, wire it to an agent, and observe it in action. Know the difference between local and remote.
+3. **Set up a branch ruleset + bypass actor** — create a protected branch rule that blocks merges, then explicitly add Copilot as a bypass actor for a specific scenario. Understand why scoping the exception is better than removing the rule.
+
+Do not skip this. A strong engineer who reads this path but skips hands-on will leak points on Domains 2 and 6 where the exam tests *judgment*, not recall.
+
+## Official resources (use these, not memory dumps)
+
+- **Study guide:** `aka.ms/GH600-StudyGuide` — the authoritative skills-measured list. If this path and the study guide ever disagree, the study guide wins.
+- **Exam sandbox:** `aka.ms/examdemo` — practice the *interface* and question types before exam day so the UI is never a surprise.
+- **Official training:** the Microsoft Learn modules *Foundations of Agentic AI in GitHub*, *Designing Agent Architecture and SDLC Integration*, and *Tooling, MCP, and Agent Execution Environments*.
+- **Product truth:** GitHub Docs for Copilot coding agent and MCP. Product features move; when a question hinges on a current default, the docs are ground truth.
+
+> **Honesty clause.** This is a beta exam built on fast-moving products. I have written every technical claim from the official study guide and GitHub's own documentation. Where a feature default could change (session limits, which MCP servers are on by default, exact UI labels), I flag it. Treat any specific number as "verify against current docs before exam day."
+
+## Required artifact for this path
+
+By the end, you should be able to do three things from memory:
+
+1. Recite the six domains and their weights.
+2. For any agent action, state its autonomy level, blast radius, and required human checkpoint.
+3. Trace any agent failure to a root-cause class and name the fix.
+
+If you can do those three, you are ready. Start with the next module: what "agentic AI in the SDLC" actually means.

@@ -1,0 +1,124 @@
+---
+title: "Domain 4: Evaluation, Error Analysis & Tuning"
+description: "Defining success criteria and evaluation signals, root-causing agent failures from logs and traces, and tuning instructions, memory, and tool access based on results — Domain 4 (15–20%) of GH-600."
+level: advanced
+path: github-agentic-cert
+pathTitle: "GitHub Agentic AI Developer (GH-600)"
+pathOrder: 7
+module: 1
+totalModules: 4
+roles: ["dev","qa","pm"]
+tags: ["Evaluation","Error Analysis","Tuning","GH-600","Exam Prep"]
+date: 2026-06-06
+estimatedTime: "32 min"
+prerequisites: ["Domain 3: Memory, State & Execution"]
+---
+
+**Domain 4 — Perform evaluation, error analysis, and tuning — is 15–20% of the exam.** This is where strong everyday developers most often leak points, because daily coding rarely forces you to *formally* evaluate an agent, taxonomize its failures, and tune it deliberately. Slow down here.
+
+> **The exact skills measured in Domain 4:**
+> - **Define success criteria and evaluation signals** — specify expected outcomes and operational constraints; identify qualitative and quantitative signals; align criteria with development intent; generate signals using automated scanning tools.
+> - **Analyze agent failures and identify root causes** — use logs, plans, traces, outputs, and workflow artifacts; classify root causes (reasoning errors, tool misuse, context/environment issues).
+> - **Tune agent behavior based on results** — revise instructions, workflows, or constraints; refine memory usage; refine tool usage and access.
+
+## Defining success criteria and evaluation signals
+
+You cannot evaluate what you did not define. Domain 4 starts where Domain 1 ended: a **pre-stated, measurable success criterion**.
+
+Two kinds of signal, and you need both:
+
+| Signal type | Examples | Reads on |
+| --- | --- | --- |
+| **Quantitative** | Tests pass/fail, scan findings count, coverage delta, build status, latency | Did it objectively work? |
+| **Qualitative** | Code readability, did it follow conventions, is the approach sound | Did it work *well*? |
+
+**Align criteria with development intent.** The agent should be judged against what the team actually wanted — not a proxy it can game. "Tests pass" is gameable (edit the test); "fixes the root cause without weakening tests" is aligned with intent.
+
+**Generate signals with automated scanning tools.** This is GitHub-flavored: code scanning, secret scanning, dependency review, CI results. These produce objective evaluation signals *automatically* on every agent PR — exactly the artifacts Domain 4 wants you to use.
+
+> **Scenario — aligned vs. gameable criteria.** Goal: "resolve the security finding." Gameable signal: "the scanner no longer flags line 42" — an agent could suppress the rule. Aligned signal: "the vulnerable pattern is removed, no new findings introduced, tests still pass." Write criteria the agent cannot satisfy by cheating.
+
+## Root-cause analysis of failures
+
+When an agent fails, Domain 4 wants a *disciplined* diagnosis using the evidence GitHub already captures.
+
+**The evidence sources** (memorize this list — it's lifted from the skills measured):
+
+- **Logs** — what happened, step by step (Actions/session logs).
+- **Plans** — what the agent intended (recall structured plans from Domain 1).
+- **Traces** — the sequence of tool calls and decisions.
+- **Outputs** — the diff, the PR, the result.
+- **Workflow artifacts** — CI results, scan reports.
+
+**The root-cause taxonomy** (also straight from the objectives — expect to classify a failure into one):
+
+| Root-cause class | What it looks like | Typical fix (→ tuning) |
+| --- | --- | --- |
+| **Reasoning error** | Flawed plan, wrong logic, bad decomposition | Revise instructions / require validated plans |
+| **Tool misuse** | Wrong tool, wrong inputs, missing permission, ignored a tool | Refine tool usage / access |
+| **Context or environment issue** | Stale/missing context, wrong runtime, env constraint | Refine memory; fix setup/environment |
+
+> **Scenario — classify the failure.** An agent opens a PR that fails to compile because it called an API that doesn't exist in the project's library version. Logs show it never read the dependency manifest. Root cause: **context/environment** (it acted without the env's actual constraints), arguably with a **tool-misuse** edge (didn't use available read tools). Fix: ensure it reads the manifest (memory/context) and/or adjust setup. The exam wants you to *name the class*, then pick the matching fix.
+
+> **The diagnostic reflex:** start from the *output* (what went wrong), walk the *trace* (what it did), check the *plan* (what it intended), and read the *logs* (what the environment reported). The gap between plan and trace usually reveals the class.
+
+![Root-Cause Taxonomy](/images/gh-600-cert-illustrations/05-root-cause-taxonomy.png)
+
+## Tuning based on results
+
+Diagnosis is worthless without the corrective action. Domain 4 names three tuning levers — match the lever to the root cause:
+
+| Lever | Use when | Example |
+| --- | --- | --- |
+| **Revise instructions / workflows / constraints** | Reasoning errors, repeated bad patterns | Add "diagnose root cause before editing"; forbid touching test files on bugfix tasks |
+| **Refine memory usage** | Context issues — stale, missing, or bloated context | Add the convention to long-term memory; fetch volatile data fresh |
+| **Refine tool usage and access** | Tool misuse — wrong/missing/over-broad tools | Add the needed tool; remove an unnecessary one; tighten permissions |
+
+> **Scenario — close the loop.** An agent keeps ignoring the team's error-handling convention (reasoning/instruction gap). You add the convention to custom instructions (**revise instructions**), confirm it's in long-term memory (**refine memory**), and re-run. Next failure is a different class → different lever. Tuning is iterative: diagnose → adjust the *matching* lever → re-evaluate.
+
+## The full evaluation loop
+
+Domains 1, 3, and 4 form one cycle the exam keeps probing:
+
+1. **Define** success criteria + signals up front (Domain 1/4).
+2. **Run** the agent, capturing artifacts (Domain 2/3).
+3. **Evaluate** against the criteria using quantitative + qualitative + scan signals.
+4. **Diagnose** failures → classify the root cause.
+5. **Tune** the matching lever (instructions / memory / tools).
+6. **Re-evaluate.**
+
+If you can narrate this loop, you can answer most of Domain 4.
+
+![Evaluation Loop](/images/gh-600-cert-illustrations/06-evaluation-loop.png)
+
+## Exam-style check
+
+> **Q1.** An agent makes the security scanner stop flagging an issue by suppressing the rule. What went wrong with the *evaluation design*?
+>
+> **A.** The success signal was **gameable / misaligned with intent**. Define criteria as "vulnerability removed, no new findings, tests pass" — not "scanner no longer flags it."
+
+> **Q2.** An agent's PR fails because it used a function from a library version the repo doesn't have. Which root-cause class?
+>
+> **A.** **Context/environment issue** — it acted without the environment's real constraints. Fix by ensuring it reads the manifest (memory/context) and correct setup.
+
+> **Q3.** Which evidence best reveals *what the agent intended* vs. *what it actually did*?
+>
+> **A.** Compare the **plan** (intended) against the **trace** (actual tool calls/decisions). The divergence localizes the failure.
+
+> **Q4.** An agent repeatedly chooses the wrong tool for a task. Which tuning lever?
+>
+> **A.** **Refine tool usage and access** — adjust which tools it has and how it's instructed to use them.
+
+> **Q5.** Name two automated sources of *quantitative* evaluation signal on a GitHub agent PR.
+>
+> **A.** CI test results and code/secret/dependency **scanning** findings (also build status, coverage delta).
+
+## What to memorize
+
+- Pre-state **measurable success criteria**; use **quantitative + qualitative** signals; **align with intent** so they can't be gamed; lean on **automated scans**.
+- Diagnose from **logs, plans, traces, outputs, workflow artifacts**.
+- Classify root cause: **reasoning error · tool misuse · context/environment issue.**
+- Tune the **matching lever**: instructions/workflows · memory · tool usage/access.
+- It's a **loop**: define → run → evaluate → diagnose → tune → re-evaluate.
+
+Next: Domain 5 — orchestrating multiple agents.

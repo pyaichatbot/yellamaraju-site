@@ -169,6 +169,33 @@ export const TRACKED_PATHS: Record<string, PathConfig> = {
       'advanced/05-global-distributed-systems-for-ai-infrastructure': 'Global Distributed Systems for AI Infrastructure',
     },
   },
+  'github-agentic-cert': {
+    title: 'GitHub Agentic AI Developer (GH-600) Exam Prep',
+    modules: [
+      'beginner/00-course-overview',
+      'beginner/01-agentic-ai-in-the-sdlc',
+      'beginner/02-github-as-control-plane',
+      'intermediate/01-agent-architecture-and-sdlc-processes',
+      'intermediate/02-tool-use-and-environment-interaction',
+      'intermediate/03-memory-state-and-execution',
+      'advanced/01-evaluation-error-analysis-and-tuning',
+      'advanced/02-multi-agent-coordination',
+      'advanced/03-guardrails-and-accountability',
+      'advanced/04-exam-day-first-attempt-playbook',
+    ],
+    moduleLabels: {
+      'beginner/00-course-overview': 'GH-600 Course Overview & Exam Map',
+      'beginner/01-agentic-ai-in-the-sdlc': 'Agentic AI in the SDLC',
+      'beginner/02-github-as-control-plane': 'GitHub as the Control Plane',
+      'intermediate/01-agent-architecture-and-sdlc-processes': 'Domain 1: Agent Architecture & SDLC Processes',
+      'intermediate/02-tool-use-and-environment-interaction': 'Domain 2: Tool Use & Environment Interaction',
+      'intermediate/03-memory-state-and-execution': 'Domain 3: Memory, State & Execution',
+      'advanced/01-evaluation-error-analysis-and-tuning': 'Domain 4: Evaluation, Error Analysis & Tuning',
+      'advanced/02-multi-agent-coordination': 'Domain 5: Multi-Agent Coordination',
+      'advanced/03-guardrails-and-accountability': 'Domain 6: Guardrails & Accountability',
+      'advanced/04-exam-day-first-attempt-playbook': 'Exam-Day First-Attempt Playbook',
+    },
+  },
   'llm-systems': {
     title: 'LLM Systems Engineering',
     modules: [

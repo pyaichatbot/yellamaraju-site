@@ -32,7 +32,7 @@ const tutorials = defineCollection({
     title: z.string(),
     description: z.string(),
     level: z.enum(['beginner', 'intermediate', 'advanced']),
-    path: z.enum(['genai', 'llm-systems', 'langgraph', 'system-design', 'ai-literacy', 'llm-mastery']).default('genai'),
+    path: z.enum(['genai', 'llm-systems', 'langgraph', 'system-design', 'ai-literacy', 'llm-mastery', 'github-agentic-cert']).default('genai'),
     pathTitle: z.string().optional(),
     pathOrder: z.number().int().min(1).optional(),
     module: z.number().int().min(1),
