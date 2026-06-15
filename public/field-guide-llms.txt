@@ -3,6 +3,7 @@
 Purpose: consolidated field guide articles for LLM-assisted reading, search, and offline reference.
 
 ## Index
+- The Model Is Not the Moat: Reading Nadella's Note (2026-06-14) - /blog/the-model-is-not-the-moat-nadella-learning-loop
 - Beyond Prompting: How `/goal` Changes Autonomous AI Coding Loops (2026-05-16) - /blog/goal-primitive-autonomous-agent-loops
 - Understanding LLM Benchmarks: A Practical Guide from Zero to Practitioner (2026-05-02) - /blog/understanding-llm-benchmarks-complete-guide
 - Why AI Systems Quietly Degrade: Slop, Hallucinations, Drift & Collapse (2026-04-21) - /blog/why-ai-systems-quietly-degrade
@@ -23,6 +24,105 @@ Purpose: consolidated field guide articles for LLM-assisted reading, search, and
 - Prompt Engineering: The Difference Between Demos and Production (2026-01-09) - /blog/prompt-engineering-demos-vs-production
 - Why AI Architecture Became Unavoidable (2026-01-08) - /blog/why-ai-architecture-became-unavoidable
 - Before You Build: A Realistic Framework for Evaluating AI Use Cases (2026-01-06) - /blog/before-you-build-ai-use-case-evaluation
+
+---
+
+# The Model Is Not the Moat: Reading Nadella's Note
+URL: /blog/the-model-is-not-the-moat-nadella-learning-loop
+Source: the-model-is-not-the-moat-nadella-learning-loop.mdx
+Description: Satya Nadella's note on human and token capital isn't about agents. It's about owning the learning loop — the asset interchangeable models can't commoditize.
+Date: 2026-06-14
+Tags: AI/ML, Architecture, Agentic AI, Leadership
+
+Satya Nadella posted a long note this week that most people will file under "AI + agents + enterprise." That reading misses it. He isn't selling Copilot. He's describing the next architecture pattern for how a company stays a company in an AI economy.
+
+Read it once for the rhetoric, then read it again for the claim underneath. The claim is narrow and sharp: **the model is not the moat.** The learning loop on top of the model is.
+
+## Two kinds of capital
+
+Nadella splits a firm's value into two accounts.
+
+**Human capital** is the stuff in people's heads — judgment, relationships, pattern recognition, the tacit "why we did it that way." A senior architect knows why a transaction flow is shaped the way it is, which partner integration breaks under load, and what went wrong in production three years ago. None of that lives in Jira. None of it lives in Confluence. It lives in a person, and it walks out the door when they do.
+
+**Token capital** is the AI capability a firm actually owns: its evals, its retrieval systems, its agent workflows, its captured decision traces, its institutional memory made queryable.
+
+![Two ledgers side by side — human capital (judgment, relationships, tacit knowledge) and token capital (evals, retrieval, agents, decision traces) — compounding upward together](/images/two-kinds-of-capital.png)
+
+The non-obvious part — and the part worth sitting with — is that he argues human capital does not depreciate as token capital grows. It *appreciates*. Compute with no human direction just runs in circles. Humans set the goals worth pursuing and recognize which patterns matter. The opportunity isn't picking the best model; it's building a loop where both accounts compound.
+
+| | Human capital | Token capital |
+|---|---|---|
+| **What it is** | Judgment, relationships, the tacit "why" | Evals, retrieval, agents, decision traces |
+| **Where it lives** | In people's heads | In systems you own |
+| **Its failure mode** | Walks out the door when people leave | Leaks to the model vendor if you don't capture it |
+| **How it compounds** | Experience over years | Every captured interaction |
+
+## The sentence that matters
+
+If you only keep one line from the whole note, keep this one:
+
+> A company should be able to switch out a "generalist" model without losing the "company veteran" expertise built into their learning system.
+
+That is the entire architecture argument compressed into a sentence. If your vendor disappears tomorrow, or a competitor ships something better, your organization should not get dumber. The intelligence has to live in *your* layer, not theirs.
+
+This is why RAG, knowledge graphs, memory systems, evals, and agent frameworks matter — not as résumé keywords, but as the substrate that holds your advantage when the model underneath is swapped out like a tire.
+
+Can you replace the model without losing the company veteran? If yes, you own your intelligence. If no, you're renting it — and the rent compounds in your vendor's favor, not yours.
+
+## The leak and the loop
+
+Most "enterprise AI" today is a straight pipe. An employee asks a question, a model answers, and the interaction evaporates. Every question makes the model provider a little smarter and the company no smarter at all. Multiply that across thousands of employees and you've built a mechanism that pumps your hardest-won context out of the building — for free, forever.
+
+![Diptych comparing a leaking straight pipe (employee to model to answer, value draining to the vendor) against a closed circular learning loop that retains value inside the company](/images/leak-vs-loop.png)
+
+The fix is not a better model. It's closing the pipe into a loop. Same question, same model, completely different economics — because now every interaction leaves a deposit in *your* account instead of the vendor's.
+
+The model sits in the middle of that diagram on purpose. It's a *replaceable component*, not the system. The system is everything around it: the layer that frames the question with your context, the store that remembers, and the feedback path that turns yesterday's answer into tomorrow's training signal.
+
+## What the loop is actually made of
+
+"Build a learning loop" is easy to say and easy to hand-wave. Concretely, it's four moving parts most teams already have in pieces but never wire together.
+
+**Harvest.** Pull the knowledge that's trapped in tickets, incidents, pull requests, runbooks, and chat. Root causes, the fix that worked, the architecture decision and the three that were rejected. This is the raw material; without it the loop has nothing to compound.
+
+**Structure.** Turn that raw material into something queryable — a knowledge base or graph where an incident links to the service it hit, the change that caused it, and the person who's seen it before. Retrieval is the floor here, not the ceiling.
+
+**Serve.** Put it in front of people and agents at the moment of work, not in a portal nobody opens. The answer has to show up inside the workflow.
+
+**Capture.** This is the step everyone skips, and it's the only one that makes it a *loop*. Record the question, the sources, the human correction, and the eventual outcome. That exhaust is the token capital. A system that throws it away is a cost center; a system that feeds it back is an asset that appreciates.
+
+## Private evals: the part everyone skips
+
+Here's the operational tell that separates a real learning loop from a chatbot with good PR.
+
+Stop measuring your AI work against public benchmarks. MMLU at 89% tells you nothing about whether your incident-resolution agent is actually getting better at *your* incidents. Build private evals tied to outcomes you care about — time-to-resolution, false-positive rate, defects caught before release, percentage of answers an engineer accepted without editing.
+
+Those numbers do two jobs. They prove the loop is climbing instead of just spinning, and they're themselves part of the moat: a competitor can copy your model choice in an afternoon, but they can't copy an eval suite built from years of your own production traces.
+
+A learning loop is harder to build and far less demo-friendly than wiring an employee to a model and calling it transformation. There's no screenshot for "our institutional memory is now queryable." But the demo-friendly version is exactly the one that leaks your advantage. The boring version is the one that keeps it.
+
+## What to build first
+
+If this lands and you want a starting move rather than a strategy deck:
+
+- **Pick one painful, repeating workflow** — incident triage, change-risk review, onboarding questions. Narrow beats broad.
+- **Wire capture before you wire intelligence.** Log every question, source, correction, and outcome from day one, even if the first version is just retrieval. You can't reconstruct exhaust you never stored.
+- **Write five private evals** tied to that workflow's real outcomes. If you can't name them, you don't yet know what "better" means.
+- **Keep the model behind an interface** you control, so swapping it costs an afternoon, not a quarter.
+
+None of that requires a frontier model. It requires deciding that the learning is the product.
+
+## The real claim
+
+Strip away the platform diplomacy and Nadella's argument reduces to one bet:
+
+The winners of this era won't be the companies using the best model. They'll be the companies that built the best learning loop on top of interchangeable models.
+
+You can offload a task. You can even offload a job. You can never offload your learning — and the firms that internalize that early will have an advantage that's genuinely hard to copy, no matter what ships next.
+
+---
+
+**Building something in this direction?** [Get in touch](/contact) or [read more posts](/blog).
 
 ---
 

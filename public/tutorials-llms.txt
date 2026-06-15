@@ -24736,6 +24736,8 @@ The exam is built from six domains. The weighting tells you exactly where to spe
 
 **Domain 2 is the single heaviest area.** Tool use, MCP servers, permissions, and execution environments can be a quarter of your score. If you are short on time, this is where the marginal hour pays best. Domains 3 and 6 are the lightest — do not skip them, but do not over-invest either.
 
+![Exam Focus Triage](/images/gh-600-cert-illustrations/01-exam-focus-triage.png)
+
 ## How to read the weightings strategically
 
 A scaled exam with a 700 cut score means you do not need every question. Rough math on a ~50-question exam: you can miss a meaningful slice and still pass, but the margin disappears if you tank an entire heavy domain. So the goal is **no zeros** — never walk in blind on Domain 2 or 4.
@@ -24759,6 +24761,18 @@ If any of those are shaky, the next two beginner modules fix the agentic mental 
 - **Advanced (4 modules)** — Domains 4, 5, 6 in depth, then an **exam-day first-attempt playbook** with practice questions and a time strategy.
 
 Each domain module follows the same rhythm: the exact sub-skills the exam lists, the concept taught plainly, a worked scenario, the traps that lose points, and exam-style questions with *why* the answer is right.
+
+## Hands-on work is non-negotiable
+
+Reading this path alone will not pass the exam. GH-600 is an *applied* credential testing whether you can *operate* agents in a real SDLC, not whether you can define concepts.
+
+Before exam day, you must do all three:
+
+1. **Assign the GitHub Copilot coding agent a real task** in a real repo — configure custom instructions, set it loose on a multi-step issue, review its PR, watch it fail and recover. Feel how it reasons.
+2. **Configure an MCP server** (GitHub's or a community one) as a tool, wire it to an agent, and observe it in action. Know the difference between local and remote.
+3. **Set up a branch ruleset + bypass actor** — create a protected branch rule that blocks merges, then explicitly add Copilot as a bypass actor for a specific scenario. Understand why scoping the exception is better than removing the rule.
+
+Do not skip this. A strong engineer who reads this path but skips hands-on will leak points on Domains 2 and 6 where the exam tests *judgment*, not recall.
 
 ## Official resources (use these, not memory dumps)
 
@@ -24819,6 +24833,8 @@ Every agent runs some version of this loop:
 GH-600 Domain 1 explicitly tests one design decision here: **keep planning distinct from execution.** An agent should be able to produce a *structured plan you can inspect and approve before it touches anything*. Mixing "decide" and "do" into one opaque step is the anti-pattern the exam wants you to recognize and prevent.
 
 > **Scenario.** You ask an agent to "fix the failing test." A bad design lets it immediately rewrite the test to pass — making the suite green and the bug invisible. A good design makes it output a plan first ("diagnose root cause → reproduce → fix source, not test → re-run"), which a human or a rule can validate before execution. Same model, same prompt — the *architecture* is what prevents the harmful action.
+
+![Plan Before Execution](/images/gh-600-cert-illustrations/02-plan-before-execution.png)
 
 ## Where agents fit in the SDLC
 
@@ -25131,6 +25147,8 @@ Start from the task, not the catalog. **Identify the required tools** — the mi
 
 > **Scenario.** A documentation agent needs to read the codebase and open doc PRs. Correct toolset: read repo, write to a docs branch, open PR. It does **not** need: production API tokens, secret access, or merge rights. If an answer option hands it more than the task needs, it's the wrong (insecure) option.
 
+![Tool Permission Scoping](/images/gh-600-cert-illustrations/04-tool-permission-scoping.png)
+
 ## MCP servers in depth
 
 MCP is how non-built-in tools reach the agent. Four configuration skills, each a likely question:
@@ -25378,6 +25396,8 @@ When an agent fails, Domain 4 wants a *disciplined* diagnosis using the evidence
 
 > **The diagnostic reflex:** start from the *output* (what went wrong), walk the *trace* (what it did), check the *plan* (what it intended), and read the *logs* (what the environment reported). The gap between plan and trace usually reveals the class.
 
+![Root-Cause Taxonomy](/images/gh-600-cert-illustrations/05-root-cause-taxonomy.png)
+
 ## Tuning based on results
 
 Diagnosis is worthless without the corrective action. Domain 4 names three tuning levers — match the lever to the root cause:
@@ -25402,6 +25422,8 @@ Domains 1, 3, and 4 form one cycle the exam keeps probing:
 6. **Re-evaluate.**
 
 If you can narrate this loop, you can answer most of Domain 4.
+
+![Evaluation Loop](/images/gh-600-cert-illustrations/06-evaluation-loop.png)
 
 ## Exam-style check
 
@@ -25572,6 +25594,8 @@ GH-600 is **not** asking you to lock everything down. It is asking you to put fr
 
 The right answer is almost always the option that **gates the high-risk action and lets the low-risk ones flow.**
 
+![Right-Sized Autonomy](/images/gh-600-cert-illustrations/07-right-sized-autonomy.png)
+
 ## Classifying actions by risk
 
 You cannot right-size autonomy without first classifying the action. Three risk lenses from the objective:
@@ -25591,6 +25615,8 @@ Run any agent action through these and you get its risk tier:
 | **High / irreversible** | Push to `main`, deploy, rotate a secret, delete data, change permissions | **Explicit human authorization**, controlled path |
 
 > **Scenario — right-sizing.** An agent's task list: (1) reformat code, (2) update a dependency, (3) deploy to production. Correct guardrail design: 1 runs autonomously; 2 opens a PR with scans and merges on green review; 3 **requires explicit human authorization** through a controlled release path. Same agent, three different gates, each matched to risk. Gating all three equally — or none — is the wrong answer.
+
+![Autonomy Spectrum](/images/gh-600-cert-illustrations/03-autonomy-spectrum.png)
 
 ## Human-in-the-loop where judgment is needed
 
@@ -25616,6 +25642,8 @@ Some actions shouldn't be *approved* — they should be **blocked outright**. Do
 | Allow lists (Domain 2) | Use of disallowed tools/MCP servers |
 
 > **Block vs. approve — a key distinction.** "Requires approval" means a human *can* say yes. "Blocked by policy" means it cannot happen at all (e.g. an agent may never exfiltrate secrets or disable a security control). High-judgment-but-permitted → human-in-the-loop. Never-permitted → hard block. The exam tests that you don't turn a hard policy into a mere approval prompt.
+
+![Block vs. Approve](/images/gh-600-cert-illustrations/08-block-vs-approve.png)
 
 ## Least privilege and scoped execution
 
@@ -25683,6 +25711,8 @@ Date: 2026-06-06
 Tags: Exam Strategy, Practice Questions, GH-600, Certification, Exam Prep
 
 You know the six domains. This module turns knowledge into a *pass*. It is strategy: how to study the last stretch, how to read GH-600's scenario questions, the heuristics that resolve the hard ones, a mixed practice set, and the logistics so nothing surprises you on the day.
+
+> **Critical reminder before you schedule your exam:** This path teaches the *reasoning*. But GH-600 judges whether you can *apply* it under pressure. If you have not yet done the hands-on work — assigned a real task to the Copilot coding agent, configured an MCP server, and set up a branch ruleset with bypass actors — do that before you sit the exam. Reading alone will leak points on Domains 2 (tool and environment judgment) and 6 (risk-based autonomy decisions). A week of hands-on practice is worth more than a month of reading.
 
 > **Reality check on this practice set.** These questions are *written by me* in the style and spirit of the published objectives to drill the right reflexes. They are **not** real exam items, and I have not seen the live exam. Use them to practice *reasoning*, not to memorize answers. The authoritative scope is always `aka.ms/GH600-StudyGuide`.
 
